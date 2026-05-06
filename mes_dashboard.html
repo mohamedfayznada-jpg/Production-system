@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES | El-Araby Command</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* --- Theme Variables --- */
+        :root {
+            --bg-color: #0f172a; 
+            --panel-bg: rgba(30, 41, 59, 0.8); 
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8; 
+            --accent-secondary: #c084fc; 
+            --border-glow: rgba(56, 189, 248, 0.3);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #fb7185;
+            --table-bg: rgba(15, 23, 42, 0.5);
+            --input-bg: rgba(15, 23, 42, 0.7);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f1f5f9; 
+            --panel-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --accent-primary: #0284c7; 
+            --accent-secondary: #9333ea; 
+            --border-glow: #cbd5e1;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --table-bg: #f8fafc;
+            --input-bg: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background-color: var(--bg-color); color: var(--text-main); 
+            font-family: 'Cairo', sans-serif; padding: 20px; 
+            min-height: 100vh; overflow-x: hidden; transition: background-color 0.3s, color 0.3s;
+        }
+
+        .hidden { display: none !important; }
+        .view-layer { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- RESTORED: Splash Screen --- */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .splash-logo { font-family: 'Orbitron', sans-serif; font-size: 4rem; font-weight: 900; color: var(--accent-primary); text-shadow: 0 0 20px var(--accent-primary); letter-spacing: 5px; margin-bottom: 20px; animation: pulse 1.5s infinite alternate; }
+        .splash-text { font-size: 1.5rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; font-weight: bold;}
+        .loader-bar { width: 300px; height: 4px; background: var(--border-glow); margin-top: 30px; border-radius: 2px; overflow: hidden; position: relative; }
+        .loader-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent-secondary); box-shadow: 0 0 10px var(--accent-secondary); animation: loadBar 2s ease-in-out forwards; }
+        @keyframes pulse { from { text-shadow: 0 0 10px var(--accent-primary); } to { text-shadow: 0 0 30px var(--accent-primary), 0 0 50px var(--accent-primary); } }
+        @keyframes loadBar { 0% { width: 0%; } 100% { width: 100%; } }
+
+        /* --- Shared UI --- */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border-glow); }
+        .top-nav h1 { font-weight: 900; color: var(--accent-primary); font-size: 1.8rem; }
+        
+        .controls-wrapper { display: flex; gap: 15px; align-items: center; }
+        .btn-theme { background: var(--panel-bg); border: 1px solid var(--border-glow); color: var(--text-main); padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 1.2rem; transition: 0.3s; }
+        .btn-back { background: transparent; border: 1px solid var(--accent-secondary); color: var(--accent-secondary); padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-back:hover { background: var(--accent-secondary); color: #fff; }
+
+        .container { display: grid; grid-template-columns: 1fr 2.5fr; gap: 25px; align-items: start; }
+        .alien-panel { background: var(--panel-bg); backdrop-filter: blur(12px); padding: 25px; border-radius: 8px; border: 1px solid var(--border-glow); box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; margin-bottom: 25px; transition: 0.3s; }
+        .alien-panel::before { content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 100%; background: var(--accent-primary); border-radius: 0 8px 8px 0; }
+        .alien-panel h2 { font-size: 1.2rem; color: var(--accent-primary); margin-bottom: 20px; border-bottom: 1px dashed var(--border-glow); padding-bottom: 10px; }
+        
+        .placeholder-box { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; text-align: center; border: 1px dashed var(--border-glow); border-radius: 8px; background: var(--table-bg); }
+        .placeholder-box h3 { color: var(--text-muted); font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: span 2; }
+        label { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 6px; font-weight: bold; }
+        input, select, textarea { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-glow); padding: 12px; border-radius: 4px; font-size: 1rem; outline: none; font-family: 'Orbitron', 'Cairo', sans-serif; transition: 0.3s; }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent-secondary); }
+
+        .cyber-button { background: transparent; color: var(--accent-primary); border: 1px solid var(--accent-primary); padding: 12px; border-radius: 4px; font-size: 1.1rem; font-weight: 900; cursor: pointer; margin-top: 15px; width: 100%; transition: 0.3s; }
+        .cyber-button:hover { background: var(--accent-primary); color: #fff; }
+        .btn-small { padding: 8px 12px; font-size: 0.9rem; margin-top: 0; }
+
+        /* KPI Boards */
+        .kpi-board { display: flex; justify-content: center; align-items: center; background: var(--table-bg); border-radius: 8px; padding: 25px; margin-bottom: 25px; border: 1px solid var(--border-glow); gap: 40px; flex-wrap: wrap;}
+        .kpi-status { text-align: center; }
+        .kpi-title { font-size: 1rem; color: var(--text-muted); margin-bottom: 10px; font-weight: bold; }
+        .kpi-value { font-family: 'Orbitron', sans-serif; font-size: 3rem; font-weight: 900; line-height: 1; }
+        .status-positive { color: var(--success); }
+        .status-negative { color: var(--danger); }
+        .status-neutral { color: var(--accent-primary); }
+        .status-warning { color: var(--warning); }
+
+        /* Tables */
+        table { width: 100%; border-collapse: separate; border-spacing: 0 5px; margin-top: 10px; }
+        th, td { padding: 12px; text-align: center; font-size: 1.1rem; background: var(--table-bg); }
+        th { color: var(--accent-secondary); font-weight: 900; border-bottom: 2px solid var(--border-glow); background: transparent; }
+        td { border-top: 1px solid var(--border-glow); border-bottom: 1px solid var(--border-glow); vertical-align: middle; }
+        td:first-child { font-family: 'Orbitron', sans-serif; color: var(--text-muted); border-right: 1px solid var(--border-glow); border-radius: 0 6px 6px 0; }
+        td:last-child { border-left: 1px solid var(--border-glow); border-radius: 6px 0 0 6px; }
+        .prod-input { width: 90px; text-align: center; font-size: 1.4rem; font-weight: 900; border: 1px solid var(--accent-primary); }
+        .row-break td { background: rgba(192, 132, 252, 0.1); color: var(--accent-secondary); font-weight: bold; border-color: rgba(192, 132, 252, 0.3); }
+
+        /* Main Menu Specifics */
+        .section-title { font-size: 1.4rem; color: var(--accent-secondary); border-bottom: 1px dashed var(--border-glow); padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .menu-card { background: var(--panel-bg); border: 1px solid var(--border-glow); padding: 30px 20px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
+        .menu-card::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 50px; height: 3px; background: var(--accent-primary); transition: width 0.3s; }
+        .menu-card:hover { transform: translateY(-5px); border-color: var(--accent-primary); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .menu-card:hover::before { width: 100%; }
+        .menu-card h2 { font-size: 1.5rem; color: var(--text-main); margin-bottom: 10px; }
+        .menu-card p { color: var(--text-muted); font-size: 0.95rem; }
+
+        /* Tabs System */
+        .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: var(--panel-bg); color: var(--text-muted); border: 1px solid var(--border-glow); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; flex-grow: 1; text-align: center; }
+        .tab-btn.active { background: var(--accent-secondary); color: #fff; border-color: var(--accent-secondary); }
+        
+        .defect-tag { display: inline-flex; align-items: center; background: rgba(251, 113, 133, 0.15); border: 1px solid var(--danger); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin: 2px; }
+        .defect-tag span.qty { background: var(--danger); color: #fff; padding: 2px 6px; border-radius: 3px; margin-left: 8px; font-weight: bold; }
+        .defect-tag.quality { border-color: var(--accent-secondary); background: rgba(192, 132, 252, 0.15); }
+        .defect-tag.quality span.qty { background: var(--accent-secondary); }
+        .btn-delete-defect { margin-left: 8px; color: var(--danger); cursor: pointer; font-weight: bold; font-size: 1.2rem; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .modal-content { background: var(--panel-bg); border: 1px solid var(--accent-primary); padding: 30px; border-radius: 8px; width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;}
+        
+        .month-panel { background: var(--panel-bg); border: 1px solid var(--accent-secondary); border-radius: 8px; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap:15px; }
+        .month-panel input { width: 200px; }
+        .month-kpi-val { font-family: 'Orbitron'; font-size: 2.5rem; font-weight: 900; color: var(--accent-secondary); }
+
+        /* Foaming Specifics */
+        .foam-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid var(--accent-primary); transition: 0.3s; }
+        .foam-thumb:hover { transform: scale(1.1); box-shadow: 0 0 15px var(--accent-primary); }
+        .status-select { font-weight: bold; padding: 6px; border-radius: 4px; border: none; outline: none; }
+        .status-select.pending { background: rgba(251, 191, 36, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+        .status-select.done { background: rgba(52, 211, 153, 0.2); color: var(--success); border: 1px solid var(--success); }
+    </style>
+</head>
+<body>
+
+    <!-- LAYER 1: Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-logo">MES CORE</div>
+        <div class="splash-text">نظام إدارة الإنتاج الذكي</div>
+        <div class="loader-bar"><div class="loader-fill"></div></div>
+    </div>
+
+    <!-- LAYER 2: Main Menu -->
+    <div id="main-menu" class="hidden view-layer page-layer">
+        <div class="top-nav" style="justify-content: space-between; border-bottom: none;">
+            <h1 style="font-size: 2.5rem;">اللوحة الرئيسية للعمليات</h1>
+            <button class="btn-theme" onclick="toggleTheme()" title="تغيير المظهر">🌓</button>
+        </div>
+        
+        <h2 class="section-title">الأقسام الإنتاجية</h2>
+        <div class="menu-grid">
+            <div class="menu-card" onclick="navigateTo('production-module')">
+                <h2>التغليف والتجميع</h2>
+                <p>متابعة أهداف ومعدلات الإنتاج اللحظية</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">إدارة الجودة والعمليات</h2>
+        <div class="menu-grid">
+            <div class="menu-card" onclick="navigateTo('defects-module'); loadMonthlyYield();">
+                <h2>سجل العيوب ومعدل السماحية</h2>
+                <p>تسجيل العيوب وحساب معدل السماحية اللحظي والتراكمي</p>
+            </div>
+            <div class="menu-card" onclick="navigateTo('monitoring-module'); initFoamingTab();">
+                <h2>المتابعة المركزية</h2>
+                <p>متابعة عمليات الرش، التبريد، الأبواب، والفحوصات</p>
+            </div>
+            <div class="menu-card" onclick="navigateTo('scrap-module')">
+                <h2>الهالك</h2>
+                <p>حصر وتكويد المواد المهدرة</p>
+            </div>
+            <div class="menu-card" onclick="navigateTo('improvements-module')">
+                <h2>التحسينات</h2>
+                <p>مقترحات وتطبيقات التحسين المستمر</p>
+            </div>
+            <div class="menu-card" onclick="navigateTo('checklists-module')">
+                <h2>قوائم التحقق</h2>
+                <p>مراجعات الصيانة والسلامة الدورية</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LAYER 3: Production Module -->
+    <div id="production-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>نظام التصنيع المركزي // قسم التغليف</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="alien-panel">
+                <h2>[ محددات الوردية ]</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>تاريخ الوردية</label>
+                        <input type="date" id="shiftDate" onchange="saveLocalSettings()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>الوردية الحالية</label>
+                        <select id="shiftType" onchange="saveLocalSettings()">
+                            <option value="1">الوردية الأولى (صباحي)</option>
+                            <option value="2">الوردية الثانية (مسائي)</option>
+                            <option value="3">الوردية الثالثة (ليلي)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>البداية</label><input type="time" id="sStart" onchange="saveLocalSettings()"></div>
+                    <div class="form-group"><label>النهاية</label><input type="time" id="sEnd" onchange="saveLocalSettings()"></div>
+                    <div class="form-group"><label>بداية الراحة</label><input type="time" id="bStart" onchange="saveLocalSettings()"></div>
+                    <div class="form-group"><label>نهاية الراحة</label><input type="time" id="bEnd" onchange="saveLocalSettings()"></div>
+                    <div class="form-group full-width">
+                        <label>المستهدف الإجمالي</label>
+                        <input type="number" id="totalTarget" style="font-size: 1.5rem; font-weight:bold;" onchange="saveLocalSettings()">
+                    </div>
+                </div>
+                <button class="cyber-button" onclick="initializeShift()">تهيئة واستدعاء البيانات</button>
+            </div>
+
+            <div class="alien-panel" id="prodPanel" style="display: none;">
+                <div class="kpi-board">
+                    <div class="kpi-status">
+                        <div class="kpi-title">تباين الإنتاج اللحظي</div>
+                        <div class="kpi-value status-neutral" id="mainStatusBoard">0</div>
+                    </div>
+                </div>
+                <table>
+                    <thead><tr><th>الساعة</th><th>الهدف</th><th>الفعلي</th><th>الفارق</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- LAYER 4: Defects Module -->
+    <div id="defects-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>إدارة الجودة // سجل العيوب ومعدل السماحية</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+
+        <div class="month-panel">
+            <div>
+                <h2 style="color: var(--accent-secondary); margin-bottom: 5px;">التحليل التراكمي الشهري (Cumulative Yield)</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">يتم احتساب إجمالي الإنتاج وإجمالي العيوب للشهر المحدد تلقائياً.</p>
+            </div>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <input type="month" id="monthSelector" onchange="loadMonthlyYield()">
+                <div class="month-kpi-val" id="kpi-monthly-yield">--%</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-tab-log" onclick="switchDefectTab('log')">سجل العيوب والمتابعة</button>
+            <button class="tab-btn" id="btn-tab-config" onclick="switchDefectTab('config')">تصنيفات العيوب (إعدادات)</button>
+        </div>
+
+        <div id="tab-log">
+            <div class="alien-panel" style="padding: 15px 25px;">
+                <div class="form-grid" style="align-items: end;">
+                    <div class="form-group">
+                        <label>تاريخ الوردية المطلوب مراجعتها</label>
+                        <input type="date" id="defectSpecificDate">
+                    </div>
+                    <div class="form-group">
+                        <label>الوردية</label>
+                        <select id="defectSpecificShift">
+                            <option value="1">الوردية الأولى (صباحي)</option>
+                            <option value="2">الوردية الثانية (مسائي)</option>
+                            <option value="3">الوردية الثالثة (ليلي)</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <button class="cyber-button" style="margin-top: 0;" onclick="loadDefectShiftData()">عرض وتعديل بيانات الوردية</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-board" id="daily-kpi-board" style="display: none;">
+                <div class="kpi-status">
+                    <div class="kpi-title">Quality Yield للوردية (جودة فقط)</div>
+                    <div class="kpi-value status-positive" id="kpi-quality-yield">100%</div>
+                </div>
+                <div class="kpi-status">
+                    <div class="kpi-title">Overall Yield للوردية (كلي)</div>
+                    <div class="kpi-value status-neutral" id="kpi-overall-yield">100%</div>
+                </div>
+            </div>
+
+            <div class="alien-panel" id="defectLogPanel" style="display: none;">
+                <h2>[ مصفوفة العيوب الساعية للوردية النشطة ]</h2>
+                <div style="margin-bottom: 15px; color: var(--accent-primary); font-weight: bold;">
+                    معرف الوردية المستدعاة: <span id="active-shift-display"></span>
+                </div>
+                <table>
+                    <thead><tr><th>الساعة</th><th>الإنتاج الفعلي</th><th>العيوب المسجلة</th><th>إجراء</th></tr></thead>
+                    <tbody id="defectsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-config" class="hidden">
+            <div class="alien-panel" style="max-width: 600px; margin: 0 auto;">
+                <h2>[ إضافة تصنيف عيب جديد ]</h2>
+                <div class="form-group">
+                    <input type="text" id="newDefectName" placeholder="مثال: تسريب فريون، خدش بالكابينة...">
+                    <button class="cyber-button btn-small" style="margin-top: 10px;" onclick="addDefectCategory()">إضافة للقائمة</button>
+                </div>
+                <h2 style="margin-top: 30px;">[ التصنيفات الحالية ]</h2>
+                <div id="categoriesList" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Defect Modal -->
+    <div id="defectModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 style="color: var(--danger); margin-bottom: 20px; border-bottom: 1px dashed; padding-bottom: 10px;">إضافة عيب جديد</h2>
+            <input type="hidden" id="modalIntervalIndex">
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>نوع العيب</label>
+                <select id="modalDefectCategory"></select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>الكمية المعيبة</label>
+                <input type="number" id="modalDefectQty" value="1" min="1">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label>جهة الاكتشاف (المسجل)</label>
+                <select id="modalDefectDiscoverer">
+                    <option value="production">الإنتاج (Production)</option>
+                    <option value="quality">الجودة (Quality)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="cyber-button" style="border-color: var(--success); color: var(--success);" onclick="saveDefectToInterval()">حفظ العيب</button>
+                <button class="cyber-button" style="border-color: var(--text-muted); color: var(--text-muted);" onclick="closeDefectModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LAYER 5: Monitoring Module (Central Dashboard) -->
+    <div id="monitoring-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>إدارة العمليات // المتابعة المركزية</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-mon-spray" onclick="switchMonitorTab('spray')">متابعة الرش</button>
+            <button class="tab-btn" id="btn-mon-cooling" onclick="switchMonitorTab('cooling')">متابعة عيوب التبريد</button>
+            <button class="tab-btn" id="btn-mon-doors" onclick="switchMonitorTab('doors')">متابعة عيوب الأبواب</button>
+            <button class="tab-btn" id="btn-mon-parts" onclick="switchMonitorTab('parts')">متابعة عيوب الأجزاء</button>
+            <button class="tab-btn" id="btn-mon-inspection" onclick="switchMonitorTab('inspection')">متابعة عمليات الفحص</button>
+            <button class="tab-btn" id="btn-mon-clearance" onclick="switchMonitorTab('clearance')">متابعة عملية الخلوص</button>
+        </div>
+
+        <!-- NEW: Sub-Layer 1: Foaming Monitoring -->
+        <div id="mon-spray" class="monitor-tab-content">
+            
+            <!-- Controls -->
+            <div class="alien-panel" style="padding: 15px 25px;">
+                <div class="form-grid" style="align-items: end;">
+                    <div class="form-group">
+                        <label>تاريخ المتابعة (يومي)</label>
+                        <input type="date" id="foamDateSelector" onchange="loadFoamingData()">
+                    </div>
+                    <div class="form-group">
+                        <label>الشهر التراكمي</label>
+                        <input type="month" id="foamMonthSelector" onchange="loadMonthlyFoamingData()">
+                    </div>
+                    <div class="form-group full-width">
+                        <button class="cyber-button" style="margin-top: 0;" onclick="openFoamingModal()">+ إضافة عيب رش جديد</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-board" style="gap: 20px;">
+                <div class="kpi-status">
+                    <div class="kpi-title">نسبة الشهر (تراكمي)</div>
+                    <div class="kpi-value status-neutral" id="kpi-foam-month-perc">--%</div>
+                </div>
+                <div class="kpi-status">
+                    <div class="kpi-title">نسبة اليوم (يومي)</div>
+                    <div class="kpi-value status-neutral" id="kpi-foam-day-perc">--%</div>
+                </div>
+                <div class="kpi-status">
+                    <div class="kpi-title">إجمالي عيوب اليوم</div>
+                    <div class="kpi-value status-danger" id="kpi-foam-day-total">0</div>
+                </div>
+                <div class="kpi-status">
+                    <div class="kpi-title">تم التسليم</div>
+                    <div class="kpi-value status-positive" id="kpi-foam-day-done">0</div>
+                </div>
+                <div class="kpi-status">
+                    <div class="kpi-title">تحت الإصلاح</div>
+                    <div class="kpi-value status-warning" id="kpi-foam-day-repair">0</div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="alien-panel">
+                <h2>[ سجل عيوب الرش ]</h2>
+                <table>
+                    <thead><tr><th>وقت التسجيل</th><th>العيب</th><th>التوصيف</th><th>الصورة</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                    <tbody id="foamingTableBody"></tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div id="mon-cooling" class="monitor-tab-content hidden">
+            <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING COOLING DEFECTS LOGIC...</h3></div></div>
+        </div>
+        <div id="mon-doors" class="monitor-tab-content hidden">
+            <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING DOORS DEFECTS LOGIC...</h3></div></div>
+        </div>
+        <div id="mon-parts" class="monitor-tab-content hidden">
+            <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING PARTS DEFECTS LOGIC...</h3></div></div>
+        </div>
+        <div id="mon-inspection" class="monitor-tab-content hidden">
+            <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING INSPECTION LOGIC...</h3></div></div>
+        </div>
+        <div id="mon-clearance" class="monitor-tab-content hidden">
+            <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING CLEARANCE LOGIC...</h3></div></div>
+        </div>
+    </div>
+
+    <!-- Foaming Add Modal -->
+    <div id="foamingModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 style="color: var(--accent-primary); border-bottom: 1px dashed; padding-bottom: 10px; margin-bottom: 20px;">تسجيل عيب رش</h2>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>نوع/اسم العيب</label>
+                <input type="text" id="foamDefectName" placeholder="مثال: تسريب فوم، فراغ داخلي...">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>توصيف العيب (اختياري)</label>
+                <textarea id="foamDefectDesc" rows="3" placeholder="أدخل تفاصيل إضافية هنا..."></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label>صورة العيب (اختياري)</label>
+                <input type="file" id="foamDefectImage" accept="image/*">
+                <small style="color:var(--text-muted); margin-top:5px;">سيتم ضغط الصورة تلقائياً لضمان سرعة الحفظ.</small>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="cyber-button" style="border-color: var(--success); color: var(--success);" onclick="saveFoamingDefect()">حفظ السجل</button>
+                <button class="cyber-button" style="border-color: var(--text-muted); color: var(--text-muted);" onclick="closeFoamingModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div id="imageViewModal" class="modal-overlay hidden" onclick="this.classList.add('hidden')" style="cursor:zoom-out;">
+        <img id="viewerImage" src="" style="max-width:90%; max-height:90%; border: 2px solid var(--accent-primary); border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.8);">
+    </div>
+
+    <!-- LAYER 6, 7, 8: Placeholders for remaining modules -->
+    <div id="scrap-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>إدارة العمليات // الهالك</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+        <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING SCRAP LOGIC...</h3></div></div>
+    </div>
+
+    <div id="improvements-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>إدارة العمليات // التحسينات المستمرة</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+        <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING KAIZEN LOGIC...</h3></div></div>
+    </div>
+
+    <div id="checklists-module" class="hidden view-layer page-layer">
+        <div class="top-nav">
+            <h1>إدارة العمليات // قوائم التحقق</h1>
+            <div class="controls-wrapper">
+                <button class="btn-theme" onclick="toggleTheme()">🌓</button>
+                <button class="btn-back" onclick="navigateTo('main-menu')">رجوع للقائمة</button>
+            </div>
+        </div>
+        <div class="alien-panel"><div class="placeholder-box"><h3>AWAITING CHECKLIST LOGIC...</h3></div></div>
+    </div>
+
+<script>
+    // --- Global State & Init ---
+    const supabaseUrl = 'https://xaqqbxtxkzximwsnwezw.supabase.co';
+    const supabaseKey = 'sb_publishable_F-NNQh4BT3lpEgHIszFCvg_ZJvCmERP';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let globalIntervals = [];
+    let currentDocId = "";
+    let defectCategories = [];
+
+    // Foaming State
+    let foamingRecords = [];
+    let dailyFoamingTotalProd = 0;
+
+    window.onload = function() {
+        initTheme();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const thisMonthStr = todayStr.substring(0, 7); 
+        
+        if(!localStorage.getItem('mes_space_config')) {
+            document.getElementById('shiftDate').value = todayStr;
+        }
+        document.getElementById('defectSpecificDate').value = todayStr;
+        document.getElementById('monthSelector').value = thisMonthStr;
+        
+        // Foaming initial dates
+        document.getElementById('foamDateSelector').value = todayStr;
+        document.getElementById('foamMonthSelector').value = thisMonthStr;
+        
+        loadLocalSettings();
+        loadDefectCategories();
+
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                document.getElementById('main-menu').classList.remove('hidden');
+            }, 500); 
+        }, 2200);
+    };
+
+    function navigateTo(targetId) {
+        document.querySelectorAll('.page-layer').forEach(layer => layer.classList.add('hidden'));
+        document.getElementById(targetId).classList.remove('hidden');
+        window.scrollTo(0,0);
+    }
+
+    // --- Monitoring Sub-Routing ---
+    function switchMonitorTab(tabName) {
+        const tabs = ['spray', 'cooling', 'doors', 'parts', 'inspection', 'clearance'];
+        tabs.forEach(t => {
+            document.getElementById(`mon-${t}`).classList.add('hidden');
+            document.getElementById(`btn-mon-${t}`).classList.remove('active');
+        });
+        document.getElementById(`mon-${tabName}`).classList.remove('hidden');
+        document.getElementById(`btn-mon-${tabName}`).classList.add('active');
+    }
+
+    // --- Theme Engine ---
+    function initTheme() {
+        const savedTheme = localStorage.getItem('mes_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const newTheme = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('mes_theme', newTheme);
+    }
+
+    // --- Local Storage ---
+    function saveLocalSettings() {
+        const config = {
+            shiftDate: document.getElementById('shiftDate').value,
+            shiftType: document.getElementById('shiftType').value,
+            sStart: document.getElementById('sStart').value || '08:00',
+            sEnd: document.getElementById('sEnd').value || '16:00',
+            bStart: document.getElementById('bStart').value || '12:00',
+            bEnd: document.getElementById('bEnd').value || '12:45',
+            totalTarget: document.getElementById('totalTarget').value || '450'
+        };
+        localStorage.setItem('mes_space_config', JSON.stringify(config));
+    }
+
+    function loadLocalSettings() {
+        const saved = localStorage.getItem('mes_space_config');
+        if (saved) {
+            const config = JSON.parse(saved);
+            document.getElementById('shiftDate').value = config.shiftDate || new Date().toISOString().split('T')[0];
+            document.getElementById('shiftType').value = config.shiftType;
+            document.getElementById('sStart').value = config.sStart;
+            document.getElementById('sEnd').value = config.sEnd;
+            document.getElementById('bStart').value = config.bStart;
+            document.getElementById('bEnd').value = config.bEnd;
+            document.getElementById('totalTarget').value = config.totalTarget;
+        }
+    }
+
+    function loadDefectCategories() {
+        const saved = localStorage.getItem('mes_defect_categories');
+        defectCategories = saved ? JSON.parse(saved) : ['تسريب فريون', 'خدش كابينة', 'عطل كباس'];
+        renderCategoriesList();
+    }
+
+    function saveDefectCategories() {
+        localStorage.setItem('mes_defect_categories', JSON.stringify(defectCategories));
+        renderCategoriesList();
+    }
+
+    // --- Time Helpers ---
+    function timeToMins(timeStr) {
+        let [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+    }
+    function formatTime(mins) {
+        mins = mins % (24 * 60);
+        let h = Math.floor(mins / 60).toString().padStart(2, '0');
+        let m = (mins % 60).toString().padStart(2, '0');
+        return `${h}:${m}`;
+    }
+
+    // --- Core Shift Logic (Production Panel) ---
+    async function initializeShift() {
+        saveLocalSettings();
+        const sDate = document.getElementById('shiftDate').value;
+        const shiftType = document.getElementById('shiftType').value;
+        currentDocId = `${sDate}_Shift_${shiftType}`;
+
+        const { data, error } = await supabaseClient
+            .from('production_shifts')
+            .select('shift_data')
+            .eq('shift_id', currentDocId)
+            .maybeSingle(); 
+
+        if (data && data.shift_data) {
+            const dbConfig = data.shift_data.config;
+            if(dbConfig) {
+                document.getElementById('shiftDate').value = dbConfig.shiftDate || sDate;
+                document.getElementById('sStart').value = dbConfig.sStart;
+                document.getElementById('sEnd').value = dbConfig.sEnd;
+                document.getElementById('bStart').value = dbConfig.bStart;
+                document.getElementById('bEnd').value = dbConfig.bEnd;
+                document.getElementById('totalTarget').value = dbConfig.totalTarget;
+                saveLocalSettings();
+            }
+            globalIntervals = data.shift_data.intervals;
+            renderProductionDashboard();
+            return; 
+        }
+        generateNewShift();
+    }
+
+    function generateNewShift() {
+        const sStartM = timeToMins(document.getElementById('sStart').value);
+        let sEndM = timeToMins(document.getElementById('sEnd').value);
+        const bStartM = timeToMins(document.getElementById('bStart').value);
+        let bEndM = timeToMins(document.getElementById('bEnd').value);
+        const totalTarget = parseInt(document.getElementById('totalTarget').value);
+
+        if (sEndM < sStartM) sEndM += 24 * 60;
+        if (bEndM < bStartM) bEndM += 24 * 60;
+
+        const netMins = (sEndM - sStartM) - (bEndM - bStartM);
+        if (netMins <= 0 || !totalTarget) return;
+
+        const unitsPerMin = totalTarget / netMins;
+        globalIntervals = [];
+        let current = sStartM;
+        let accumulatedTarget = 0;
+
+        while (current < sEndM) {
+            if (current === bStartM) {
+                globalIntervals.push({ isBreak: true, start: bStartM, end: bEndM, duration: bEndM - bStartM });
+                current = bEndM;
+                continue;
+            }
+            let intervalEnd = current + 60;
+            if (current < bStartM && intervalEnd > bStartM) intervalEnd = bStartM;
+            if (intervalEnd > sEndM) intervalEnd = sEndM;
+
+            let duration = intervalEnd - current;
+            let roundedTarget = Math.round(unitsPerMin * duration);
+            
+            globalIntervals.push({ isBreak: false, start: current, end: intervalEnd, duration: duration, target: roundedTarget, actual: 0, defects: [] });
+            accumulatedTarget += roundedTarget;
+            current = intervalEnd;
+        }
+
+        let diff = totalTarget - accumulatedTarget;
+        for (let i = globalIntervals.length - 1; i >= 0; i--) {
+            if (!globalIntervals[i].isBreak) { globalIntervals[i].target += diff; break; }
+        }
+
+        syncToSupabase();
+        renderProductionDashboard();
+    }
+
+    async function syncToSupabase() {
+        if (!currentDocId) return;
+        const payload = {
+            shift_id: currentDocId,
+            shift_data: {
+                intervals: globalIntervals,
+                config: {
+                    shiftDate: document.getElementById('shiftDate').value || document.getElementById('defectSpecificDate').value,
+                    sStart: document.getElementById('sStart').value,
+                    sEnd: document.getElementById('sEnd').value,
+                    bStart: document.getElementById('bStart').value,
+                    bEnd: document.getElementById('bEnd').value,
+                    totalTarget: document.getElementById('totalTarget').value
+                }
+            },
+            updated_at: new Date().toISOString()
+        };
+        await supabaseClient.from('production_shifts').upsert(payload);
+        
+        const currentViewedMonth = document.getElementById('monthSelector').value;
+        if (currentDocId.startsWith(currentViewedMonth)) {
+            loadMonthlyYield();
+        }
+    }
+
+    // --- Production UI ---
+    function renderProductionDashboard() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        globalIntervals.forEach((inv, index) => {
+            const tr = document.createElement('tr');
+            if (inv.isBreak) {
+                tr.className = 'row-break';
+                tr.innerHTML = `<td>${formatTime(inv.start)} - ${formatTime(inv.end)}</td><td colspan="3">وقت راحة</td>`;
+            } else {
+                let variance = inv.actual - inv.target;
+                let varClass = variance < 0 ? 'status-negative' : (variance > 0 ? 'status-positive' : 'status-neutral');
+                tr.innerHTML = `
+                    <td>${formatTime(inv.start)} - ${formatTime(inv.end)}</td>
+                    <td style="font-weight:900;">${inv.target}</td>
+                    <td><input type="number" class="prod-input" value="${inv.actual}" min="0" onchange="updateActual(${index}, this.value)"></td>
+                    <td class="${varClass}" style="font-weight:900;">${variance > 0 ? '+' : ''}${variance}</td>
+                `;
+            }
+            tbody.appendChild(tr);
+        });
+        document.getElementById('prodPanel').style.display = 'block';
+        updateOverallProdStatus();
+    }
+
+    function updateActual(index, value) {
+        globalIntervals[index].actual = parseInt(value) || 0;
+        syncToSupabase();
+        renderProductionDashboard(); 
+    }
+
+    function updateOverallProdStatus() {
+        let tTarget = 0, tActual = 0;
+        globalIntervals.forEach(inv => {
+            if (!inv.isBreak && inv.actual > 0) { tTarget += inv.target; tActual += inv.actual; }
+        });
+        let variance = tActual - tTarget;
+        if (tTarget === 0) variance = 0;
+        let board = document.getElementById('mainStatusBoard');
+        board.innerText = (variance > 0 ? '+' : '') + variance;
+        board.className = 'kpi-value ' + (variance > 0 ? 'status-positive' : (variance < 0 ? 'status-negative' : 'status-neutral'));
+    }
+
+    // --- General Defects Logic ---
+    async function loadMonthlyYield() {
+        const monthVal = document.getElementById('monthSelector').value; 
+        if(!monthVal) return;
+        const { data, error } = await supabaseClient.from('production_shifts').select('shift_data').like('shift_id', `${monthVal}%`);
+        if (error) return;
+
+        let monthActual = 0, monthDefects = 0;
+        if (data && data.length > 0) {
+            data.forEach(row => {
+                const intervals = row.shift_data.intervals;
+                if(intervals) {
+                    intervals.forEach(inv => {
+                        if (!inv.isBreak) {
+                            monthActual += inv.actual || 0;
+                            if (inv.defects) { inv.defects.forEach(d => { monthDefects += d.qty; }); }
+                        }
+                    });
+                }
+            });
+        }
+        let yieldVal = monthActual > 0 ? ((monthActual - monthDefects) / monthActual * 100).toFixed(1) : 100;
+        let kpiElement = document.getElementById('kpi-monthly-yield');
+        kpiElement.innerText = yieldVal + '%';
+        kpiElement.className = 'month-kpi-val ' + (yieldVal >= 98 ? 'status-positive' : (yieldVal >= 95 ? 'status-neutral' : 'status-negative'));
+    }
+
+    async function loadDefectShiftData() {
+        const sDate = document.getElementById('defectSpecificDate').value;
+        const shiftType = document.getElementById('defectSpecificShift').value;
+        if(!sDate) return;
+        
+        currentDocId = `${sDate}_Shift_${shiftType}`;
+        const { data, error } = await supabaseClient.from('production_shifts').select('shift_data').eq('shift_id', currentDocId).maybeSingle(); 
+
+        if (data && data.shift_data) {
+            globalIntervals = data.shift_data.intervals;
+            document.getElementById('active-shift-display').innerText = currentDocId;
+            document.getElementById('daily-kpi-board').style.display = 'flex';
+            document.getElementById('defectLogPanel').style.display = 'block';
+            renderDefectsTable();
+        } else {
+            alert("لا توجد بيانات مسجلة لهذه الوردية.");
+        }
+    }
+
+    function switchDefectTab(tabName) {
+        document.getElementById('tab-log').classList.add('hidden');
+        document.getElementById('tab-config').classList.add('hidden');
+        document.getElementById('btn-tab-log').classList.remove('active');
+        document.getElementById('btn-tab-config').classList.remove('active');
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        document.getElementById(`btn-tab-${tabName}`).classList.add('active');
+    }
+
+    function addDefectCategory() {
+        const val = document.getElementById('newDefectName').value.trim();
+        if(val && !defectCategories.includes(val)) { defectCategories.push(val); saveDefectCategories(); document.getElementById('newDefectName').value = ''; }
+    }
+
+    function removeDefectCategory(index) { defectCategories.splice(index, 1); saveDefectCategories(); }
+
+    function renderCategoriesList() {
+        const list = document.getElementById('categoriesList');
+        list.innerHTML = '';
+        defectCategories.forEach((cat, index) => {
+            list.innerHTML += `<div style="display:flex; justify-content:space-between; background:var(--table-bg); border:1px solid var(--border-glow); padding:10px 15px; margin-bottom:8px; border-radius:4px;"><span>${cat}</span><span style="color:var(--danger); cursor:pointer; font-weight:bold;" onclick="removeDefectCategory(${index})">X</span></div>`;
+        });
+    }
+
+    function renderDefectsTable() {
+        const tbody = document.getElementById('defectsTableBody');
+        tbody.innerHTML = '';
+        globalIntervals.forEach((inv, index) => {
+            const tr = document.createElement('tr');
+            if (inv.isBreak) {
+                tr.className = 'row-break';
+                tr.innerHTML = `<td>${formatTime(inv.start)} - ${formatTime(inv.end)}</td><td colspan="3">وقت راحة</td>`;
+            } else {
+                if(!inv.defects) inv.defects = []; 
+                let defectHTML = '';
+                inv.defects.forEach((d, dIdx) => {
+                    let typeClass = d.discoverer === 'quality' ? 'quality' : '';
+                    defectHTML += `<div class="defect-tag ${typeClass}"><span class="btn-delete-defect" onclick="removeDefect(${index}, ${dIdx})">×</span>${d.category} <span class="qty">${d.qty}</span></div>`;
+                });
+                tr.innerHTML = `<td>${formatTime(inv.start)} - ${formatTime(inv.end)}</td><td style="font-weight:bold; font-size:1.3rem;">${inv.actual}</td><td style="text-align:right;">${defectHTML}</td><td><button class="cyber-button btn-small" onclick="openDefectModal(${index})">إضافة عيب</button></td>`;
+            }
+            tbody.appendChild(tr);
+        });
+        calculateYields();
+    }
+
+    function openDefectModal(intervalIndex) {
+        document.getElementById('modalIntervalIndex').value = intervalIndex;
+        document.getElementById('modalDefectQty').value = 1;
+        const catSelect = document.getElementById('modalDefectCategory');
+        catSelect.innerHTML = '';
+        defectCategories.forEach(cat => { catSelect.innerHTML += `<option value="${cat}">${cat}</option>`; });
+        document.getElementById('defectModal').classList.remove('hidden');
+    }
+
+    function closeDefectModal() { document.getElementById('defectModal').classList.add('hidden'); }
+
+    function saveDefectToInterval() {
+        const index = document.getElementById('modalIntervalIndex').value;
+        const cat = document.getElementById('modalDefectCategory').value;
+        const qty = parseInt(document.getElementById('modalDefectQty').value) || 1;
+        const disc = document.getElementById('modalDefectDiscoverer').value;
+        if(!globalIntervals[index].defects) globalIntervals[index].defects = [];
+        globalIntervals[index].defects.push({ category: cat, qty: qty, discoverer: disc });
+        syncToSupabase(); closeDefectModal(); renderDefectsTable();
+    }
+
+    function removeDefect(intervalIndex, defectIndex) {
+        globalIntervals[intervalIndex].defects.splice(defectIndex, 1);
+        syncToSupabase(); renderDefectsTable();
+    }
+
+    function calculateYields() {
+        let totalActual = 0, totalQualityDefects = 0, totalAllDefects = 0;
+        globalIntervals.forEach(inv => {
+            if (!inv.isBreak) {
+                totalActual += inv.actual || 0;
+                if(inv.defects) { inv.defects.forEach(d => { totalAllDefects += d.qty; if(d.discoverer === 'quality') totalQualityDefects += d.qty; }); }
+            }
+        });
+        let qYield = totalActual > 0 ? ((totalActual - totalQualityDefects) / totalActual * 100).toFixed(1) : 100;
+        let oYield = totalActual > 0 ? ((totalActual - totalAllDefects) / totalActual * 100).toFixed(1) : 100;
+        let qBoard = document.getElementById('kpi-quality-yield'), oBoard = document.getElementById('kpi-overall-yield');
+        qBoard.innerText = qYield + '%'; oBoard.innerText = oYield + '%';
+        qBoard.className = 'kpi-value ' + (qYield >= 98 ? 'status-positive' : (qYield >= 95 ? 'status-neutral' : 'status-negative'));
+        oBoard.className = 'kpi-value ' + (oYield >= 98 ? 'status-positive' : (oYield >= 95 ? 'status-neutral' : 'status-negative'));
+    }
+
+
+    // ==========================================
+    // --- NEW: FOAMING MONITORING LOGIC ---
+    // ==========================================
+    
+    function initFoamingTab() {
+        loadFoamingData();
+        loadMonthlyFoamingData();
+    }
+
+    function openFoamingModal() {
+        document.getElementById('foamDefectName').value = '';
+        document.getElementById('foamDefectDesc').value = '';
+        document.getElementById('foamDefectImage').value = '';
+        document.getElementById('foamingModal').classList.remove('hidden');
+    }
+
+    function closeFoamingModal() {
+        document.getElementById('foamingModal').classList.add('hidden');
+    }
+
+    function openImageViewer(src) {
+        if(!src) return;
+        document.getElementById('viewerImage').src = src;
+        document.getElementById('imageViewModal').classList.remove('hidden');
+    }
+
+    // Client-side Image Compression to prevent Payload Too Large errors in Supabase JSONB
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            if(!file) resolve(null);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600; // Safe width for JSONB
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.6)); // 60% quality JPEG
+                }
+            }
+        });
+    }
+
+    async function saveFoamingDefect() {
+        const name = document.getElementById('foamDefectName').value.trim();
+        const desc = document.getElementById('foamDefectDesc').value.trim();
+        const fileInput = document.getElementById('foamDefectImage');
+        
+        if(!name) { alert("يجب إدخال اسم العيب"); return; }
+        
+        let base64Image = null;
+        if(fileInput.files.length > 0) {
+            base64Image = await compressImage(fileInput.files[0]);
+        }
+
+        const newRecord = {
+            id: Date.now().toString(),
+            timestamp: new Date().toLocaleTimeString('en-US', { hour12: true, hour: "numeric", minute: "numeric"}),
+            name: name,
+            desc: desc,
+            image: base64Image,
+            status: 'pending' // pending = تحت الإصلاح, done = تم التسليم
+        };
+
+        foamingRecords.push(newRecord);
+        await syncFoamingData();
+        closeFoamingModal();
+        renderFoamingTable();
+    }
+
+    async function syncFoamingData() {
+        const fDate = document.getElementById('foamDateSelector').value;
+        const docId = `${fDate}_FOAMING`;
+        const payload = {
+            shift_id: docId,
+            shift_data: { type: 'foaming', records: foamingRecords },
+            updated_at: new Date().toISOString()
+        };
+        await supabaseClient.from('production_shifts').upsert(payload);
+        calculateFoamingKPIs(); // Update UI
+    }
+
+    async function updateFoamingStatus(recordId, newStatus) {
+        const rec = foamingRecords.find(r => r.id === recordId);
+        if(rec) {
+            rec.status = newStatus;
+            await syncFoamingData();
+            renderFoamingTable();
+        }
+    }
+
+    async function deleteFoamingRecord(recordId) {
+        if(confirm("هل أنت متأكد من حذف هذا السجل نهائياً؟")) {
+            foamingRecords = foamingRecords.filter(r => r.id !== recordId);
+            await syncFoamingData();
+            renderFoamingTable();
+        }
+    }
+
+    async function loadFoamingData() {
+        const fDate = document.getElementById('foamDateSelector').value;
+        if(!fDate) return;
+
+        // Query all documents for this day (Shifts + Foaming)
+        const { data, error } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${fDate}%`);
+        
+        dailyFoamingTotalProd = 0;
+        foamingRecords = [];
+
+        if (data && data.length > 0) {
+            data.forEach(row => {
+                if (row.shift_id.includes('_Shift_')) {
+                    // Sum actual production from all shifts
+                    if(row.shift_data.intervals) {
+                        row.shift_data.intervals.forEach(inv => {
+                            if (!inv.isBreak) dailyFoamingTotalProd += (inv.actual || 0);
+                        });
+                    }
+                } else if (row.shift_id === `${fDate}_FOAMING`) {
+                    // Extract foaming records
+                    foamingRecords = row.shift_data.records || [];
+                }
+            });
+        }
+        
+        renderFoamingTable();
+    }
+
+    function renderFoamingTable() {
+        const tbody = document.getElementById('foamingTableBody');
+        tbody.innerHTML = '';
+        
+        // Render from newest to oldest
+        const sortedRecords = [...foamingRecords].reverse();
+
+        sortedRecords.forEach(rec => {
+            const tr = document.createElement('tr');
+            
+            let imgHTML = rec.image 
+                ? `<img src="${rec.image}" class="foam-thumb" onclick="openImageViewer('${rec.image}')" title="اضغط للتكبير">` 
+                : `<span style="color:var(--text-muted); font-size:0.8rem;">لا توجد</span>`;
+
+            let statusSelect = `
+                <select class="status-select ${rec.status}" onchange="updateFoamingStatus('${rec.id}', this.value)">
+                    <option value="pending" ${rec.status === 'pending' ? 'selected' : ''}>تحت الإصلاح</option>
+                    <option value="done" ${rec.status === 'done' ? 'selected' : ''}>تم التسليم</option>
+                </select>
+            `;
+
+            tr.innerHTML = `
+                <td style="font-family:'Orbitron'; color:var(--accent-primary); font-weight:bold;">${rec.timestamp}</td>
+                <td style="font-weight:bold;">${rec.name}</td>
+                <td style="color:var(--text-muted); font-size:0.9rem; max-width:200px;">${rec.desc || '-'}</td>
+                <td>${imgHTML}</td>
+                <td>${statusSelect}</td>
+                <td><span style="color:var(--danger); cursor:pointer; font-weight:bold;" onclick="deleteFoamingRecord('${rec.id}')">حذف</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        calculateFoamingKPIs();
+    }
+
+    function calculateFoamingKPIs() {
+        let totalDefects = foamingRecords.length;
+        let doneCount = foamingRecords.filter(r => r.status === 'done').length;
+        let repairCount = totalDefects - doneCount;
+
+        document.getElementById('kpi-foam-day-total').innerText = totalDefects;
+        document.getElementById('kpi-foam-day-done').innerText = doneCount;
+        document.getElementById('kpi-foam-day-repair').innerText = repairCount;
+
+        // Daily Percentage
+        let dailyPerc = dailyFoamingTotalProd > 0 ? ((totalDefects / dailyFoamingTotalProd) * 100).toFixed(1) : 0;
+        document.getElementById('kpi-foam-day-perc').innerText = dailyPerc + '%';
+        
+        // Change color based on severity (Example: >2% is bad)
+        document.getElementById('kpi-foam-day-perc').className = 'kpi-value ' + (dailyPerc > 2 ? 'status-negative' : (dailyPerc > 0 ? 'status-warning' : 'status-positive'));
+    }
+
+    async function loadMonthlyFoamingData() {
+        const monthVal = document.getElementById('foamMonthSelector').value; 
+        if(!monthVal) return;
+
+        const { data, error } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${monthVal}%`);
+
+        let mProd = 0;
+        let mFoamDefects = 0;
+
+        if (data && data.length > 0) {
+            data.forEach(row => {
+                if (row.shift_id.includes('_Shift_')) {
+                    if(row.shift_data.intervals) {
+                        row.shift_data.intervals.forEach(inv => {
+                            if (!inv.isBreak) mProd += (inv.actual || 0);
+                        });
+                    }
+                } else if (row.shift_id.includes('_FOAMING')) {
+                    if(row.shift_data.records) {
+                        mFoamDefects += row.shift_data.records.length;
+                    }
+                }
+            });
+        }
+
+        let monthPerc = mProd > 0 ? ((mFoamDefects / mProd) * 100).toFixed(1) : 0;
+        let kpiElem = document.getElementById('kpi-foam-month-perc');
+        kpiElem.innerText = monthPerc + '%';
+        kpiElem.className = 'kpi-value ' + (monthPerc > 2 ? 'status-negative' : (monthPerc > 0 ? 'status-warning' : 'status-positive'));
+    }
+
+</script>
+</body>
+</html>
