@@ -314,10 +314,10 @@
         <div class="seal-sub">Production App</div>
     </div>
 
-    <header class="app-header">
+   <header class="app-header">
         <div class="app-title"><i class="fa-solid fa-layer-group"></i> <span id="current-view-title">الرئيسية</span></div>
         <div style="display:flex; align-items:center; gap: 10px;">
-            <button class="btn btn-secondary" style="padding: 6px 12px; width: auto; border-radius: 8px;" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i></button>
+            <button class="btn btn-secondary" style="padding: 8px 15px; width: auto; border-radius: 8px; font-size: 0.9rem;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> إضاءة</button>
         </div>
     </header>
 
@@ -406,6 +406,9 @@
                 </div>
                 <div class="form-group full-width" style="margin-top: 20px;">
                     <button class="btn btn-primary" onclick="appState.applyNewTimeSettings()"><i class="fa-solid fa-arrows-rotate"></i> تحديث وإعادة بناء الساعات</button>
+<button class="btn btn-danger" style="margin-top: 15px;" onclick="appState.deleteCurrentShiftData()">
+    <i class="fa-solid fa-trash-can"></i> حذف بيانات الوردية الحالية نهائياً
+</button>
                     <p style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 10px;">عند التعديل يجب الضغط لتحديث الشبكة الساعية.</p>
                 </div>
             </div>
@@ -443,7 +446,11 @@
 
             <div id="def-sec-setup" class="hidden glass-card">
                 <div class="section-header"><i class="fa-solid fa-list-check"></i> إدارة تصنيفات العيوب</div>
-                <div class="form-grid">
+<input type="file" id="defectExcelUpload" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;" onchange="handleDefectExcelUpload(event)">
+                <button class="btn btn-secondary" style="margin-bottom: 20px;" onclick="document.getElementById('defectExcelUpload').click()">
+                    <i class="fa-solid fa-file-excel"></i> استيراد تصنيفات العيوب من Excel
+                </button>                
+<div class="form-grid">
                     <div class="form-group"><label>تصنيف جديد</label><input type="text" id="newDefectName" placeholder="مثال: تسريب داخلي"></div>
                     <button class="btn btn-primary" onclick="addDefectCategory()"><i class="fa-solid fa-plus"></i> حفظ بالقاعدة</button>
                 </div>
@@ -497,21 +504,23 @@
                     </div>
                     <div class="form-group">
                         <label>المحور (Y)</label>
-                        <select id="dynY" onchange="renderDynamicChart()"><option value="actual">الإنتاج</option><option value="quality">الجودة</option><option value="foam">الحقن</option><option value="cool">التبريد</option></select>
+                        <select id="dynY" onchange="renderDynamicChart()"><option value="actual">الإنتاج</option><option value="quality">الجودة</option><option value="cool">التبريد</option></select>
                     </div>
                 </div>
                 <div class="chart-box"><canvas id="dynamicCustomChart"></canvas></div>
             </div>
 
-            <div class="glass-card">
+         <div class="glass-card form-grid two-cols responsive">
                 <button class="btn btn-secondary" style="color: var(--accent-red);" onclick="archiveAndWipeMonth()"><i class="fa-solid fa-file-zipper"></i> تصدير الأرشيف ZIP/CSV</button>
+                <input type="file" id="historicalDataUpload" accept=".csv" style="display: none;" onchange="handleHistoricalDataUpload(event)">
+                <button class="btn btn-primary" onclick="document.getElementById('historicalDataUpload').click()"><i class="fa-solid fa-database"></i> استيراد الداتا التاريخية (CSV)</button>
             </div>
         </div>
 
         <div id="view-monitor" class="view-layer hidden">
             <div class="segmented-control">
-                <div class="seg-btn active" id="seg-mon-spray" onclick="switchMonitorTab('spray')">الحقن والرش</div>
-                <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">التبريد والاختبار</div>
+                <div class="seg-btn active" id="seg-mon-spray" onclick="switchMonitorTab('spray')">الرش</div>
+                <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">عيوب التبريد</div>
                 <div class="seg-btn" id="seg-mon-ole" onclick="switchMonitorTab('ole')">أداء العمالة OLE</div>
             </div>
 
@@ -615,7 +624,7 @@
             <i class="fa-solid fa-shield-halved"></i><span>الجودة</span>
         </div>
         <div class="nav-item" onclick="switchNav('monitor'); initFoamingTab();">
-            <i class="fa-solid fa-network-wired"></i><span>المحطات</span>
+            <i class="fa-solid fa-network-wired"></i><span>متابعة العيوب</span>
         </div>
         <div class="nav-item" onclick="switchNav('bi'); loadAnalyticsData();">
             <i class="fa-solid fa-chart-line"></i><span>تحليل</span>
@@ -731,23 +740,30 @@
         showToast("تم حفظ الإعدادات الزمنية"); 
     }
     
-    function loadLocalSettings() { 
+   function loadLocalSettings() { 
         const saved = localStorage.getItem('mes_time_config'); 
-        if (saved) { 
-            const c = JSON.parse(saved); 
-            safeSetVal('sStart', c.sStart); safeSetVal('sEnd', c.sEnd); 
-            safeSetVal('bStart', c.bStart); safeSetVal('bEnd', c.bEnd); 
-        } else { 
-            safeSetVal('sStart', '08:00'); safeSetVal('sEnd', '16:00'); 
-            safeSetVal('bStart', '12:00'); safeSetVal('bEnd', '12:45'); 
-        } 
+        let c = saved ? JSON.parse(saved) : {};
+        safeSetVal('sStart', c.sStart || '08:00'); 
+        safeSetVal('sEnd', c.sEnd || '16:00'); 
+        safeSetVal('bStart', c.bStart || '12:00'); 
+        safeSetVal('bEnd', c.bEnd || '12:45'); 
     }
 
-    function toggleTheme() {
-        const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  function toggleTheme() {
+        // استهداف html لضمان تغيير الـ CSS Variables
+        const htmlEl = document.documentElement;
+        const current = htmlEl.getAttribute('data-theme') || 'dark';
         const newTheme = current === 'light' ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
+        
+        htmlEl.setAttribute('data-theme', newTheme);
         localStorage.setItem('mes_theme', newTheme);
+        
+        // تغيير أيقونة الزر إذا لزم الأمر
+        const themeBtn = document.querySelector('.btn-secondary i.fa-solid');
+        if(themeBtn) {
+            themeBtn.className = newTheme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+        
         if(!document.getElementById('view-bi').classList.contains('hidden')) loadAnalyticsData();
     }
     
@@ -777,7 +793,7 @@
     };
 
     // --- 3. التنقل بين الشاشات ---
-    const viewTitles = { 'home':'الرئيسية', 'prod':'متابعة الإنتاج', 'defect':'مؤشرات الجودة', 'bi':'التحليلات', 'monitor':'المحطات', 'labor':'العمالة' };
+    const viewTitles = { 'home':'الرئيسية', 'prod':'متابعة الإنتاج', 'defect':'مؤشرات الجودة', 'bi':'التحليلات', 'monitor':'متابعة العيوب', 'labor':'العمالة' };
     
     function switchNav(viewId) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -822,9 +838,10 @@
 
     // --- 4. مدير حالة التطبيق الرئيسي (State Manager) ---
     const appState = {
-        async init() {
+     async init() {
             const todayStr = new Date().toISOString().split('T')[0];
-            State.date = todayStr; State.shift = "1";
+            State.date = todayStr; 
+            State.shift = "1";
             
             const options = { weekday: 'long', month: 'short', day: 'numeric' };
             safeSetText('header-date', new Date().toLocaleDateString('ar-EG', options));
@@ -838,12 +855,24 @@
             
             const localState = JSON.parse(localStorage.getItem('mes_active_state') || '{}');
             if (localState.date === todayStr) {
-                State.shift = localState.shift || "1"; State.target = localState.target || 0; State.intervals = localState.intervals || [];
-                safeSetVal('quickShift', State.shift); safeSetVal('quickTarget', State.target);
-            } else { State.target = 0; State.intervals = []; this.persist(); }
+                State.shift = localState.shift || "1"; 
+                State.target = localState.target || 0; 
+                State.intervals = localState.intervals || [];
+                safeSetVal('quickShift', State.shift); 
+                safeSetVal('quickTarget', State.target);
+            } else { 
+                State.target = 0; 
+                State.intervals = []; 
+                this.persist(); 
+            }
 
             State.currentDocId = `${State.date}_Shift_${State.shift}`;
             
+            // البناء الآلي للساعات محلياً إذا كانت غير موجودة حتى لو الهدف صفر
+            if (State.intervals.length === 0) {
+                this.updateTarget();
+            }
+
             await this.syncFromCloud();
             await refreshAllGlobalKPIs();
 
@@ -855,29 +884,43 @@
                         State.target = payload.new.shift_data.config.totalTarget || 0;
                         safeSetVal('quickTarget', State.target);
                         this.persist();
-                        if(!document.getElementById('view-prod').classList.contains('hidden')) this.renderProduction();
-                        if(!document.getElementById('view-defect').classList.contains('hidden')) this.renderDefects();
+                        this.renderProduction();
+                        this.renderDefects();
                     }
                     refreshAllGlobalKPIs();
                 }).subscribe();
             }
         },
 
-        persist() { localStorage.setItem('mes_active_state', JSON.stringify({ date: State.date, shift: State.shift, target: State.target, intervals: State.intervals })); },
+        persist() { 
+            localStorage.setItem('mes_active_state', JSON.stringify({ 
+                date: State.date, shift: State.shift, target: State.target, intervals: State.intervals 
+            })); 
+        },
 
         async syncFromCloud() {
             if(!supabaseClient) return;
             try {
-                const { data } = await supabaseClient.from('production_shifts').select('shift_data').eq('shift_id', State.currentDocId).maybeSingle();
-                if (data && data.shift_data && data.shift_data.intervals) {
-                    State.intervals = data.shift_data.intervals; State.target = data.shift_data.config.totalTarget || 0;
-                    safeSetVal('quickTarget', State.target); this.persist();
-                    if(!document.getElementById('view-prod').classList.contains('hidden')) this.renderProduction();
-                    if(!document.getElementById('view-defect').classList.contains('hidden')) this.renderDefects();
+                const { data } = await supabaseClient.from('production_shifts')
+                    .select('shift_data')
+                    .eq('shift_id', State.currentDocId)
+                    .maybeSingle();
+                    
+                if (data && data.shift_data && data.shift_data.intervals && data.shift_data.intervals.length > 0) {
+                    State.intervals = data.shift_data.intervals; 
+                    State.target = data.shift_data.config.totalTarget || 0;
+                    safeSetVal('quickTarget', State.target); 
+                    this.persist();
                 }
-            } catch (err) { console.error("Cloud Sync Failed", err); }
+                
+                // إجبار النظام على رسم الساعات في الشاشة الخلفية (DOM) سواء كانت مرئية أم لا
+                this.renderProduction();
+                this.renderDefects();
+                
+            } catch (err) {
+                console.error("Cloud Sync Failed", err);
+            }
         },
-
         async syncToCloud() {
             if(!supabaseClient || !State.currentDocId || State.intervals.length === 0) return;
             const payload = { shift_id: State.currentDocId, shift_data: { intervals: State.intervals, config: { totalTarget: State.target } }, updated_at: new Date().toISOString() };
@@ -947,9 +990,53 @@
             }
         },
 
-        renderProduction() {
+async deleteCurrentShiftData() {
+            if (confirm(`تنبيه هندسي حرج: هل أنت متأكد من حذف كافة بيانات الإنتاج والعيوب للوردية [${State.currentDocId}] نهائياً من السيرفر؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+                
+                const overlay = document.createElement('div');
+                overlay.className = 'loader-overlay';
+                overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-red);">جاري مسح البيانات من السيرفر...</div>`;
+                document.body.appendChild(overlay);
+
+                try {
+                    // 1. مسح السجل من قاعدة البيانات
+                    const { error } = await supabaseClient
+                        .from('production_shifts')
+                        .delete()
+                        .eq('shift_id', State.currentDocId);
+
+                    if (error) throw error;
+
+                    // 2. تصفير الحالة محلياً وإعادة بناء المصفوفة فارغة
+                    State.intervals = [];
+                    State.target = 0;
+                    document.getElementById('quickTarget').value = 0;
+                    this.persist();
+                    this.updateTarget(); // ستقوم بإعادة بناء المصفوفة بناءً على الإعدادات الزمنية الحالية
+                    
+                    await refreshAllGlobalKPIs(); // تحديث الأرقام في الصفحة الرئيسية
+                    
+                    showToast("تم مسح بيانات الوردية وتصفير المصفوفة");
+                    switchProdSeg('live'); // العودة للوحة الرئيسية
+
+                } catch (err) {
+                    console.error("Delete Failed:", err);
+                    alert("فشل حذف البيانات، يرجى التحقق من الاتصال بالإنترنت.");
+                } finally {
+                    overlay.remove();
+                }
+            }
+        },
+
+     renderProduction() {
             const container = document.getElementById('productionCardsContainer');
-            if(State.intervals.length === 0) { this.updateTarget(); return; }
+            if (!container) return; // حماية ضد عدم اكتمال تحميل الـ HTML
+            
+            // إذا كانت الساعات لا تزال فارغة لسبب ما، قم ببنائها فوراً وتخطي أي تعقيدات
+            if(State.intervals.length === 0) { 
+                this.updateTarget();
+                return; 
+            }
             
             const fragment = document.createDocumentFragment();
             let shiftTargetTotal = 0, shiftActualTotal = 0;
@@ -994,9 +1081,14 @@
             document.getElementById('shift-progress-text').innerText = progressPerc + '%';
         },
 
-        saveActualRow(index) { 
-            const val = document.getElementById(`act-input-${index}`).value; State.intervals[index].actual = val === "" ? "" : parseInt(val); 
-            this.persist(); this.syncToCloud(); this.renderProduction(); showToast("تم الحفظ الساعي"); 
+       async saveActualRow(index) { 
+            const val = document.getElementById(`act-input-${index}`).value; 
+            State.intervals[index].actual = val === "" ? "" : parseInt(val); 
+            this.persist(); 
+            this.renderProduction(); // تحديث فوري للواجهة
+            await this.syncToCloud(); // انتظار المزامنة السحابية
+            refreshAllGlobalKPIs(); // إجبار الصفحة الرئيسية على قراءة الرقم الجديد فوراً
+            showToast("تم تحديث الإنتاج للساعة"); 
         },
 
         loadDefects() { this.syncFromCloud().then(() => this.renderDefects()); },
@@ -1032,7 +1124,7 @@
 
         removeDefect(intervalIndex, defectIndex) { State.intervals[intervalIndex].defects.splice(defectIndex, 1); this.persist(); this.syncToCloud(); this.renderDefects(); },
 
-        calcYields() {
+    calcYields() {
             let totalActual = 0, totalQualityDefects = 0, totalAllDefects = 0;
             State.intervals.forEach(inv => {
                 if (!inv.isBreak) {
@@ -1042,10 +1134,14 @@
             });
             let qYield = totalActual > 0 ? (Math.max(0, totalActual - totalQualityDefects) / totalActual * 100).toFixed(1) : 100;
             let oYield = totalActual > 0 ? (Math.max(0, totalActual - totalAllDefects) / totalActual * 100).toFixed(1) : 100;
-            safeSetText('kpi-quality-yield', qYield + '%'); safeSetText('kpi-overall-yield', oYield + '%');
+            
+            safeSetText('kpi-quality-yield', qYield + '%'); 
+            safeSetText('kpi-overall-yield', oYield + '%');
+            
+            // حقن مباشر للصفحة الرئيسية
+            safeSetText('main-kpi-dyield', qYield + '%');
         }
-    };
-
+};
     // --- Boot Sequence ---
     window.onload = async function() { 
         initTheme();
@@ -1064,32 +1160,68 @@
     };
 
     // --- BI & KPI Engine ---
-    async function refreshAllGlobalKPIs() {
+ async function refreshAllGlobalKPIs() {
         if(!supabaseClient) return;
-        const todayStr = new Date().toISOString().split('T')[0]; const monthStr = todayStr.substring(0, 7);
+        const targetDateStr = State.date || new Date().toISOString().split('T')[0]; 
+        const monthStr = targetDateStr.substring(0, 7);
+        
         try {
             const { data } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${monthStr}%`);
-            let mProd = 0, mQualDefects = 0, dProd = 0, dQualDefects = 0, dFoaming = 0;
+            let mProd = 0, mQualDefects = 0, dProd = 0, sProd = 0, sQualDefects = 0, dFoaming = 0;
 
             if(data) {
+                // دمج بيانات الوردية اللحظية مع بيانات السيرفر
+                let activeShiftFound = false;
                 data.forEach(row => {
-                    let isToday = row.shift_id.startsWith(todayStr);
+                    if (row.shift_id === State.currentDocId) { row.shift_data.intervals = State.intervals; activeShiftFound = true; }
+                });
+                if (!activeShiftFound && State.intervals && State.intervals.length > 0) {
+                    data.push({ shift_id: State.currentDocId, shift_data: { intervals: State.intervals } });
+                }
+
+                data.forEach(row => {
+                    let isTargetDay = row.shift_id.startsWith(targetDateStr);
+                    let isTargetShift = row.shift_id === State.currentDocId;
+                    
                     if (row.shift_id.includes('_Shift_') && row.shift_data && row.shift_data.intervals) {
                         row.shift_data.intervals.forEach(inv => {
                             if(!inv.isBreak) {
-                                let act = Number(inv.actual) || 0; mProd += act; if(isToday) dProd += act;
-                                if(inv.defects) { inv.defects.forEach(d => { if(d.discoverer === 'quality') { mQualDefects += d.qty; if(isToday) dQualDefects += d.qty; } }); }
+                                let act = Number(inv.actual) || 0; 
+                                mProd += act; 
+                                if(isTargetDay) dProd += act;
+                                if(isTargetShift) sProd += act; // حساب الوردية النشطة فقط
+                                
+                                if(inv.defects) { 
+                                    inv.defects.forEach(d => { 
+                                        if(d.discoverer === 'quality') { 
+                                            mQualDefects += d.qty; 
+                                            if(isTargetShift) sQualDefects += d.qty; 
+                                        } 
+                                    }); 
+                                }
                             }
                         });
-                    } else if (row.shift_id === `${todayStr}_FOAMING` && row.shift_data.records) { dFoaming += row.shift_data.records.length; }
+                    } else if (row.shift_id === `${targetDateStr}_FOAMING` && row.shift_data.records) { dFoaming += row.shift_data.records.length; }
                 });
             }
+            
             let mYield = mProd > 0 ? (Math.max(0, mProd - mQualDefects)/mProd * 100).toFixed(1) : 100;
-            let dYield = dProd > 0 ? (Math.max(0, dProd - dQualDefects)/dProd * 100).toFixed(1) : 100;
-            safeSetText('main-kpi-myield', mYield + '%'); safeSetText('main-kpi-dyield', dYield + '%');
-            safeSetText('main-kpi-dprod', dProd); safeSetText('main-kpi-dfoam', dFoaming);
+            let sYield = sProd > 0 ? (Math.max(0, sProd - sQualDefects)/sProd * 100).toFixed(1) : 100; // Yield الوردية الحقيقي
+
+            safeSetText('main-kpi-myield', mYield + '%'); 
+            safeSetText('main-kpi-dyield', sYield + '%'); // تحديث الرئيسية
+            safeSetText('main-kpi-dprod', dProd); 
+            safeSetText('main-kpi-dfoam', dFoaming);
+            safeSetText('kpi-prod-daily-total', dProd);
+            
+            // تحديث مؤشر الشهر داخل صفحة الجودة أيضاً إذا كان مفتوحاً على نفس الشهر
+            const currentMonthSelector = document.getElementById('monthSelector');
+            if(currentMonthSelector && currentMonthSelector.value === monthStr) {
+                safeSetText('kpi-monthly-yield', mYield + '%');
+            }
+            
             if(!document.getElementById('view-bi').classList.contains('hidden')) loadAnalyticsData();
-        } catch (e) {}
+        } catch (e) { console.error("Global Metrics Refresh Failed", e); }
     }
 
     async function loadAnalyticsData() {
@@ -1192,28 +1324,33 @@
         if(chartCustomDynamic) chartCustomDynamic.destroy();
         chartCustomDynamic = new Chart(document.getElementById('dynamicCustomChart'), { type: 'bar', data: { labels: labels, datasets: [{ label: 'مؤشر', data: vals, backgroundColor: '#00e5ff', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { display: false } } } } });
     }
-
-    // --- WhatsApp Integration ---
-    function shareToWhatsApp() {
-        if(!State || !State.intervals || State.intervals.length === 0) { alert("المصفوفة فارغة. لا توجد بيانات لإرسالها."); return; }
+function shareToWhatsApp() {
+        if(!State || !State.intervals || State.intervals.length === 0) { 
+            alert("لا توجد بيانات للوردية الحالية لإرسالها."); 
+            return; 
+        }
         
-        let sName = State.shift;
-        let msg = `*تقرير انتاج ساعة بساعة*\n🏭 الثلاجة A | Final Assembly\n📅 التاريخ: ${State.date}\nالوردية: ${sName}\n\n`;
+        // استخدام رقم الوردية فقط كما طلبت
+        let msg = `*تقرير انتاج ساعة بساعة*\n🏭 الثلاجة A | Final Assembly\n📅 التاريخ: ${State.date}\nالوردية: ${State.shift}\n\n`;
         let totalA = 0;
         
+        // دالة تنظيف النص من أي علامات HTML
         function stripHTML(html) { return html.replace(/<[^>]*>?/gm, ''); }
         
         State.intervals.forEach(inv => {
             if(!inv.isBreak) {
                 let act = inv.actual !== "" ? Number(inv.actual) : 0; 
-                msg += `⏱️ ${stripHTML(formatTimeAMPM(inv.start))}\n🟢 الفعلي: ${act}\n\n`;
+                // تنسيق السطر: الوقت ➔ العدد وحدة
+                msg += `⏱️ ${stripHTML(formatTimeAMPM(inv.start))} ➔ ${act} وحدة\n`;
                 totalA += act;
             } else {
-                msg += `☕ فترة راحة مجدولة\n\n`;
+                msg += `☕ فترة راحة\n`;
             }
         });
         
-        msg += `📊 *الإحصائيات الإجمالية*\nالإنتاج الفعلي المحقق: ${totalA}\n\n_Eng M. Fayez_`;
+        // الإجمالي والختم
+        msg += `\n📊 *إجمالي الإنتاج الفعلي: ${totalA} وحدة*\n\n_Eng M. Fayez_`;
+        
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
@@ -1421,6 +1558,286 @@
             } catch (error) { console.error(error); alert("حدث خطأ."); } finally { if(document.body.contains(overlay)) overlay.remove(); event.target.value = ''; }
         };
         reader.readAsArrayBuffer(file);
+    }
+
+// --- دالة استيراد العيوب من ملف إكسيل ---
+    function handleDefectExcelUpload(event) {
+        const file = event.target.files[0]; 
+        if (!file) return;
+
+        // إظهار واجهة التحميل
+        const overlay = document.createElement('div');
+        overlay.className = 'loader-overlay';
+        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري تحليل ملف العيوب...</div>`;
+        document.body.appendChild(overlay);
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+                
+                let importedCount = 0;
+                // نفترض أن أسماء العيوب موجودة في العمود الأول (العمود A) بداية من الصف الثاني
+                for (let i = 1; i < rows.length; i++) {
+                    const defectName = rows[i][0] ? String(rows[i][0]).trim() : null;
+                    if (defectName && !defectCategories.includes(defectName)) {
+                        defectCategories.push(defectName);
+                        importedCount++;
+                    }
+                }
+
+                if (importedCount > 0) {
+                    saveDefectCategories(); // حفظ في الذاكرة المحلية وتحديث القائمة
+                    showToast(`تم استيراد ${importedCount} تصنيف عيب جديد بنجاح`);
+                } else {
+                    showToast("لم يتم العثور على عيوب جديدة لإضافتها");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("فشل في قراءة ملف الإكسيل. تأكد من جودة الملف.");
+            } finally {
+                overlay.remove();
+                event.target.value = ''; // تفريغ المدخل
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+async function loadMonthlyYield() {
+        const monthVal = document.getElementById('monthSelector').value; if(!monthVal) return;
+        const { data } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${monthVal}%`);
+        let monthActual = 0, monthDefects = 0;
+        
+        if (data) {
+            // دمج الوردية النشطة إذا كانت تابعة لنفس الشهر المحدد
+            let activeShiftFound = false;
+            data.forEach(row => {
+                if (row.shift_id === State.currentDocId) { row.shift_data.intervals = State.intervals; activeShiftFound = true; }
+            });
+            if (!activeShiftFound && State.currentDocId.startsWith(monthVal) && State.intervals && State.intervals.length > 0) {
+                data.push({ shift_id: State.currentDocId, shift_data: { intervals: State.intervals } });
+            }
+
+            data.forEach(row => {
+                if (row.shift_id.includes('_Shift_') && row.shift_data && row.shift_data.intervals) {
+                    row.shift_data.intervals.forEach(inv => {
+                        if (!inv.isBreak) {
+                            monthActual += Number(inv.actual) || 0;
+                            if (inv.defects) { inv.defects.forEach(d => { if(d.discoverer === 'quality') monthDefects += d.qty; }); }
+                        }
+                    });
+                }
+            });
+        }
+        let yieldVal = monthActual > 0 ? (Math.max(0, monthActual - monthDefects) / monthActual * 100).toFixed(1) : 100;
+        safeSetText('kpi-monthly-yield', yieldVal + '%');
+    }
+
+// --- خوارزمية استيراد وتفكيك الداتا التاريخية (Pivot CSV Parser) المحسنة ---
+    async function handleHistoricalDataUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!confirm("تأكيد: سيتم تحليل ورفع البيانات التاريخية بناءً على الملف المرفوع. متابعة؟")) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'loader-overlay';
+        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري المعالجة المعمارية للبيانات ورفعها للسيرفر...</div>`;
+        document.body.appendChild(overlay);
+
+        const reader = new FileReader();
+        // قراءة الملف مع دعم كامل للغة العربية UTF-8
+        reader.onload = async function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                
+                // التعديل الجراحي: اكتشاف الفاصل التلقائي (فاصلة أو فاصلة منقوطة) من ملف الإكسيل
+                const delimiter = lines[0].includes(';') ? ';' : ',';
+                
+                let currentDate = null;
+                let currentDefect = null;
+                let shiftDataMap = {}; 
+                
+                const monthMap = { 'يناير':'01', 'فبراير':'02', 'مارس':'03', 'أبريل':'04', 'مايو':'05', 'يونيو':'06', 'يوليو':'07', 'أغسطس':'08', 'سبتمبر':'09', 'أكتوبر':'10', 'نوفمبر':'11', 'ديسمبر':'12' };
+
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(delimiter);
+                    const label = cols[0] ? cols[0].trim() : '';
+                    const prod = parseInt(cols[1]) || 0;
+                    const qty = parseInt(cols[2]) || 0;
+
+                    if (!label) continue;
+
+                    let isDate = false;
+                    for (const [mName, mNum] of Object.entries(monthMap)) {
+                        if (label.includes(mName)) {
+                            let day = label.split('-')[0].padStart(2, '0');
+                            // معالجة الأيام الفردية (مثال: 5-يناير يصبح 05)
+                            if (day.length === 1) day = '0' + day;
+                            currentDate = `2026-${mNum}-${day}`;
+                            isDate = true;
+                            break;
+                        }
+                    }
+
+                    if (isDate) {
+                        currentDefect = null;
+                        continue;
+                    }
+
+                    if (label === 'أولى' || label === 'ثانية' || label === 'ثالثة' || label === '(blank)') {
+                        let shiftNum = '1';
+                        if (label === 'ثانية') shiftNum = '2';
+                        if (label === 'ثالثة') shiftNum = '3';
+
+                        if (!currentDate) continue;
+
+                        let shiftId = `${currentDate}_Shift_${shiftNum}`;
+                        if (!shiftDataMap[shiftId]) {
+                            shiftDataMap[shiftId] = { actual: 0, defects: [] };
+                        }
+
+                        // تجميع كميات الإنتاج للوردية
+                        shiftDataMap[shiftId].actual += prod;
+                        
+                        // تسجيل العيب للوردية المحددة
+                        if (currentDefect && currentDefect !== '(blank)' && qty > 0) {
+                            if (!defectCategories.includes(currentDefect)) {
+                                defectCategories.push(currentDefect);
+                            }
+                            
+                            shiftDataMap[shiftId].defects.push({
+                                category: currentDefect,
+                                qty: qty,
+                                discoverer: 'quality'
+                            });
+                        }
+                    } else {
+                        // تحديث اسم العيب الحالي
+                        currentDefect = label;
+                    }
+                }
+
+                saveDefectCategories(); // تحديث قائمة تصنيفات العيوب في النظام
+
+                // حزم البيانات للرفع السريع على السيرفر (Batched Uploads)
+                let upsertPromises = [];
+                for (const [shiftId, data] of Object.entries(shiftDataMap)) {
+                    let finalActual = data.actual || 0;
+                    
+                    const payload = {
+                        shift_id: shiftId,
+                        shift_data: {
+                            config: { totalTarget: finalActual },
+                            intervals: [
+                                {
+                                    start: 8 * 60,
+                                    end: 16 * 60,
+                                    duration: 8 * 60,
+                                    isBreak: false,
+                                    target: finalActual,
+                                    actual: finalActual,
+                                    defects: data.defects
+                                }
+                            ]
+                        },
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    upsertPromises.push(supabaseClient.from('production_shifts').upsert(payload));
+                    
+                    // الرفع على دفعات لحماية السيرفر من الانقطاع
+                    if(upsertPromises.length >= 10) {
+                        await Promise.all(upsertPromises);
+                        upsertPromises = [];
+                    }
+                }
+                
+                if(upsertPromises.length > 0) {
+                    await Promise.all(upsertPromises);
+                }
+
+                showToast("تم استيراد ومعالجة البيانات التاريخية بنجاح!");
+                refreshAllGlobalKPIs(); // تحديث الواجهات والعدادات فوراً
+            } catch(err) {
+                console.error(err);
+                alert("حدث خطأ أثناء المعالجة.");
+            } finally {
+                if(document.body.contains(overlay)) overlay.remove();
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file, 'UTF-8'); 
+    }
+
+
+async function loadProductionArchive(dateStr) {
+        if(!dateStr) return;
+        
+        showToast("جاري استدعاء سجلات اليوم...");
+        const tbody = document.getElementById('archiveTableBody'); 
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري جلب البيانات...</td></tr>';
+        
+        try {
+            const { data, error } = await supabaseClient.from('production_shifts')
+                .select('shift_id, shift_data')
+                .like('shift_id', `${dateStr}_Shift_%`);
+            
+            if(error) throw error;
+            
+            tbody.innerHTML = ''; 
+            let dailyArchiveTotal = 0;
+            
+            if(data && data.length > 0) {
+                // ترتيب الورديات تصاعدياً
+                data.sort((a,b) => a.shift_id.localeCompare(b.shift_id));
+                
+                data.forEach(row => {
+                    let shiftNum = row.shift_id.split('_Shift_')[1]; 
+                    // تحويل رقم الوردية لاسم عربي
+                    let sNameAr = shiftNum === "1" ? "الأولى" : (shiftNum === "2" ? "الثانية" : "الثالثة");
+                    let sTarget = 0, sActual = 0;
+                    
+                    // تأمين قراءة البيانات سواء كانت Object أو String
+                    let sData = typeof row.shift_data === 'string' ? JSON.parse(row.shift_data) : row.shift_data;
+                    
+                    if(sData && sData.intervals) { 
+                        sData.intervals.forEach(inv => { 
+                            if(!inv.isBreak) { 
+                                sTarget += (inv.target || 0); 
+                                sActual += (Number(inv.actual) || 0); 
+                            } 
+                        }); 
+                    }
+                    
+                    let variance = sActual - sTarget;
+                    let varColor = variance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    dailyArchiveTotal += sActual;
+                    
+                    const tr = document.createElement('tr'); 
+                    tr.innerHTML = `
+                        <td style="font-weight:bold; color:var(--accent-cyan);">وردية ${sNameAr}</td>
+                        <td>${sTarget}</td>
+                        <td class="eng-num">${sActual}</td>
+                        <td style="color:${varColor}; font-weight:900;">${variance > 0 ? '+' : ''}${variance}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                document.getElementById('archive-table-panel').classList.remove('hidden');
+                safeSetText('kpi-archive-daily-total', dailyArchiveTotal);
+            } else { 
+                document.getElementById('archive-table-panel').classList.add('hidden'); 
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">لا توجد سجلات محفوظة لهذا التاريخ</td></tr>';
+                showToast("لا يوجد أرشيف لهذا اليوم");
+            }
+        } catch (err) {
+            console.error("Archive Error:", err);
+            showToast("خطأ في الاتصال بقاعدة البيانات");
+        }
     }
 </script>
 </body>
