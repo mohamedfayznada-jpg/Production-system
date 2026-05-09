@@ -517,6 +517,7 @@
             <div class="segmented-control">
                 <div class="seg-btn active" id="seg-mon-spray" onclick="switchMonitorTab('spray')">الرش</div>
                 <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">عيوب التبريد</div>
+<div class="seg-btn" id="seg-mon-cooling-analysis" onclick="switchMonitorTab('cooling-analysis')">تحليل عيوب التبريد</div>
                 <div class="seg-btn" id="seg-mon-ole" onclick="switchMonitorTab('ole')">أداء العمالة OLE</div>
             </div>
 
@@ -541,7 +542,11 @@
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>التاريخ</label><input type="date" id="coolingDateSelector" onchange="loadCoolingData()"></div>
                     <div class="form-group"><label>الوردية</label><select id="coolingShiftSelector" onchange="loadCoolingData()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                    <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openCoolingModal()"><i class="fa-solid fa-plus"></i> عيب تبريد جديد</button>
+                  <input type="file" id="coolingHistoricalUpload" accept=".csv" style="display: none;" onchange="handleCoolingHistoricalUpload(event)">
+                    <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('coolingHistoricalUpload').click()">
+                        <i class="fa-solid fa-file-import"></i> استيراد داتا التبريد التاريخية (CSV)
+                    </button>
+  <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openCoolingModal()"><i class="fa-solid fa-plus"></i> عيب تبريد جديد</button>
                 </div>
                 <div class="kpi-box" style="margin-bottom:15px;"><span class="kpi-label">إجمالي عيوب الوردية</span><span class="kpi-val red" id="kpi-cooling-shift-total" style="text-align:center;">0</span></div>
                 <div class="glass-card" style="padding:10px;">
@@ -553,7 +558,46 @@
                     </div>
                 </div>
             </div>
+<div id="mon-tab-cooling-analysis" class="hidden">
+                <div class="glass-card form-grid two-cols responsive">
+                    <div class="form-group">
+                        <label>فلتر بالشهر</label>
+                        <input type="month" id="coolingAnaMonth" onchange="loadCoolingAnalysis('month')">
+                    </div>
+                    <div class="form-group">
+                        <label>فلتر بيوم محدد</label>
+                        <input type="date" id="coolingAnaDate" onchange="loadCoolingAnalysis('date')">
+                    </div>
+                    <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('coolingAnaMonth').value=''; document.getElementById('coolingAnaDate').value=''; loadCoolingAnalysis('all');">
+                        <i class="fa-solid fa-filter-circle-xmark"></i> عرض كل البيانات (بدون فلتر)
+                    </button>
+                </div>
 
+                <div class="ai-insight" style="background: rgba(0, 229, 255, 0.05); border-color: var(--accent-cyan);">
+                    <span><i class="fa-solid fa-microchip"></i> التقرير التحليلي الهندسي - محطة التبريد</span>
+                    <strong id="cooling-analysis-summary">جاري تحليل أنماط التسريب...</strong>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-box"><span class="kpi-label">إجمالي العيوب المرصودة</span><span class="kpi-val red" id="ana-cool-total">0</span></div>
+                    <div class="kpi-box"><span class="kpi-label">أكثر موديل معيب</span><span class="kpi-val cyan" id="ana-cool-model">--</span></div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="section-header"><i class="fa-solid fa-chart-line"></i> تحليل باريتو لنقاط التسريب (Pareto)</div>
+                    <div class="chart-box" style="height: 350px;"><canvas id="coolParetoChart"></canvas></div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="section-header"><i class="fa-solid fa-users-gear"></i> كفاءة الفنيين (Top 10 Defects by Stamp)</div>
+                    <div class="chart-box" style="height: 350px;"><canvas id="coolResponsibleChart"></canvas></div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="section-header"><i class="fa-solid fa-boxes-stacked"></i> توزيع العيوب حسب الموديل</div>
+                    <div class="chart-box" style="height: 300px;"><canvas id="coolModelChart"></canvas></div>
+                </div>
+            </div>
             <div id="mon-tab-ole" class="hidden">
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>التاريخ</label><input type="date" id="oleDateSelector" onchange="loadOleData()"></div>
@@ -816,14 +860,20 @@
         document.getElementById('def-sec-'+seg).classList.remove('hidden');
     }
 
-    function switchMonitorTab(tab) {
+   function switchMonitorTab(tab) {
         document.querySelectorAll('#view-monitor .seg-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('seg-mon-'+tab).classList.add('active');
-        ['spray', 'cooling', 'ole'].forEach(t => document.getElementById('mon-tab-'+t).classList.add('hidden'));
+        ['spray', 'cooling', 'ole', 'cooling-analysis'].forEach(t => {
+            const el = document.getElementById('mon-tab-'+t);
+            if(el) el.classList.add('hidden');
+        });
         document.getElementById('mon-tab-'+tab).classList.remove('hidden');
-        if(tab === 'spray') loadFoamingData(); if(tab === 'cooling') loadCoolingData(); if(tab === 'ole') loadOleData();
+        
+        if(tab === 'spray') loadFoamingData();
+        if(tab === 'cooling') loadCoolingData();
+        if(tab === 'ole') loadOleData();
+        if(tab === 'cooling-analysis') loadCoolingAnalysis();
     }
-
     function switchBiChart(chartType) {
         document.querySelectorAll('#view-bi .seg-btn').forEach(el => el.classList.remove('active'));
         event.currentTarget.classList.add('active');
@@ -1410,13 +1460,56 @@ function shareToWhatsApp() {
     }
 
     async function syncFoamingData() { const fDate = document.getElementById('foamDateSelector').value; await supabaseClient.from('production_shifts').upsert({ shift_id: `${fDate}_FOAMING`, shift_data: { type: 'foaming', records: foamingRecords }, updated_at: new Date().toISOString() }); renderFoamingTable(); }
-    async function updateFoamingStatus(recordId, newStatus) { const rec = foamingRecords.find(r => r.id === recordId); if(rec) { rec.status = newStatus; await syncFoamingData(); showToast("تم التحديث"); } }
-    async function deleteFoamingRecord(recordId) { if(confirm("حذف السجل؟")) { const rec = foamingRecords.find(r => r.id === recordId); if(rec && rec.fileName) { await supabaseClient.storage.from('defect-images').remove([rec.fileName]); } foamingRecords = foamingRecords.filter(r => r.id !== recordId); await syncFoamingData(); } }
+   async function updateFoamingStatus(recordId, newStatus) { 
+        const rec = foamingRecords.find(r => r.id === recordId); 
+        if(rec) { 
+            rec.status = newStatus; 
+            await syncFoamingData(); 
+            await calculateGlobalFoamingBacklog(); // تحديث العداد فوراً
+            showToast(newStatus === 'done' ? "تم التسليم بنجاح" : "تمت العودة لحالة الإصلاح");
+        } 
+    }
+  async function deleteFoamingRecord(recordId) { if(confirm("حذف السجل؟")) { const rec = foamingRecords.find(r => r.id === recordId); if(rec && rec.fileName) { await supabaseClient.storage.from('defect-images').remove([rec.fileName]); } foamingRecords = foamingRecords.filter(r => r.id !== recordId); await syncFoamingData(); } }
 
-    async function loadFoamingData() {
-        const fDate = document.getElementById('foamDateSelector').value; if(!fDate) return;
-        const { data } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').eq('shift_id', `${fDate}_FOAMING`).maybeSingle();
-        foamingRecords = (data && data.shift_data && data.shift_data.records) ? data.shift_data.records : []; renderFoamingTable();
+   async function loadFoamingData() {
+        const fDate = document.getElementById('foamDateSelector').value; 
+        if(!fDate) return;
+        
+        const todayId = `${fDate}_FOAMING`;
+        
+        // 1. جلب كل بيانات الرش (اليوم + القديم)
+        const { data } = await supabaseClient.from('production_shifts')
+            .select('shift_id, shift_data')
+            .like('shift_id', '%_FOAMING');
+            
+        // 2. استخراج سجلات اليوم الحالي
+        let todayRow = data.find(r => r.shift_id === todayId);
+        foamingRecords = (todayRow && todayRow.shift_data.records) ? todayRow.shift_data.records : [];
+
+        // 3. خوارزمية الترحيل: البحث عن أي "Pending" في الأيام السابقة لم يتم نقله لليوم
+        data.forEach(row => {
+            if (row.shift_id !== todayId) {
+                const oldRecords = row.shift_data.records || [];
+                oldRecords.forEach(oldRec => {
+                    if (oldRec.status === 'pending') {
+                        // لو العيب ده مش موجود في لستة النهاردة، ضيفه (ترحيل)
+                        if (!foamingRecords.find(r => r.id === oldRec.id)) {
+                            foamingRecords.push(oldRec);
+                        }
+                    }
+                });
+            }
+        });
+
+        // 4. حفظ الحالة الجديدة لليوم (حتى تظل العيوب المرحّلة موجودة)
+        await supabaseClient.from('production_shifts').upsert({ 
+            shift_id: todayId, 
+            shift_data: { type: 'foaming', records: foamingRecords }, 
+            updated_at: new Date().toISOString() 
+        });
+
+        renderFoamingTable();
+        calculateGlobalFoamingBacklog();
     }
 
     function renderFoamingTable() {
@@ -1842,6 +1935,269 @@ async function loadProductionArchive(dateStr) {
             showToast("خطأ في الاتصال بقاعدة البيانات");
         }
     }
+
+async function calculateGlobalFoamingBacklog() {
+        if(!supabaseClient) return;
+        // جلب كل سجلات الرش من البداية
+        const { data } = await supabaseClient.from('production_shifts')
+            .select('shift_data')
+            .like('shift_id', '%_FOAMING');
+            
+        let pendingIds = new Set(); // استخدام Set لمنع التكرار
+        if(data) {
+            data.forEach(row => {
+                if(row.shift_data && row.shift_data.records) {
+                    row.shift_data.records.forEach(r => {
+                        if(r.status === 'pending') pendingIds.add(r.id);
+                    });
+                }
+            });
+        }
+        safeSetText('kpi-foam-total-backlog', pendingIds.size);
+    }
+
+async function calculateFoamingKPIs() {
+        let totalDefects = foamingRecords.length;
+        let doneCount = foamingRecords.filter(r => r.status === 'done').length;
+        let repairCount = totalDefects - doneCount;
+        
+        safeSetText('kpi-foam-day-total', totalDefects); 
+        safeSetText('kpi-foam-day-done', doneCount);
+        safeSetText('kpi-foam-day-repair', repairCount);
+        
+        // جلب إنتاج اليوم الفعلي لحساب النسبة المئوية
+        const fDate = document.getElementById('foamDateSelector').value;
+        const { data } = await supabaseClient.from('production_shifts')
+            .select('shift_data')
+            .like('shift_id', `${fDate}_Shift_%`);
+            
+        let prodToday = 0;
+        if(data) {
+            data.forEach(s => {
+                if(s.shift_data.intervals) {
+                    s.shift_data.intervals.forEach(inv => { if(!inv.isBreak) prodToday += (Number(inv.actual) || 0); });
+                }
+            });
+        }
+
+        let dailyPerc = prodToday > 0 ? ((totalDefects / prodToday) * 100).toFixed(1) : 0;
+        const percEl = document.getElementById('kpi-foam-day-perc');
+        if(percEl) { 
+            percEl.innerText = dailyPerc + '%'; 
+            percEl.className = 'kpi-val ' + (dailyPerc > 2 ? 'red' : 'green');
+        }
+    }
+// --- 1. خوارزمية استيراد داتا التبريد التاريخية ---
+    async function handleCoolingHistoricalUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'loader-overlay';
+        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري تحليل ودمج سجلات التبريد...</div>`;
+        document.body.appendChild(overlay);
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                const delimiter = lines[1].includes(';') ? ';' : ','; // الكشف التلقائي عن الفاصل
+                
+                let shiftRecordsMap = {};
+
+                // تخطي العناوين (أول سطرين في ملفك)
+                for (let i = 2; i < lines.length; i++) {
+                   const cols = lines[i].split(delimiter);
+                    if (cols.length < 11) continue;
+
+                    let dateRaw = cols[0] ? cols[0].replace(/['"]/g, '').trim() : '';
+                    let normDate = dateRaw;
+                    
+                    // توحيد التاريخ قبل الحفظ في السيرفر
+                    if (dateRaw.includes('/')) {
+                        let p = dateRaw.split('/');
+                        if (p[2] && p[2].length >= 4) {
+                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
+                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
+                            normDate = `${y}-${m}-${d}`;
+                        }
+                    } else if (dateRaw.includes('-')) {
+                        let p = dateRaw.split('-');
+                        if (p[0].length !== 4 && p[2] && p[2].length >= 4) {
+                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
+                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
+                            normDate = `${y}-${m}-${d}`;
+                        }
+                    }
+                    
+                    const date = normDate; // التاريخ الموحد
+                    const shiftStr = cols[3]; // الورديه
+                    const supervisor = cols[4]; // المشرف
+                    const dept = cols[5]; // القسم
+                    const type = cols[6]; // العيب
+                    const point = cols[7]; // النقطه
+                    const stamp = cols[8]; // الختم
+                    const name = cols[9]; // اسم المتسبب
+                    const qty = parseInt(cols[10]) || 0;
+                    const model = cols[11]; // الموديل
+
+                    if(!date || !shiftStr) continue;
+
+                    let shiftNum = (shiftStr === 'ثانية' || shiftStr === 'ثانيه') ? '2' : ((shiftStr === 'ثالثة' || shiftStr === 'ثالثه') ? '3' : '1');
+                    let shiftId = `${date}_COOLING_${shiftNum}`;
+
+                    if (!shiftRecordsMap[shiftId]) shiftRecordsMap[shiftId] = [];
+
+                    shiftRecordsMap[shiftId].push({
+                        id: Date.now().toString() + Math.random(),
+                        time: "00:00", // داتا تاريخية
+                        supervisor, dept, type, point, model, qty, stamp, name
+                    });
+                }
+
+                // رفع البيانات للسيرفر على دفعات
+                let promises = [];
+                for (const [id, records] of Object.entries(shiftRecordsMap)) {
+                    promises.push(supabaseClient.from('production_shifts').upsert({
+                        shift_id: id,
+                        shift_data: { type: 'cooling', records: records },
+                        updated_at: new Date().toISOString()
+                    }));
+                    if(promises.length >= 10) { await Promise.all(promises); promises = []; }
+                }
+                if(promises.length > 0) await Promise.all(promises);
+
+                showToast("تم استيراد سجلات التبريد بنجاح!");
+                loadCoolingData();
+            } catch (err) {
+                console.error(err);
+                alert("فشل الاستيراد. تأكد من صيغة الملف.");
+            } finally {
+                overlay.remove();
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+ // --- 2. محرك التحليلات الهندسية لعيووب التبريد (بالفلاتر) ---
+    async function loadCoolingAnalysis(filterType = null) {
+        if(!supabaseClient) return;
+        showToast("جاري استخراج الرؤى الهندسية...");
+        
+        const monthInput = document.getElementById('coolingAnaMonth');
+        const dateInput = document.getElementById('coolingAnaDate');
+
+        // ميكانيزم ذكي: لو اختار شهر يمسح اليوم، ولو اختار يوم يمسح الشهر لعدم التضارب
+        if(filterType === 'month' && monthInput.value) dateInput.value = '';
+        if(filterType === 'date' && dateInput.value) monthInput.value = '';
+
+        const activeMonth = monthInput ? monthInput.value : '';
+        const activeDate = dateInput ? dateInput.value : '';
+
+        try {
+            // جلب البيانات مع الـ shift_id لكي نستطيع فلترة التواريخ
+            const { data } = await supabaseClient.from('production_shifts')
+                .select('shift_id, shift_data')
+                .like('shift_id', '%_COOLING_%');
+
+            let allRecords = [];
+            if(data) {
+                data.forEach(row => {
+                    let rawDate = row.shift_id.split('_COOLING_')[0];
+                    if(!rawDate) return;
+                    rawDate = rawDate.replace(/['"]/g, '').trim();
+                    let normDate = rawDate;
+
+                    // معالجة وتوحيد صيغ التواريخ المعكوسة من الإكسيل (DD/MM/YYYY أو DD-MM-YYYY)
+                    if (rawDate.includes('/')) {
+                        let p = rawDate.split('/');
+                        if (p[2] && p[2].length >= 4) {
+                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
+                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
+                            normDate = `${y}-${m}-${d}`;
+                        } else if (p[0].length === 4) {
+                            normDate = `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
+                        }
+                    } else if (rawDate.includes('-')) {
+                        let p = rawDate.split('-');
+                        if (p[0].length !== 4 && p[2] && p[2].length >= 4) {
+                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
+                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
+                            normDate = `${y}-${m}-${d}`;
+                        }
+                    }
+
+                    // تطبيق الفلاتر على التاريخ الموحد (normDate)
+                    if (activeMonth && !normDate.startsWith(activeMonth)) return;
+                    if (activeDate && normDate !== activeDate) return;
+
+                    if(row.shift_data && row.shift_data.records) {
+                        allRecords = allRecords.concat(row.shift_data.records);
+                    }
+                });
+            }
+            if(allRecords.length === 0) {
+                safeSetText('cooling-analysis-summary', "لا توجد بيانات مطابقة للفلتر المحدد.");
+                safeSetText('ana-cool-total', 0);
+                safeSetText('ana-cool-model', '--');
+                renderCoolingCharts({}, {}, {}); // تصفير الشارتات إذا كانت النتيجة صفر
+                return;
+            }
+
+            // تجميع الإحصائيات بعد الفلترة
+            let pointsMap = {}, modelMap = {}, responsibleMap = {}, typeMap = {};
+            allRecords.forEach(r => {
+                pointsMap[r.point] = (pointsMap[r.point] || 0) + (r.qty || 1);
+                modelMap[r.model] = (modelMap[r.model] || 0) + (r.qty || 1);
+                typeMap[r.type] = (typeMap[r.type] || 0) + (r.qty || 1);
+                let person = `${r.stamp} - ${r.name}`;
+                responsibleMap[person] = (responsibleMap[person] || 0) + (r.qty || 1);
+            });
+
+            // تحديث الـ KPIs
+            safeSetText('ana-cool-total', allRecords.reduce((sum, r) => sum + (r.qty || 1), 0));
+            let topModel = Object.keys(modelMap).sort((a,b) => modelMap[b] - modelMap[a])[0];
+            safeSetText('ana-cool-model', topModel || '--');
+
+            let topPoint = Object.keys(pointsMap).sort((a,b) => pointsMap[b] - pointsMap[a])[0];
+            safeSetText('cooling-analysis-summary', `أكبر فرصة تحسين للوقت المحدد تكمن في معالجة عيوب [${topPoint}]، حيث تمثل بؤرة الهدر الرئيسية.`);
+
+            // رسم المخططات
+            renderCoolingCharts(pointsMap, responsibleMap, modelMap);
+
+        } catch (e) { console.error(e); }
+    }
+
+    function renderCoolingCharts(points, res, models) {
+        const ctxP = document.getElementById('coolParetoChart');
+        const sortedPoints = Object.keys(points).sort((a,b) => points[b] - points[a]).slice(0, 15);
+        if(window.chCool1) window.chCool1.destroy();
+        window.chCool1 = new Chart(ctxP, {
+            type: 'bar',
+            data: { labels: sortedPoints, datasets: [{ label: 'عدد العيوب', data: sortedPoints.map(k => points[k]), backgroundColor: '#ff1744', borderRadius: 8 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const ctxR = document.getElementById('coolResponsibleChart');
+        const sortedRes = Object.keys(res).sort((a,b) => res[b] - res[a]).slice(0, 10);
+        if(window.chCool2) window.chCool2.destroy();
+        window.chCool2 = new Chart(ctxR, {
+            type: 'bar',
+            data: { labels: sortedRes, datasets: [{ label: 'إجمالي الأخطاء المرصودة', data: sortedRes.map(k => res[k]), backgroundColor: '#ff9f0a', borderRadius: 8 }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+        });
+
+        const ctxM = document.getElementById('coolModelChart');
+        if(window.chCool3) window.chCool3.destroy();
+        window.chCool3 = new Chart(ctxM, {
+            type: 'doughnut',
+            data: { labels: Object.keys(models), datasets: [{ data: Object.values(models), backgroundColor: ['#00e5ff', '#00e676', '#ffb300', '#ff1744', '#bf5af2'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
 </script>
 </body>
 </html>
