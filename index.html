@@ -129,8 +129,7 @@
         }
         .app-title i { color: var(--accent-cyan); font-size: 1.1rem; }
         
-        .content-area { padding: 15px; position: relative; z-index: 10; width: 100%; max-width: 1200px; margin: 0 auto; }
-
+     .content-area { padding: 10px; position: relative; z-index: 10; width: 100%; max-width: 1200px; margin: 0 auto; }
         /* --- Bottom Navigation Bar --- */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height);
@@ -150,16 +149,13 @@
         .nav-item.active i { transform: translateY(-3px) scale(1.1); filter: drop-shadow(0 0 8px var(--accent-cyan-glow)); }
 
         /* --- Modern Mobile Cards --- */
-        .glass-card {
+       .glass-card {
             background: var(--surface-glass);
             border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
+            border-radius: 16px; /* تقليل الانحناء قليلاً للموبايل */
             padding: 15px;
             margin-bottom: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            position: relative;
-            overflow: hidden;
-            transition: background 0.4s, border-color 0.4s, box-shadow 0.4s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         .section-header { 
             font-size: 1.05rem; 
@@ -749,8 +745,7 @@
         safeSetVal('bEnd', c.bEnd || '12:45'); 
     }
 
-  function toggleTheme() {
-        // استهداف html لضمان تغيير الـ CSS Variables
+ function toggleTheme() {
         const htmlEl = document.documentElement;
         const current = htmlEl.getAttribute('data-theme') || 'dark';
         const newTheme = current === 'light' ? 'dark' : 'light';
@@ -758,13 +753,14 @@
         htmlEl.setAttribute('data-theme', newTheme);
         localStorage.setItem('mes_theme', newTheme);
         
-        // تغيير أيقونة الزر إذا لزم الأمر
-        const themeBtn = document.querySelector('.btn-secondary i.fa-solid');
-        if(themeBtn) {
-            themeBtn.className = newTheme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        // تحديث أيقونة الزر في الهيدر
+        const themeBtnIcon = document.querySelector('.app-header .fa-solid');
+        if(themeBtnIcon) {
+            themeBtnIcon.className = newTheme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
         }
         
         if(!document.getElementById('view-bi').classList.contains('hidden')) loadAnalyticsData();
+        showToast(newTheme === 'light' ? "تم تفعيل الوضع النهاري" : "تم تفعيل الوضع الليلي");
     }
     
     function initTheme() {
@@ -935,53 +931,63 @@
             } else { this.renderProduction(); }
         },
 
-        updateTarget() {
+updateTarget() {
             const newTarget = parseInt(document.getElementById('quickTarget').value) || 0; 
             State.target = newTarget;
 
-            const sStartM = timeToMins(document.getElementById('sStart').value); 
-            let sEndM = timeToMins(document.getElementById('sEnd').value);
-            const bStartM = timeToMins(document.getElementById('bStart').value); 
-            let bEndM = timeToMins(document.getElementById('bEnd').value);
+            // تأمين جلب القيم مع وضع بدائل افتراضية لو المدخلات فارغة
+            const sStartVal = document.getElementById('sStart').value || '08:00';
+            const sEndVal = document.getElementById('sEnd').value || '16:00';
+            const bStartVal = document.getElementById('bStart').value || '12:00';
+            const bEndVal = document.getElementById('bEnd').value || '12:45';
+
+            const sStartM = timeToMins(sStartVal); 
+            let sEndM = timeToMins(sEndVal);
+            const bStartM = timeToMins(bStartVal); 
+            let bEndM = timeToMins(bEndVal);
             
             if (sEndM <= sStartM) sEndM += 24 * 60; 
             if (bEndM <= bStartM) bEndM += 24 * 60;
             const netMins = (sEndM - sStartM) - (bEndM - bStartM);
             
-            if (netMins <= 0) { alert("إعدادات الوقت غير صحيحة."); return; }
+            if (netMins <= 0) return;
             
             if(State.intervals.length === 0) {
                 const unitsPerMin = newTarget > 0 ? (newTarget / netMins) : 0; 
                 let current = sStartM; let accumulatedTarget = 0;
                 while (current < sEndM) {
-                    if (current === bStartM) { State.intervals.push({ isBreak: true, start: bStartM, end: bEndM, duration: bEndM - bStartM }); current = bEndM; continue; }
-                    let intervalEnd = current + 60; if (current < bStartM && intervalEnd > bStartM) intervalEnd = bStartM; if (intervalEnd > sEndM) intervalEnd = sEndM;
+                    if (current === bStartM) { 
+                        State.intervals.push({ isBreak: true, start: bStartM, end: bEndM, duration: bEndM - bStartM }); 
+                        current = bEndM; continue; 
+                    }
+                    let intervalEnd = current + 60; 
+                    if (current < bStartM && intervalEnd > bStartM) intervalEnd = bStartM; 
+                    if (intervalEnd > sEndM) intervalEnd = sEndM;
                     let duration = intervalEnd - current; let roundedTarget = Math.round(unitsPerMin * duration);
                     State.intervals.push({ isBreak: false, start: current, end: intervalEnd, duration: duration, target: roundedTarget, actual: "", defects: [] });
                     accumulatedTarget += roundedTarget; current = intervalEnd;
                 }
-                
-                if (newTarget > 0) {
-                    let diff = newTarget - accumulatedTarget;
-                    for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
-                        if (!State.intervals[i].isBreak) { let step = diff > 0 ? 1 : -1; if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } } 
-                    }
+                let diff = newTarget - accumulatedTarget;
+                for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
+                    if (!State.intervals[i].isBreak) { 
+                        let step = diff > 0 ? 1 : -1; 
+                        if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } 
+                    } 
                 }
             } else {
                 let activeMins = 0; State.intervals.forEach(inv => { if(!inv.isBreak) activeMins += inv.duration; });
                 let unitsPerMin = activeMins > 0 ? (newTarget / activeMins) : 0; let accumulatedTarget = 0;
                 State.intervals.forEach(inv => { if(!inv.isBreak) { let t = Math.round(unitsPerMin * inv.duration); inv.target = t; accumulatedTarget += t; } });
-                
-                if (newTarget > 0) {
-                    let diff = newTarget - accumulatedTarget;
-                    for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
-                        if (!State.intervals[i].isBreak) { let step = diff > 0 ? 1 : -1; if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } } 
-                    }
+                let diff = newTarget - accumulatedTarget;
+                for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
+                    if (!State.intervals[i].isBreak) { 
+                        let step = diff > 0 ? 1 : -1; 
+                        if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } 
+                    } 
                 }
             }
             this.persist(); this.syncToCloud(); this.renderProduction();
         },
-
         applyNewTimeSettings() {
             if(confirm("تطبيق المواعيد سيعيد بناء المصفوفة الساعية بالكامل. متابعة؟")) {
                 saveLocalSettings(); const oldTarget = State.target; State.intervals = []; 
@@ -1330,26 +1336,23 @@ function shareToWhatsApp() {
             return; 
         }
         
-        // استخدام رقم الوردية فقط كما طلبت
-        let msg = `*تقرير انتاج ساعة بساعة*\n🏭 الثلاجة A | Final Assembly\n📅 التاريخ: ${State.date}\nالوردية: ${State.shift}\n\n`;
+        let msg = `*تقرير انتاج ساعة بساعة*\nالثلاجة A | Final Assembly\nالتاريخ: ${State.date}\nالوردية: ${State.shift}\n\n`;
         let totalA = 0;
         
-        // دالة تنظيف النص من أي علامات HTML
         function stripHTML(html) { return html.replace(/<[^>]*>?/gm, ''); }
         
         State.intervals.forEach(inv => {
             if(!inv.isBreak) {
                 let act = inv.actual !== "" ? Number(inv.actual) : 0; 
-                // تنسيق السطر: الوقت ➔ العدد وحدة
-                msg += `⏱️ ${stripHTML(formatTimeAMPM(inv.start))} ➔ ${act} وحدة\n`;
+                // التعديلات: وقت النهاية - حذف "وحدة" - رموز بسيطة جداً
+                msg += `${stripHTML(formatTimeAMPM(inv.end))} : ${act}\n`;
                 totalA += act;
             } else {
-                msg += `☕ فترة راحة\n`;
+                msg += `فترة راحة\n`;
             }
         });
         
-        // الإجمالي والختم
-        msg += `\n📊 *إجمالي الإنتاج الفعلي: ${totalA} وحدة*\n\n_Eng M. Fayez_`;
+        msg += `\n*إجمالي الإنتاج الفعلي: ${totalA}*`;
         
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
