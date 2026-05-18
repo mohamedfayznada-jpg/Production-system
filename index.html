@@ -3,297 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Production App | Eng M. Fayez</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Aref+Ruqaa:wght@400;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <title>MES CORE | Production App</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#030305">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="display" content="standalone">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        /* --- OLED Mobile-First Industrial Theme (Dark) --- */
-        :root {
-            --bg-base: #030305;
-            --surface-1: #0e0e12;
-            --surface-2: #16161a;
-            --surface-glass: rgba(22, 22, 26, 0.7);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --text-primary: #ffffff;
-            --text-secondary: #8e8e93;
-            --accent-cyan: #00e5ff;
-            --accent-cyan-glow: rgba(0, 229, 255, 0.15);
-            --accent-green: #00e676;
-            --accent-red: #ff1744;
-            --accent-orange: #ffb300;
-            --radius-sm: 12px;
-            --radius-md: 20px;
-            --radius-pill: 100px;
-            --nav-height: 75px;
-        }
-
-        /* --- Light Theme Variables --- */
-        :root[data-theme="light"] {
-            --bg-base: #f0f4f8;
-            --surface-1: #ffffff;
-            --surface-2: #e2e8f0;
-            --surface-glass: rgba(255, 255, 255, 0.85);
-            --border-subtle: rgba(0, 0, 0, 0.1);
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --accent-cyan: #0284c7;
-            --accent-cyan-glow: rgba(2, 132, 199, 0.2);
-            --accent-green: #16a34a;
-            --accent-red: #dc2626;
-            --accent-orange: #ea580c;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            background-color: var(--bg-base); 
-            color: var(--text-primary); 
-            font-family: 'Cairo', sans-serif; 
-            padding-bottom: calc(var(--nav-height) + 15px); 
-            min-height: 100vh; 
-            overflow-x: hidden;
-            overscroll-behavior-y: none;
-            transition: background-color 0.4s ease, color 0.4s ease;
-        }
-
-        :root[data-theme="dark"] body {
-            background-image: radial-gradient(circle at top right, rgba(0,229,255,0.03), transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(255,23,68,0.02), transparent 40%);
-        }
-
-        .hidden { display: none !important; }
-        .view-layer { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-
-        /* --- Faint Watermark Seal --- */
-        .seal-watermark {
-            position: fixed; 
-            bottom: 100px; 
-            left: 50%; 
-            transform: translateX(-50%);
-            z-index: 0; 
-            opacity: 0.02; 
-            pointer-events: none;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;
-            width: 100%;
-            transition: opacity 0.4s;
-        }
-        :root[data-theme="light"] .seal-watermark { opacity: 0.05; }
-        .seal-watermark .seal-main { 
-            font-family: 'Orbitron', 'Cairo', sans-serif; 
-            color: var(--text-primary); 
-            font-size: 3rem; 
-            font-weight: 900; 
-            line-height: 1; 
-            white-space: nowrap; 
-        }
-        .seal-watermark .seal-sub { 
-            font-family: 'Orbitron', sans-serif; 
-            color: var(--text-primary); 
-            font-size: 1rem; 
-            font-weight: 900; 
-            letter-spacing: 6px; 
-            text-transform: uppercase; 
-            margin-top: 5px;
-        }
-
-        /* --- Global App Layout --- */
-        .app-header {
-            position: sticky; top: 0; z-index: 100;
-            background: var(--surface-glass);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            padding: 15px;
-            border-bottom: 1px solid var(--border-subtle);
-            display: flex; justify-content: space-between; align-items: center;
-            transition: background 0.4s, border-color 0.4s;
-        }
-        .app-title { 
-            font-size: 1.2rem; 
-            font-weight: 900; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            font-family: 'Orbitron', 'Cairo', sans-serif; 
-        }
-        .app-title i { color: var(--accent-cyan); font-size: 1.1rem; }
-        
-     .content-area { padding: 10px; position: relative; z-index: 10; width: 100%; max-width: 1200px; margin: 0 auto; }
-        /* --- Bottom Navigation Bar --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height);
-            background: var(--surface-glass); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border-top: 1px solid var(--border-subtle);
-            display: flex; justify-content: space-around; align-items: center;
-            z-index: 1000; padding-bottom: env(safe-area-inset-bottom);
-            transition: background 0.4s, border-color 0.4s;
-        }
-        .nav-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--text-secondary); width: 20%; height: 100%; cursor: pointer; transition: 0.3s;
-        }
-        .nav-item i { font-size: 1.3rem; margin-bottom: 4px; transition: transform 0.2s;}
-        .nav-item span { font-size: 0.7rem; font-weight: 800; font-family: 'Cairo'; }
-        .nav-item.active { color: var(--accent-cyan); }
-        .nav-item.active i { transform: translateY(-3px) scale(1.1); filter: drop-shadow(0 0 8px var(--accent-cyan-glow)); }
-
-        /* --- Modern Mobile Cards --- */
-       .glass-card {
-            background: var(--surface-glass);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px; /* تقليل الانحناء قليلاً للموبايل */
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .section-header { 
-            font-size: 1.05rem; 
-            color: var(--text-primary); 
-            font-weight: 900; 
-            margin-bottom: 15px; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px;
-        }
-        .section-header i { color: var(--accent-cyan); }
-
-        /* --- UI Controls --- */
-        input, select, textarea {
-            width: 100%; 
-            background: var(--surface-2); 
-            border: 1px solid var(--border-subtle);
-            color: var(--text-primary); 
-            padding: 12px 15px; 
-            border-radius: var(--radius-sm);
-            font-size: 1rem; 
-            font-family: 'Cairo', sans-serif; 
-            font-weight: 700; 
-            transition: 0.3s;
-            appearance: none;
-        }
-        input:focus, select:focus, textarea:focus { 
-            outline: none; 
-            border-color: var(--accent-cyan); 
-            box-shadow: 0 0 0 2px var(--accent-cyan-glow); 
-        }
-        label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 800; }
-        
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .form-group.full-width { grid-column: 1 / -1; }
-        @media (min-width: 600px) { .form-grid.responsive { grid-template-columns: 1fr 1fr; } }
-
-        .btn { 
-            border: none; padding: 12px 20px; border-radius: var(--radius-pill); 
-            font-family: 'Cairo'; font-size: 0.95rem; font-weight: 800; 
-            cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; 
-        }
-        .btn:active { transform: scale(0.95); }
-        .btn-primary { background: var(--accent-cyan); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3); box-shadow: 0 4px 15px var(--accent-cyan-glow); }
-        :root[data-theme="dark"] .btn-primary { color: #000; text-shadow: none; }
-        
-        .btn-secondary { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border-subtle); }
-        .btn-danger { background: rgba(255, 23, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(255, 23, 68, 0.3); }
-        .btn-success { background: rgba(0, 230, 118, 0.1); color: var(--accent-green); border: 1px solid rgba(0, 230, 118, 0.3); }
-        .btn-wa { background: #25D366; color: #fff; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2); }
-
-        /* --- Segmented Control (Tabs) --- */
-        .segmented-control { 
-            display: flex; background: var(--surface-2); border-radius: 10px; 
-            padding: 4px; margin-bottom: 15px; overflow-x: auto; scrollbar-width: none; 
-            border: 1px solid var(--border-subtle);
-        }
-        .seg-btn { 
-            flex: 1; text-align: center; padding: 10px 12px; font-size: 0.85rem; 
-            font-weight: 800; color: var(--text-secondary); border-radius: 8px; 
-            cursor: pointer; transition: 0.3s; white-space: nowrap; 
-        }
-        .seg-btn.active { background: var(--surface-1); color: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-
-        /* --- KPI Grids --- */
-        .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 15px; }
-        .kpi-box { 
-            background: var(--surface-2); padding: 12px; border-radius: var(--radius-sm); 
-            display: flex; flex-direction: column; justify-content: center; 
-            border: 1px solid var(--border-subtle);
-        }
-        .kpi-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 800; margin-bottom: 5px; }
-        .kpi-val { font-family: 'Orbitron'; font-size: 1.5rem; font-weight: 900; line-height: 1; }
-        .kpi-val.cyan { color: var(--accent-cyan); }
-        .kpi-val.green { color: var(--accent-green); }
-        .kpi-val.red { color: var(--accent-red); }
-        .kpi-val.orange { color: var(--accent-orange); }
-
-        /* --- Production List Items --- */
-        .prod-list-item { 
-            background: var(--surface-2); border-radius: var(--radius-sm); 
-            padding: 15px; margin-bottom: 12px; border: 1px solid var(--border-subtle); 
-        }
-        .prod-time { font-family: 'Orbitron'; font-size: 1.1rem; color: var(--accent-cyan); font-weight: 900; margin-bottom: 10px; display: block; }
-        .prod-stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .p-stat { font-size: 0.85rem; color: var(--text-secondary); font-weight: 800; }
-        .p-stat span { font-family: 'Orbitron'; font-size: 1rem; color: var(--text-primary); margin-right: 5px;}
-        .prod-action { display: flex; gap: 10px; align-items: stretch; }
-        .prod-action input { 
-            font-size: 1.3rem; text-align: center; padding: 10px; color: var(--accent-cyan); 
-            font-family: 'Orbitron'; background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.3); width: 100%;
-        }
-        
-        .progress-track { width: 100%; height: 6px; background: var(--border-subtle); border-radius: 3px; overflow: hidden; margin-top: 10px; }
-        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green)); width: 0%; transition: width 1s; }
-
-        /* --- The A4 Physical Pocket --- */
-        .a4-pocket-modern {
-            min-height: 120px; border: 2px dashed var(--text-secondary); border-radius: var(--radius-sm);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin-bottom: 15px; background: rgba(255,255,255,0.02); gap: 10px; opacity: 0.6;
-        }
-        .a4-pocket-modern i { font-size: 2rem; color: var(--text-secondary); }
-        .a4-pocket-modern span { font-weight: 800; font-size: 0.85rem; color: var(--text-secondary); text-align: center; padding: 0 10px; line-height: 1.4;}
-
-        /* --- Tables --- */
-        .table-wrap { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border-subtle); }
-        table { width: 100%; min-width: 500px; border-collapse: collapse; text-align: right; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border-subtle); font-size: 0.9rem; font-weight: 700; white-space: nowrap; }
-        th { color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; background: rgba(0,0,0,0.05);}
-        td.eng-num { font-family: 'Orbitron'; letter-spacing: 1px; color: var(--accent-cyan); font-size: 1rem;}
-        .row-break td { background: rgba(255, 179, 0, 0.05) !important; color: var(--accent-orange); text-align: center;}
-        
-        .defect-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,23,68,0.1); color: var(--accent-red); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; margin: 2px; border: 1px solid rgba(255,23,68,0.2);}
-        .defect-badge.quality { background: var(--accent-cyan-glow); border-color: rgba(0,229,255,0.2); color: var(--accent-cyan); }
-        .defect-badge i { cursor: pointer; font-size: 1rem; }
-
-        /* --- Modals & Overlays --- */
-        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: 0.3s; }
-        .modal-backdrop.show { opacity: 1; pointer-events: all; }
-        .modal-sheet { background: var(--surface-1); width: 100%; border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.4s ease; max-height: 90vh; overflow-y: auto;}
-        .modal-backdrop.show .modal-sheet { transform: translateY(0); }
-        
-        #toast { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -20px); background: var(--text-primary); color: var(--bg-base); padding: 12px 24px; border-radius: var(--radius-pill); font-weight: 900; font-size: 0.9rem; z-index: 9999; opacity: 0; transition: 0.3s; box-shadow: 0 5px 20px rgba(0,0,0,0.4); pointer-events: none;}
-        #toast.show { opacity: 1; transform: translate(-50%, 0); }
-        
-        .loader-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-base); z-index: 9999; display: flex; flex-direction:column; justify-content:center; align-items:center; transition: opacity 0.4s; }
-        .spinner { width: 50px; height: 50px; border: 4px solid var(--surface-2); border-top-color: var(--accent-cyan); border-radius: 50%; animation: spin 1s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* BI Charts */
-        .chart-box { height: 250px; position: relative; margin-bottom: 15px;}
-        .ai-insight { background: rgba(255, 179, 0, 0.08); border-right: 4px solid var(--accent-orange); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid rgba(255, 179, 0, 0.2); }
-        .ai-insight span { color: var(--text-secondary); font-size: 0.8rem; display: block; margin-bottom: 5px;}
-        .ai-insight strong { color: var(--accent-orange); font-size: 1rem; line-height: 1.4; }
-        
-        .image-preview { max-width: 80px; max-height: 80px; border-radius: 8px; border: 1px solid var(--border-subtle); object-fit: cover; cursor: pointer;}
-    </style>
 </head>
 <body>
 
@@ -305,16 +28,9 @@
         <div class="spinner" style="margin-top: 30px;"></div>
     </div>
 
-    <div class="seal-watermark">
-        <div class="seal-main">Eng M. Fayez</div>
-        <div class="seal-sub">Production App</div>
-    </div>
-
-   <header class="app-header">
+    <header class="app-header">
         <div class="app-title"><i class="fa-solid fa-layer-group"></i> <span id="current-view-title">الرئيسية</span></div>
-        <div style="display:flex; align-items:center; gap: 10px;">
-            <button class="btn btn-secondary" style="padding: 8px 15px; width: auto; border-radius: 8px; font-size: 0.9rem;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> إضاءة</button>
-        </div>
+        <button class="btn btn-secondary" style="padding: 8px 15px; width: auto; border-radius: 8px; font-size: 0.9rem;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> إضاءة</button>
     </header>
 
     <div class="content-area">
@@ -325,18 +41,17 @@
                 <div class="kpi-grid">
                     <div class="kpi-box"><span class="kpi-label">Yield الشهر</span><span class="kpi-val cyan" id="main-kpi-myield">--%</span></div>
                     <div class="kpi-box"><span class="kpi-label">Yield الوردية</span><span class="kpi-val green" id="main-kpi-dyield">--%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">إجمالي الإنتاج</span><span class="kpi-val" id="main-kpi-dprod">0</span></div>
-                    <div class="kpi-box"><span class="kpi-label">التوقفات والعيوب</span><span class="kpi-val red" id="main-kpi-dfoam">0</span></div>
+                    <div class="kpi-box"><span class="kpi-label">الإنتاج الفعلي</span><span class="kpi-val" id="main-kpi-dprod">0</span></div>
+                    <div class="kpi-box"><span class="kpi-label">العيوب المفتوحة</span><span class="kpi-val red" id="main-kpi-dfoam">0</span></div>
                 </div>
             </div>
-
             <div class="glass-card">
-                <div class="section-header"><i class="fa-solid fa-bolt"></i> إجراءات سريعة</div>
+                <div class="section-header"><i class="fa-solid fa-bolt"></i> الوصول السريع</div>
                 <div class="form-grid two-cols responsive">
-                    <button class="btn btn-secondary" onclick="switchNav('prod')"><i class="fa-solid fa-play" style="color:var(--accent-green);"></i> متابعة الإنتاج</button>
+                    <button class="btn btn-secondary" onclick="switchNav('prod')"><i class="fa-solid fa-play" style="color:var(--accent-green);"></i> الإنتاج</button>
                     <button class="btn btn-secondary" onclick="switchNav('defect')"><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-red);"></i> تسجيل عيب</button>
-                    <button class="btn btn-secondary" onclick="switchNav('monitor'); setTimeout(()=>switchMonitorTab('spray'), 100);"><i class="fa-solid fa-spray-can" style="color:var(--accent-orange);"></i> عيوب الرش</button>
-                    <button class="btn btn-secondary" onclick="switchNav('labor')"><i class="fa-solid fa-users" style="color:var(--accent-cyan);"></i> استعراض العمالة</button>
+                    <button class="btn btn-secondary" onclick="switchNav('monitor')"><i class="fa-solid fa-network-wired" style="color:var(--accent-orange);"></i> المراقبة</button>
+                    <button class="btn btn-secondary" onclick="switchNav('bi')"><i class="fa-solid fa-chart-line" style="color:var(--accent-cyan);"></i> التحليلات</button>
                 </div>
             </div>
         </div>
@@ -344,56 +59,30 @@
         <div id="view-prod" class="view-layer hidden">
             <div class="segmented-control">
                 <div class="seg-btn active" id="seg-prod-live" onclick="switchProdSeg('live')">اللوحة اللحظية</div>
-                <div class="seg-btn" id="seg-prod-archive" onclick="switchProdSeg('archive')">الأرشيف</div>
                 <div class="seg-btn" id="seg-prod-setup" onclick="switchProdSeg('setup')">الإعدادات</div>
             </div>
-
             <div id="prod-sec-live">
-                <div class="glass-card">
-                    <div class="form-grid two-cols responsive">
-                        <div class="form-group"><label>تاريخ الوردية</label><input type="date" id="quickDate" onchange="appState.loadProduction()"></div>
-                        <div class="form-group"><label>الوردية النشطة</label><select id="quickShift" onchange="appState.loadProduction()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                        <div class="form-group full-width"><label>الهدف الكلي للوردية</label><input type="number" id="quickTarget" onchange="appState.updateTarget()" style="font-size: 1.5rem; font-family:'Orbitron'; color: var(--accent-cyan); text-align:center;"></div>
-                    </div>
+                <div class="glass-card form-grid two-cols responsive">
+                    <div class="form-group"><label>تاريخ الوردية</label><input type="date" id="quickDate" onchange="appState.loadProduction()"></div>
+                    <div class="form-group"><label>الوردية النشطة</label><select id="quickShift" onchange="appState.loadProduction()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+                    <div class="form-group full-width"><label>الهدف الكلي للوردية</label><input type="number" id="quickTarget" onchange="appState.updateTarget()" style="font-size: 1.5rem; font-family:'Orbitron'; color: var(--accent-cyan); text-align:center;"></div>
                 </div>
-
                 <div class="glass-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-weight: 800; font-size: 0.95rem;">مؤشر الإنجاز</span>
+                        <span style="font-weight: 800;">مؤشر الإنجاز</span>
                         <span id="shift-progress-text" style="font-family:'Orbitron'; font-weight:900; color:var(--accent-green); font-size: 1.2rem;">0%</span>
                     </div>
                     <div class="progress-track"><div class="progress-bar" id="shift-progress-bar"></div></div>
-                    
                     <div style="display:flex; justify-content:space-between; margin-top:15px; background: var(--surface-1); padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle);">
-                        <div class="kpi-label" style="margin:0;">الإنتاج الفعلي التراكمي:<br><strong id="kpi-prod-shift-actual" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
-                        <div class="kpi-label" style="margin:0; text-align:left;">الفارق الكلي:<br><strong id="kpi-prod-shift-variance" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
+                        <div class="kpi-label" style="margin:0;">الإنتاج التراكمي:<br><strong id="kpi-prod-shift-actual" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
+                        <div class="kpi-label" style="margin:0; text-align:left;">الفارق:<br><strong id="kpi-prod-shift-variance" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
                     </div>
                 </div>
-
-              
-
                 <div id="productionCardsContainer"></div>
-                
-                <button class="btn btn-wa" style="margin-top: 15px;" onclick="shareToWhatsApp()"><i class="fa-brands fa-whatsapp"></i> إرسال التقرير الساعي (WhatsApp)</button>
+                <button class="btn btn-wa" style="margin-top: 15px;" onclick="shareToWhatsApp()"><i class="fa-brands fa-whatsapp"></i> إرسال التقرير (WhatsApp)</button>
             </div>
-
-            <div id="prod-sec-archive" class="hidden">
-                <div class="glass-card">
-                    <div class="form-group"><label>تاريخ السجل</label><input type="date" id="archiveProdDate" onchange="loadProductionArchive(this.value)"></div>
-                </div>
-                <div id="archive-table-panel" class="hidden">
-                    <div class="kpi-box" style="margin-bottom:15px; text-align:center;"><span class="kpi-label">إجمالي إنتاج اليوم (جميع الورديات)</span><span class="kpi-val green" id="kpi-archive-daily-total">0</span></div>
-                    <div class="table-wrap">
-                        <table id="archiveTable">
-                            <thead><tr><th>الوردية</th><th>الهدف</th><th>الفعلي</th><th>الفارق</th></tr></thead>
-                            <tbody id="archiveTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
             <div id="prod-sec-setup" class="hidden glass-card">
-                <div class="section-header"><i class="fa-solid fa-clock"></i> إعدادات هيكل الأوقات القياسي</div>
+                <div class="section-header"><i class="fa-solid fa-clock"></i> إعدادات هيكل الأوقات</div>
                 <div class="form-grid two-cols responsive">
                     <div class="form-group"><label>بداية الوردية</label><input type="time" id="sStart" onchange="saveLocalSettings()"></div>
                     <div class="form-group"><label>نهاية الوردية</label><input type="time" id="sEnd" onchange="saveLocalSettings()"></div>
@@ -401,11 +90,7 @@
                     <div class="form-group"><label>نهاية الراحة</label><input type="time" id="bEnd" onchange="saveLocalSettings()"></div>
                 </div>
                 <div class="form-group full-width" style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="appState.applyNewTimeSettings()"><i class="fa-solid fa-arrows-rotate"></i> تحديث وإعادة بناء الساعات</button>
-<button class="btn btn-danger" style="margin-top: 15px;" onclick="appState.deleteCurrentShiftData()">
-    <i class="fa-solid fa-trash-can"></i> حذف بيانات الوردية الحالية نهائياً
-</button>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 10px;">عند التعديل يجب الضغط لتحديث الشبكة الساعية.</p>
+                    <button class="btn btn-primary" onclick="appState.applyNewTimeSettings()"><i class="fa-solid fa-arrows-rotate"></i> تحديث وبناء الساعات</button>
                 </div>
             </div>
         </div>
@@ -415,21 +100,11 @@
                 <div class="seg-btn active" id="seg-def-log" onclick="switchDefSeg('log')">سجل العيوب اللحظي</div>
                 <div class="seg-btn" id="seg-def-setup" onclick="switchDefSeg('setup')">قاعدة التصنيفات</div>
             </div>
-
             <div id="def-sec-log">
-                <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div style="flex-grow: 1;">
-                        <div class="kpi-label">مؤشر الجودة للشهر</div>
-                        <input type="month" id="monthSelector" onchange="loadMonthlyYield()" style="padding:8px 12px; max-width: 200px;">
-                    </div>
-                    <div class="kpi-val cyan" id="kpi-monthly-yield">--%</div>
-                </div>
-
                 <div class="kpi-grid">
                     <div class="kpi-box"><span class="kpi-label">Quality Yield</span><span class="kpi-val green" id="kpi-quality-yield">100%</span></div>
                     <div class="kpi-box"><span class="kpi-label">Overall Yield</span><span class="kpi-val" id="kpi-overall-yield">100%</span></div>
                 </div>
-
                 <div class="glass-card" style="padding: 10px;">
                     <div class="table-wrap" style="border:none;">
                         <table>
@@ -439,110 +114,65 @@
                     </div>
                 </div>
             </div>
-
             <div id="def-sec-setup" class="hidden glass-card">
-                <div class="section-header"><i class="fa-solid fa-list-check"></i> إدارة تصنيفات العيوب</div>
-<input type="file" id="defectExcelUpload" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;" onchange="handleDefectExcelUpload(event)">
-                <button class="btn btn-secondary" style="margin-bottom: 20px;" onclick="document.getElementById('defectExcelUpload').click()">
-                    <i class="fa-solid fa-file-excel"></i> استيراد تصنيفات العيوب من Excel
-                </button>                
-<div class="form-grid">
-                    <div class="form-group"><label>تصنيف جديد</label><input type="text" id="newDefectName" placeholder="مثال: تسريب داخلي"></div>
-                    <button class="btn btn-primary" onclick="addDefectCategory()"><i class="fa-solid fa-plus"></i> حفظ بالقاعدة</button>
+                <div class="section-header"><i class="fa-solid fa-folder-tree"></i> مهندس تصنيفات العيوب</div>
+                <div class="form-grid two-cols responsive" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>إنشاء مجموعة جديدة (Group)</label>
+                        <div style="display:flex; gap:5px;"><input type="text" id="newGroupName" placeholder="مثال: الأبواب"><button class="btn btn-primary" style="width:auto;" onclick="addNewDefectGroup()"><i class="fa-solid fa-plus"></i></button></div>
+                    </div>
                 </div>
-                <div id="categoriesList" style="margin-top: 20px; display:flex; flex-direction:column; gap:10px;"></div>
+                <div id="defectGroupsContainer" style="display:flex; flex-direction:column; gap:15px;"></div>
             </div>
         </div>
 
         <div id="view-bi" class="view-layer hidden">
-           <div class="glass-card form-grid two-cols responsive">
-                <div class="form-group">
-                    <label>من تاريخ (بداية الفترة)</label>
-                    <input type="date" id="analyticsDateFrom" onchange="loadAnalyticsData()">
-                </div>
-                <div class="form-group">
-                    <label>إلى تاريخ (نهاية الفترة)</label>
-                    <input type="date" id="analyticsDateTo" onchange="loadAnalyticsData()">
-                </div>
-                <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('analyticsDateFrom').value=''; document.getElementById('analyticsDateTo').value=''; loadAnalyticsData();">
-                    <i class="fa-solid fa-filter-circle-xmark"></i> عرض كل البيانات الشاملة للمصنع
-                </button>
+            <div class="glass-card form-grid two-cols responsive">
+                <div class="form-group"><label>من تاريخ</label><input type="date" id="analyticsDateFrom" onchange="loadAnalyticsData()"></div>
+                <div class="form-group"><label>إلى تاريخ</label><input type="date" id="analyticsDateTo" onchange="loadAnalyticsData()"></div>
+                <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('analyticsDateFrom').value=''; document.getElementById('analyticsDateTo').value=''; loadAnalyticsData();"><i class="fa-solid fa-filter-circle-xmark"></i> عرض كل البيانات</button>
             </div>
 
             <div class="kpi-grid">
-                <div class="kpi-box"><span class="kpi-label">الوحدات التامة</span><span class="kpi-val cyan" id="bi-kpi-prod">0</span></div>
+                <div class="kpi-box"><span class="kpi-label">الإنتاج التام</span><span class="kpi-val cyan" id="bi-kpi-prod">0</span></div>
                 <div class="kpi-box"><span class="kpi-label">متوسط Yield</span><span class="kpi-val green" id="bi-kpi-yield">0%</span></div>
                 <div class="kpi-box"><span class="kpi-label">إجمالي العيوب</span><span class="kpi-val red" id="bi-kpi-defects">0</span></div>
                 <div class="kpi-box"><span class="kpi-label">متوسط OLE</span><span class="kpi-val orange" id="bi-kpi-ole">0%</span></div>
             </div>
 
             <div class="ai-insight">
-                <span><i class="fa-solid fa-robot"></i> تحليل الاختناقات (Bottlenecks)</span>
-                <strong id="insight-bottleneck">جاري المعالجة...</strong>
-            </div>
-            <div class="ai-insight" style="background: rgba(0, 229, 255, 0.05); border-color: var(--accent-cyan);">
-                <span><i class="fa-solid fa-magnifying-glass-chart"></i> بؤرة الهدر (Top Defect)</span>
-                <strong id="insight-top-defect" style="color: var(--accent-cyan);">جاري المعالجة...</strong>
+                <span><i class="fa-solid fa-robot"></i> تحليل التوقفات (اضغط لمعرفة الأسباب)</span>
+                <strong id="insight-bottleneck" style="cursor:pointer;" onclick="MES.Analytics.drillDownOLE()">جاري المعالجة...</strong>
             </div>
 
             <div class="segmented-control" style="margin-top: 20px;">
                 <div class="seg-btn active" onclick="switchBiChart('yield')">منحنى الجودة</div>
-                <div class="seg-btn" onclick="switchBiChart('pareto')">باريتو (80/20)</div>
+                <div class="seg-btn" onclick="switchBiChart('pareto')">باريتو العيوب</div>
                 <div class="seg-btn" onclick="switchBiChart('gauges')">لوحة OLE</div>
-                <div class="seg-btn" onclick="switchBiChart('dynamic')">تحليل تفاعلي</div>
             </div>
 
-            <div class="glass-card chart-container" id="chart-yield-container"><div class="chart-box"><canvas id="yieldChart"></canvas></div></div>
-            <div class="glass-card chart-container hidden" id="chart-pareto-container"><div class="chart-box"><canvas id="paretoChart"></canvas></div></div>
-            <div class="glass-card chart-container hidden" id="chart-gauges-container">
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
-                    <div style="height: 180px; position: relative;"><canvas id="gaugeAvailability"></canvas></div>
-                    <div style="height: 180px; position: relative;"><canvas id="gaugePerformance"></canvas></div>
-                    <div style="height: 180px; position: relative;"><canvas id="gaugeQuality"></canvas></div>
-                </div>
-            </div>
-            <div class="glass-card chart-container hidden" id="chart-dynamic-container">
-                <div class="form-grid two-cols responsive" style="margin-bottom: 15px;">
-                    <div class="form-group">
-                        <label>المحور (X)</label>
-                        <select id="dynX" onchange="renderDynamicChart()"><option value="date">التاريخ</option><option value="model">الموديل</option><option value="reason">أسباب التوقف</option></select>
-                    </div>
-                    <div class="form-group">
-                        <label>المحور (Y)</label>
-                        <select id="dynY" onchange="renderDynamicChart()"><option value="actual">الإنتاج</option><option value="quality">الجودة</option><option value="cool">التبريد</option></select>
-                    </div>
-                </div>
-                <div class="chart-box"><canvas id="dynamicCustomChart"></canvas></div>
-            </div>
+            <div class="glass-card chart-container" id="chart-yield-container"><div class="chart-box" style="cursor:pointer;" onclick="MES.Analytics.triggerYieldDrillDown(event)"><canvas id="yieldChart"></canvas></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على أي نقطة في المنحنى لتحليل اليوم</div></div>
+            <div class="glass-card chart-container hidden" id="chart-pareto-container"><div class="chart-box" style="cursor:pointer;"><canvas id="paretoChart"></canvas></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على عمود العيب لتشريحه</div></div>
+            <div class="glass-card chart-container hidden" id="chart-gauges-container"><div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; cursor:pointer;" onclick="MES.Analytics.drillDownOLE()"><div style="height: 180px; position: relative;"><canvas id="gaugeAvailability"></canvas></div><div style="height: 180px; position: relative;"><canvas id="gaugePerformance"></canvas></div><div style="height: 180px; position: relative;"><canvas id="gaugeQuality"></canvas></div></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على العدادات لتحليل أسباب الفقد</div></div>
 
-         <div class="glass-card form-grid two-cols responsive">
-                <button class="btn btn-secondary" style="color: var(--accent-red);" onclick="archiveAndWipeMonth()"><i class="fa-solid fa-file-zipper"></i> تصدير الأرشيف ZIP/CSV</button>
+            <div class="glass-card form-grid two-cols responsive">
+                <button class="btn btn-success" onclick="exportAnalyticsToCSV()"><i class="fa-solid fa-file-csv"></i> تصدير التحليل (CSV)</button>
                 <input type="file" id="historicalDataUpload" accept=".csv" style="display: none;" onchange="handleHistoricalDataUpload(event)">
-                <button class="btn btn-primary" onclick="document.getElementById('historicalDataUpload').click()"><i class="fa-solid fa-database"></i> استيراد الداتا التاريخية (CSV)</button>
+                <button class="btn btn-primary" onclick="document.getElementById('historicalDataUpload').click()"><i class="fa-solid fa-database"></i> استيراد داتا تاريخية</button>
             </div>
         </div>
 
         <div id="view-monitor" class="view-layer hidden">
             <div class="segmented-control">
                 <div class="seg-btn active" id="seg-mon-spray" onclick="switchMonitorTab('spray')">الرش</div>
-                <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">عيوب التبريد</div>
-<div class="seg-btn" id="seg-mon-cooling-analysis" onclick="switchMonitorTab('cooling-analysis')">تحليل عيوب التبريد</div>
-                <div class="seg-btn" id="seg-mon-ole" onclick="switchMonitorTab('ole')">أداء العمالة OLE</div>
+                <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">التبريد</div>
+                <div class="seg-btn" id="seg-mon-ole" onclick="switchMonitorTab('ole')">أداء العمالة</div>
             </div>
-
+            
             <div id="mon-tab-spray">
-                <div class="glass-card" style="border-right: 4px solid var(--accent-red);">
-                    <div class="kpi-label">متراكم تحت الإصلاح (بالمصنع)</div>
-                    <div class="kpi-val red" id="kpi-foam-total-backlog">0</div>
-                </div>
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>التاريخ</label><input type="date" id="foamDateSelector" onchange="loadFoamingData()"></div>
-                    <div class="form-group"><label>مؤشر الشهر</label><input type="month" id="foamMonthSelector" onchange="loadMonthlyFoamingData()"></div>
                     <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openFoamingModal()"><i class="fa-solid fa-plus"></i> تذكرة حقن جديدة</button>
-                </div>
-                <div class="kpi-grid">
-                    <div class="kpi-box"><span class="kpi-label">مسجل اليوم</span><span class="kpi-val red" id="kpi-foam-day-total">0</span></div>
-                    <div class="kpi-box"><span class="kpi-label">تم التسليم</span><span class="kpi-val green" id="kpi-foam-day-done">0</span></div>
                 </div>
                 <div id="foamingCardsContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
             </div>
@@ -551,62 +181,11 @@
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>التاريخ</label><input type="date" id="coolingDateSelector" onchange="loadCoolingData()"></div>
                     <div class="form-group"><label>الوردية</label><select id="coolingShiftSelector" onchange="loadCoolingData()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                  <input type="file" id="coolingHistoricalUpload" accept=".csv" style="display: none;" onchange="handleCoolingHistoricalUpload(event)">
-                    <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('coolingHistoricalUpload').click()">
-                        <i class="fa-solid fa-file-import"></i> استيراد داتا التبريد التاريخية (CSV)
-                    </button>
-  <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openCoolingModal()"><i class="fa-solid fa-plus"></i> عيب تبريد جديد</button>
+                    <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openCoolingModal()"><i class="fa-solid fa-plus"></i> عيب تبريد جديد</button>
                 </div>
-                <div class="kpi-box" style="margin-bottom:15px;"><span class="kpi-label">إجمالي عيوب الوردية</span><span class="kpi-val red" id="kpi-cooling-shift-total" style="text-align:center;">0</span></div>
-                <div class="glass-card" style="padding:10px;">
-                    <div class="table-wrap" style="border:none;">
-                        <table id="coolingTable">
-                            <thead><tr><th>القسم والموديل</th><th>العيب</th><th>العدد</th><th>حذف</th></tr></thead>
-                            <tbody id="coolingTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="glass-card" style="padding:10px;"><div class="table-wrap" style="border:none;"><table id="coolingTable"><thead><tr><th>القسم والموديل</th><th>العيب</th><th>العدد</th><th>حذف</th></tr></thead><tbody id="coolingTableBody"></tbody></table></div></div>
             </div>
-<div id="mon-tab-cooling-analysis" class="hidden">
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group">
-                        <label>فلتر بالشهر</label>
-                        <input type="month" id="coolingAnaMonth" onchange="loadCoolingAnalysis('month')">
-                    </div>
-                    <div class="form-group">
-                        <label>فلتر بيوم محدد</label>
-                        <input type="date" id="coolingAnaDate" onchange="loadCoolingAnalysis('date')">
-                    </div>
-                    <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('coolingAnaMonth').value=''; document.getElementById('coolingAnaDate').value=''; loadCoolingAnalysis('all');">
-                        <i class="fa-solid fa-filter-circle-xmark"></i> عرض كل البيانات (بدون فلتر)
-                    </button>
-                </div>
 
-                <div class="ai-insight" style="background: rgba(0, 229, 255, 0.05); border-color: var(--accent-cyan);">
-                    <span><i class="fa-solid fa-microchip"></i> التقرير التحليلي الهندسي - محطة التبريد</span>
-                    <strong id="cooling-analysis-summary">جاري تحليل أنماط التسريب...</strong>
-                </div>
-
-                <div class="kpi-grid">
-                    <div class="kpi-box"><span class="kpi-label">إجمالي العيوب المرصودة</span><span class="kpi-val red" id="ana-cool-total">0</span></div>
-                    <div class="kpi-box"><span class="kpi-label">أكثر موديل معيب</span><span class="kpi-val cyan" id="ana-cool-model">--</span></div>
-                </div>
-
-                <div class="glass-card">
-                    <div class="section-header"><i class="fa-solid fa-chart-line"></i> تحليل باريتو لنقاط التسريب (Pareto)</div>
-                    <div class="chart-box" style="height: 350px;"><canvas id="coolParetoChart"></canvas></div>
-                </div>
-
-                <div class="glass-card">
-                    <div class="section-header"><i class="fa-solid fa-users-gear"></i> كفاءة الفنيين (Top 10 Defects by Stamp)</div>
-                    <div class="chart-box" style="height: 350px;"><canvas id="coolResponsibleChart"></canvas></div>
-                </div>
-
-                <div class="glass-card">
-                    <div class="section-header"><i class="fa-solid fa-boxes-stacked"></i> توزيع العيوب حسب الموديل</div>
-                    <div class="chart-box" style="height: 300px;"><canvas id="coolModelChart"></canvas></div>
-                </div>
-            </div>
             <div id="mon-tab-ole" class="hidden">
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>التاريخ</label><input type="date" id="oleDateSelector" onchange="loadOleData()"></div>
@@ -620,11 +199,10 @@
                 </div>
                 <div class="glass-card form-grid two-cols responsive">
                     <div class="form-group"><label>العمالة المخططة</label><input type="number" id="olePlannedLabor" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>وقت الوردية المتاح (بالدقائق)</label><input type="number" id="oleShiftTime" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>عمالة الإنتاج المتواجدة</label><input type="number" id="oleActualProdLabor" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>عمالة الجودة المتواجدة</label><input type="number" id="oleActualQualLabor" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>زمن التوقفات (بالدقائق)</label><input type="number" id="oleDowntime" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>سبب التوقف الرئيسي</label><input type="text" id="oleDowntimeReason"></div>
+                    <div class="form-group"><label>عمالة الإنتاج</label><input type="number" id="oleActualProdLabor" pattern="\d*" oninput="calculateOle()"></div>
+                    <div class="form-group"><label>وقت الوردية المتاح (دقيقة)</label><input type="number" id="oleShiftTime" pattern="\d*" oninput="calculateOle()"></div>
+                    <div class="form-group"><label>زمن التوقفات (دقيقة)</label><input type="number" id="oleDowntime" pattern="\d*" oninput="calculateOle()"></div>
+                    <div class="form-group full-width"><label>سبب التوقف الرئيسي</label><input type="text" id="oleDowntimeReason"></div>
                     <div class="form-group"><label>الإنتاج الكلي</label><input type="number" id="oleTotalProd" pattern="\d*" oninput="calculateOle()"></div>
                     <div class="form-group"><label>العيوب الكلية</label><input type="number" id="oleDefects" pattern="\d*" oninput="calculateOle()"></div>
                     <div class="form-group" style="grid-column: 1 / -1;"><label>زمن الدورة (Cycle Time) - دقيقة</label><input type="number" id="oleCycleTime" step="0.01" inputmode="decimal" oninput="calculateOle()"></div>
@@ -632,1803 +210,126 @@
                 </div>
             </div>
         </div>
-
-        <div id="view-labor" class="view-layer hidden">
-            <div class="glass-card">
-                <div class="form-group full-width">
-                    <input type="text" id="laborSearchInput" placeholder="بحث برقم SAP أو الاسم..." onkeyup="searchWorkforce()">
-                </div>
-                <div class="form-grid two-cols responsive" style="margin-top: 15px;">
-                    <input type="file" id="laborExcelUpload" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display: none;" onchange="handleLaborExcelUpload(event)">
-                    <button class="btn btn-secondary" onclick="document.getElementById('laborExcelUpload').click()"><i class="fa-solid fa-file-excel"></i> استيراد ملف Excel</button>
-                    <button class="btn btn-primary" onclick="openLaborModal()"><i class="fa-solid fa-user-plus"></i> إضافة موظف</button>
-                </div>
-            </div>
-            
-            <div class="kpi-grid">
-                <div class="kpi-box"><span class="kpi-label">إجمالي القوة</span><span class="kpi-val cyan" id="kpi-labor-total">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">عمالة مباشرة</span><span class="kpi-val green" id="kpi-labor-direct">0</span></div>
-            </div>
-            
-            <div class="glass-card" style="padding: 10px;">
-                <div class="table-wrap" style="border:none;">
-                    <table id="laborTable">
-                        <thead><tr><th>SAP</th><th>الاسم</th><th>النوع</th><th>تعديل</th></tr></thead>
-                        <tbody id="laborTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchNav('home')">
-            <i class="fa-solid fa-house"></i><span>الرئيسية</span>
-        </div>
-        <div class="nav-item" onclick="switchNav('prod'); appState.loadProduction();">
-            <i class="fa-solid fa-industry"></i><span>الإنتاج</span>
-        </div>
-        <div class="nav-item" onclick="switchNav('defect'); appState.loadDefects();">
-            <i class="fa-solid fa-shield-halved"></i><span>الجودة</span>
-        </div>
-        <div class="nav-item" onclick="switchNav('monitor'); initFoamingTab();">
-            <i class="fa-solid fa-network-wired"></i><span>متابعة العيوب</span>
-        </div>
-        <div class="nav-item" onclick="switchNav('bi'); loadAnalyticsData();">
-            <i class="fa-solid fa-chart-line"></i><span>تحليل</span>
-        </div>
+        <div class="nav-item active" onclick="switchNav('home')"><i class="fa-solid fa-house"></i><span>الرئيسية</span></div>
+        <div class="nav-item" onclick="switchNav('prod')"><i class="fa-solid fa-industry"></i><span>الإنتاج</span></div>
+        <div class="nav-item" onclick="switchNav('defect')"><i class="fa-solid fa-shield-halved"></i><span>الجودة</span></div>
+        <div class="nav-item" onclick="switchNav('monitor')"><i class="fa-solid fa-network-wired"></i><span>المراقبة</span></div>
+        <div class="nav-item" onclick="switchNav('bi'); loadAnalyticsData();"><i class="fa-solid fa-chart-line"></i><span>التحليل</span></div>
     </nav>
 
-    <div id="toast">تم التنفيذ بنجاح</div>
+    <div id="toast"></div>
 
     <div id="defectModal" class="modal-backdrop">
         <div class="modal-sheet">
-            <h2 class="section-header" style="color:var(--accent-red);"><i class="fa-solid fa-circle-exclamation"></i> إدراج عيب بالوردية</h2>
+            <h2 class="section-header" style="color:var(--accent-red);"><i class="fa-solid fa-circle-exclamation"></i> إدراج عيب</h2>
             <input type="hidden" id="modalIntervalIndex">
             <div class="form-grid">
-                <div class="form-group"><label>التصنيف</label><select id="modalDefectCategory"></select></div>
+                <div class="form-group"><label>المجموعة</label><select id="modalDefectGroup" onchange="updateDefectSubList()"></select></div>
+                <div class="form-group"><label>العيب</label><select id="modalDefectCategory"></select></div>
                 <div class="form-group"><label>العدد</label><input type="number" id="modalDefectQty" value="1" min="1" pattern="\d*"></div>
-                <div class="form-group"><label>قاعدة الخصم</label><select id="modalDefectDiscoverer"><option value="quality">يخصم من Yield</option><option value="production">لا يخصم من Yield</option></select></div>
+                <div class="form-group"><label>الخصم</label><select id="modalDefectDiscoverer"><option value="quality">يخصم من Yield (أحمر)</option><option value="production">لا يخصم (أزرق)</option></select></div>
             </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-secondary" onclick="closeModal('defectModal')">إلغاء</button>
-                <button class="btn btn-danger" style="flex:2;" onclick="appState.saveDefect()">إضافة للقائمة</button>
-            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('defectModal')">إلغاء</button><button class="btn btn-danger" style="flex:2;" onclick="appState.saveDefect()">إضافة</button></div>
         </div>
     </div>
 
-    <div id="laborModal" class="modal-backdrop">
-        <div class="modal-sheet">
-            <h2 class="section-header" id="laborModalTitle"><i class="fa-solid fa-user-pen"></i> بيانات الموظف</h2>
-            <input type="hidden" id="laborEditIndex" value="-1">
-            <div class="form-grid two-cols responsive">
-                <div class="form-group"><label>رقم SAP</label><input type="number" id="laborSap" pattern="\d*"></div>
-                <div class="form-group"><label>النوع</label><select id="laborWorkType"><option value="مباشر">مباشر (إنتاج)</option><option value="غير مباشر">غير مباشر</option></select></div>
-                <div class="form-group full-width"><label>الاسم</label><input type="text" id="laborName"></div>
-                <div class="form-group"><label>القسم</label><input type="text" id="laborDept"></div>
-                <div class="form-group"><label>الوظيفة</label><input type="text" id="laborJob"></div>
-                <div class="form-group full-width"><label>مقاس حذاء السيفتي</label><input type="number" id="laborShoeSize" pattern="\d*"></div>
+    <div id="ddDayModal" class="modal-backdrop">
+        <div class="modal-sheet" style="max-width: 800px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 class="section-header" style="color:var(--accent-cyan); margin:0;"><i class="fa-solid fa-calendar-day"></i> تشريح يوم: <span id="dd-day-title"></span></h2>
+                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddDayModal')">إغلاق</button>
             </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-secondary" onclick="closeModal('laborModal')">تجاهل</button>
-                <button class="btn btn-primary" style="flex:2;" onclick="saveWorkforceRecord()">حفظ السجل</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="foamingModal" class="modal-backdrop">
-        <div class="modal-sheet">
-            <h2 class="section-header"><i class="fa-solid fa-spray-can"></i> تذكرة حقن/رش</h2>
-            <div class="form-grid">
-                <div class="form-group"><label>وصف المشكلة</label><input type="text" id="foamDefectName" placeholder="وصف مختصر..."></div>
-                <div class="form-group"><label>ملاحظات إضافية (اختياري)</label><textarea id="foamDefectDesc" rows="2"></textarea></div>
-                <div class="form-group"><label>إرفاق صورة</label><input type="file" id="foamDefectImage" accept="image/*" style="padding:10px;"></div>
-            </div>
-            <div id="uploadProgress" style="display:none; color:var(--accent-cyan); text-align:center; margin-top:10px;"><i class="fa-solid fa-spinner fa-spin"></i> جاري الرفع...</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-secondary" onclick="closeModal('foamingModal')">إلغاء</button>
-                <button class="btn btn-primary" style="flex:2;" onclick="saveFoamingDefect()">إصدار التذكرة</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="coolingModal" class="modal-backdrop">
-        <div class="modal-sheet" style="padding-bottom: 30px;">
-            <h2 class="section-header"><i class="fa-solid fa-snowflake"></i> إدراج عيب تبريد</h2>
-            <div class="form-grid two-cols responsive">
-                <div class="form-group" style="grid-column: 1 / -1;"><label>القسم</label><select id="coolDept" onchange="updateCoolingCascades()"><option value="تجميع ابتدائي">تجميع ابتدائي</option><option value="تجميع نهائي">تجميع نهائي</option></select></div>
-                <div class="form-group"><label>المشرف</label><select id="coolSupervisor"><option value="شريف">م. شريف</option><option value="رمضان">م. رمضان</option><option value="آخر">آخر</option></select></div>
-                <div class="form-group"><label>الموديل</label><select id="coolModel"><option value="HF">HF</option><option value="31">31 قدم</option><option value="33">33 قدم</option><option value="37">37 قدم</option><option value="40">40 قدم</option><option value="45">45 قدم</option><option value="MBR">MBR</option></select></div>
-                <div class="form-group" style="grid-column: 1 / -1;"><label>نوع العيب</label><select id="coolDefectType" onchange="updateCoolingCascades()"></select></div>
-                <div class="form-group" style="grid-column: 1 / -1;"><label>النقطة/السبب</label><select id="coolDefectPoint"></select></div>
-                <div class="form-group"><label>كود الفني</label><input type="text" id="coolStamp" oninput="autoFillStampName()" pattern="\d*"></div>
-                <div class="form-group"><label>اسم الفني</label><input type="text" id="coolResponsibleName" disabled style="opacity:0.5;"></div>
-                <div class="form-group" style="grid-column: 1 / -1;"><label>العدد</label><input type="number" id="coolQty" value="1" pattern="\d*"></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-secondary" onclick="closeModal('coolingModal')">إلغاء</button>
-                <button class="btn btn-primary" style="flex:2;" onclick="saveCoolingDefect()">اعتماد السجل</button>
-            </div>
-        </div>
-    </div>
-<div id="coolingDeepDiveModal" class="modal-backdrop">
-        <div class="modal-sheet" style="padding-bottom: 30px;">
-            <h2 class="section-header" style="color:var(--accent-cyan);"><i class="fa-solid fa-microscope"></i> تشريح تبريد: <span id="cool-dd-name" style="color:var(--text-primary);"></span></h2>
             <div class="kpi-grid">
-                <div class="kpi-box"><span class="kpi-label">إجمالي التكرار</span><span class="kpi-val red" id="cool-dd-total">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">أكثر موديل تضرراً</span><span class="kpi-val cyan" id="cool-dd-model">--</span></div>
-                <div class="kpi-box"><span class="kpi-label">أكثر فني ارتباطاً</span><span class="kpi-val orange" id="cool-dd-tech">--</span></div>
-                <div class="kpi-box"><span class="kpi-label">القسم المسؤول</span><span class="kpi-val" id="cool-dd-dept" style="font-size: 1rem;">--</span></div>
+                <div class="kpi-box"><span class="kpi-label">إنتاج اليوم</span><span class="kpi-val cyan" id="dd-day-prod">0</span></div>
+                <div class="kpi-box"><span class="kpi-label">Yield اليوم</span><span class="kpi-val green" id="dd-day-yield">0%</span></div>
             </div>
-            <div class="form-grid two-cols responsive">
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-pie"></i> الموديلات</div>
-                    <div class="chart-box" style="height: 200px;"><canvas id="cool-dd-model-chart"></canvas></div>
-                </div>
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-users-viewfinder"></i> الفنيين</div>
-                    <div class="chart-box" style="height: 200px;"><canvas id="cool-dd-tech-chart"></canvas></div>
-                </div>
+            <div class="glass-card">
+                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-column"></i> الأداء حسب الوردية (اضغط للتعمق)</div>
+                <div class="chart-box" style="height: 250px; cursor:pointer;" onclick="MES.Analytics.triggerShiftDrillDown(event)"><canvas id="dd-day-chart"></canvas></div>
             </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-secondary" style="width: 100%;" onclick="closeModal('coolingDeepDiveModal')">إغلاق</button>
+        </div>
+    </div>
+
+    <div id="ddShiftModal" class="modal-backdrop">
+        <div class="modal-sheet" style="max-width: 800px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 class="section-header" style="color:var(--accent-orange); margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> تشريح وردية: <span id="dd-shift-title"></span></h2>
+                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddShiftModal')">عودة لليوم</button>
+            </div>
+            <div class="glass-card">
+                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-timeline"></i> مسار الإنتاج (ساعة بساعة)</div>
+                <div class="chart-box" style="height: 300px;"><canvas id="dd-shift-hourly-chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ddOleModal" class="modal-backdrop">
+        <div class="modal-sheet" style="max-width: 800px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 class="section-header" style="color:var(--accent-orange); margin:0;"><i class="fa-solid fa-stopwatch"></i> تشريح أسباب التوقف والأداء</h2>
+                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddOleModal')">إغلاق</button>
+            </div>
+            <div class="glass-card">
+                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-bar"></i> باريتو توقفات المعدات (دقائق)</div>
+                <div class="chart-box" style="height: 250px;"><canvas id="dd-dt-chart"></canvas></div>
             </div>
         </div>
     </div>
 
     <div id="masterDeepDiveModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 700px; padding-bottom: 40px;">
+        <div class="modal-sheet" style="max-width: 800px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="section-header" style="color:var(--accent-cyan); margin:0;"><i class="fa-solid fa-microscope"></i> تشريح عام: <span id="master-dd-name"></span></h2>
+                <h2 class="section-header" style="color:var(--accent-red); margin:0;"><i class="fa-solid fa-microscope"></i> تشريح جذري: <span id="master-dd-name"></span></h2>
                 <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('masterDeepDiveModal')">إغلاق</button>
             </div>
-            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                 <div class="kpi-box"><span class="kpi-label">تكرار كلي</span><span class="kpi-val red" id="master-dd-total">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">تأثير الـ Yield</span><span class="kpi-val orange" id="master-dd-impact">0%</span></div>
-                <div class="kpi-box"><span class="kpi-label">الوردية الأكثر تكراراً</span><span class="kpi-val cyan" id="master-dd-shift">--</span></div>
+                <div class="kpi-box"><span class="kpi-label">تأثير הـ Yield</span><span class="kpi-val orange" id="master-dd-impact">0%</span></div>
+                <div class="kpi-box"><span class="kpi-label">الوردية الأسوأ</span><span class="kpi-val cyan" id="master-dd-shift">--</span></div>
             </div>
             <div class="glass-card">
-                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-line"></i> منحنى التكرار الزمني (Trend)</div>
+                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-line"></i> منحنى التكرار الزمني</div>
                 <div class="chart-box" style="height: 200px;"><canvas id="master-dd-trend-chart"></canvas></div>
             </div>
             <div class="form-grid two-cols responsive">
                 <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-clock"></i> توزيع الورديات</div>
-                    <div class="chart-box" style="height: 180px;"><canvas id="master-dd-shift-chart"></canvas></div>
+                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-clock"></i> التوزيع بالوردية</div>
+                    <div class="chart-box" style="height: 200px;"><canvas id="master-dd-shift-chart"></canvas></div>
                 </div>
                 <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-screwdriver-wrench"></i> الموديلات المصابة</div>
-                    <div class="chart-box" style="height: 180px;"><canvas id="master-dd-model-chart"></canvas></div>
+                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-boxes-stacked"></i> الموديلات المصابة</div>
+                    <div class="chart-box" style="height: 200px;"><canvas id="master-dd-model-chart"></canvas></div>
                 </div>
             </div>
         </div>
     </div>
-    <div id="imageViewModal" class="modal-backdrop" onclick="closeModal('imageViewModal')">
-        <div style="width: 100%; max-width: 600px; padding: 15px; display: flex; flex-direction: column; align-items: center;">
-            <div style="background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; color: #fff; font-weight: bold; margin-bottom: 10px; font-size:0.8rem;">اضغط للإغلاق</div>
-            <img id="viewerImage" src="" style="width:100%; max-height:75vh; object-fit:contain; border-radius:16px; border: 1px solid var(--border-subtle);">
+
+    <div id="foamingModal" class="modal-backdrop"><div class="modal-sheet"><h2 class="section-header"><i class="fa-solid fa-spray-can"></i> تذكرة حقن/رش</h2><div class="form-grid"><div class="form-group"><label>وصف المشكلة</label><input type="text" id="foamDefectName"></div><div class="form-group"><label>ملاحظات</label><textarea id="foamDefectDesc" rows="2"></textarea></div><div class="form-group"><label>إرفاق صورة</label><input type="file" id="foamDefectImage" accept="image/*"></div></div><div id="uploadProgress" style="display:none; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> جاري الرفع...</div><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('foamingModal')">إلغاء</button><button class="btn btn-primary" style="flex:2;" onclick="saveFoamingDefect()">إصدار التذكرة</button></div></div></div>
+    
+    <div id="coolingModal" class="modal-backdrop"><div class="modal-sheet"><h2 class="section-header"><i class="fa-solid fa-snowflake"></i> عيب تبريد</h2><div class="form-grid two-cols responsive"><div class="form-group" style="grid-column: 1 / -1;"><label>القسم</label><select id="coolDept" onchange="updateCoolingCascades()"><option value="تجميع ابتدائي">تجميع ابتدائي</option><option value="تجميع نهائي">تجميع نهائي</option></select></div><div class="form-group"><label>المشرف</label><select id="coolSupervisor"><option value="شريف">م. شريف</option><option value="رمضان">م. رمضان</option></select></div><div class="form-group"><label>الموديل</label><select id="coolModel"><option value="HF">HF</option><option value="31">31 قدم</option></select></div><div class="form-group" style="grid-column: 1 / -1;"><label>نوع العيب</label><select id="coolDefectType" onchange="updateCoolingCascades()"></select></div><div class="form-group" style="grid-column: 1 / -1;"><label>النقطة/السبب</label><select id="coolDefectPoint"></select></div><div class="form-group"><label>كود الفني</label><input type="text" id="coolStamp" oninput="autoFillStampName()"></div><div class="form-group"><label>اسم الفني</label><input type="text" id="coolResponsibleName" disabled></div><div class="form-group" style="grid-column: 1 / -1;"><label>العدد</label><input type="number" id="coolQty" value="1"></div></div><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('coolingModal')">إلغاء</button><button class="btn btn-primary" style="flex:2;" onclick="saveCoolingDefect()">اعتماد السجل</button></div></div></div>
+
+    <script src="js/app.js"></script>
+
+<div id="waReportModal" class="modal-backdrop">
+        <div class="modal-sheet" style="max-width: 600px;">
+            <h2 class="section-header" style="color: #25D366; margin-bottom: 20px;"><i class="fa-brands fa-whatsapp"></i> مركز التقارير الذكية</h2>
+            <div class="form-grid">
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('production')"><i class="fa-solid fa-industry" style="color:var(--accent-cyan); width:25px;"></i> رسالة الإنتاج اللحظية</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('daily')"><i class="fa-solid fa-calendar-day" style="color:var(--accent-green); width:25px;"></i> المؤشرات اليومية</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('monthly')"><i class="fa-solid fa-calendar-days" style="color:var(--accent-orange); width:25px;"></i> المؤشرات الشهرية التراكمية</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('prev_month')"><i class="fa-solid fa-clock-rotate-left" style="color:var(--text-secondary); width:25px;"></i> مؤشرات الشهر السابق</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('foaming')"><i class="fa-solid fa-spray-can" style="color:var(--accent-cyan); width:25px;"></i> تحليل بيانات الرش (الفوم)</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('cooling')"><i class="fa-solid fa-snowflake" style="color:#0088cc; width:25px;"></i> تحليل بيانات التبريد</button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('quality')"><i class="fa-solid fa-shield-halved" style="color:var(--accent-red); width:25px;"></i> تحليل عيوب الجودة</button>
+            </div>
+            <div style="margin-top: 25px;">
+                <button class="btn btn-secondary" style="width:100%; border-color:var(--accent-red); color:var(--accent-red);" onclick="closeModal('waReportModal')">إغلاق</button>
+            </div>
         </div>
     </div>
 
-<script>
-    // --- 1. الدوال المساعدة (يجب أن تكون في الأعلى لمنع أخطاء الـ Reference) ---
-    function safeSetVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
-    function safeSetText(id, txt) { const el = document.getElementById(id); if (el) el.innerText = txt; }
-    function showToast(msg) { 
-        const toast = document.getElementById('toast'); 
-        if(toast) { toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); } 
-    }
-    function openModal(id) { document.getElementById(id).classList.add('show'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-    
-    function timeToMins(timeStr) { let [h, m] = timeStr.split(':').map(Number); return h * 60 + m; }
-    function formatTimeAMPM(mins) { 
-        mins = mins % (24 * 60); 
-        let h = Math.floor(mins / 60); let m = (mins % 60).toString().padStart(2, '0'); 
-        let ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12; h = h ? h : 12; 
-        return `${h.toString().padStart(2, '0')}:${m} <span style="font-size:0.7rem; color:var(--text-secondary);">${ampm}</span>`; 
-    }
-
-    function saveLocalSettings() { 
-        localStorage.setItem('mes_time_config', JSON.stringify({ 
-            sStart: document.getElementById('sStart').value || '08:00', 
-            sEnd: document.getElementById('sEnd').value || '16:00', 
-            bStart: document.getElementById('bStart').value || '12:00', 
-            bEnd: document.getElementById('bEnd').value || '12:45' 
-        })); 
-        showToast("تم حفظ الإعدادات الزمنية"); 
-    }
-    
-   function loadLocalSettings() { 
-        const saved = localStorage.getItem('mes_time_config'); 
-        let c = saved ? JSON.parse(saved) : {};
-        safeSetVal('sStart', c.sStart || '08:00'); 
-        safeSetVal('sEnd', c.sEnd || '16:00'); 
-        safeSetVal('bStart', c.bStart || '12:00'); 
-        safeSetVal('bEnd', c.bEnd || '12:45'); 
-    }
-
- function toggleTheme() {
-        const htmlEl = document.documentElement;
-        const current = htmlEl.getAttribute('data-theme') || 'dark';
-        const newTheme = current === 'light' ? 'dark' : 'light';
-        
-        htmlEl.setAttribute('data-theme', newTheme);
-        localStorage.setItem('mes_theme', newTheme);
-        
-        // تحديث أيقونة الزر في الهيدر
-        const themeBtnIcon = document.querySelector('.app-header .fa-solid');
-        if(themeBtnIcon) {
-            themeBtnIcon.className = newTheme === 'light' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-        }
-        
-        if(!document.getElementById('view-bi').classList.contains('hidden')) loadAnalyticsData();
-        showToast(newTheme === 'light' ? "تم تفعيل الوضع النهاري" : "تم تفعيل الوضع الليلي");
-    }
-    
-    function initTheme() {
-        const savedTheme = localStorage.getItem('mes_theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    }
-
-    // --- 2. الإعدادات وقاعدة البيانات ---
-    let supabaseClient;
-    try {
-        const supabaseUrl = 'https://xaqqbxtxkzximwsnwezw.supabase.co';
-        const supabaseKey = 'sb_publishable_F-NNQh4BT3lpEgHIszFCvg_ZJvCmERP';
-        supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-    } catch(e) { console.error("Supabase Init Fail", e); }
-
-    const State = { intervals: [], currentDocId: "", date: "", shift: "1", target: 0 };
-    let defectCategories = []; let foamingRecords = []; let coolingRecords = []; let workforceData = [];
-    let chartYield, chartPareto, chartDefects, gaugeA, gaugeP, gaugeQ, chartCustomDynamic;
-    let cachedBiData = []; let dailyFoamingTotalProd = 0;
-    
-    const coolingMasterData = {
-        defectTypes: { "تجميع ابتدائي": ["تسريب", "سدد", "خفس"], "تجميع نهائي": ["تسريب", "سدد", "خفس", "عيوب منوعة"] },
-        points: ["نقطة (1)", "نقطة (2)", "نقطة (3)", "نقطة (4)", "نقطة (8)", "نقطة (9)", "نقطة (10)", "نقطة (21)", "نقطة (38)", "نقطة (40)", "نقطة (42)", "نقطة (43)", "نقطة (47)", "نقطة (51)", "نقطة (54)", "نقطة (66)", "نقطة (67)", "نقطة (88)"],
-        miscDefects: ["شحنة زائدة", "بدون شحنة", "عيب كباس", "إعادة إختبار", "عيب مجموعة كهرباء", "طرد زيت (سدد)", "عزل كهربي", "NG سخان", "NG مروحه", "تزويد لحام", "شحنه ضعيفه", "نقص شحنه"],
-        stamps: { "2": "ابراهيم زكى", "6": "محمد رشدى", "9": "احمد راضى", "11": "محمود رمضان", "13": "محمود شعبان", "14": "إبراهيم صلاح", "17": "محمد فايز", "18": "ياسر المحمدى", "23": "محمد عبد الله حواش", "26": "اسامه شبل" }
-    };
-
-    // --- 3. التنقل بين الشاشات ---
-    const viewTitles = { 'home':'الرئيسية', 'prod':'متابعة الإنتاج', 'defect':'مؤشرات الجودة', 'bi':'التحليلات', 'monitor':'متابعة العيوب', 'labor':'العمالة' };
-    
-    function switchNav(viewId) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        if(event && event.currentTarget) { event.currentTarget.classList.add('active'); }
-        else { document.querySelectorAll('.nav-item').forEach(el => { if(el.getAttribute('onclick') && el.getAttribute('onclick').includes(`switchNav('${viewId}')`)) el.classList.add('active'); }); }
-        document.querySelectorAll('.view-layer').forEach(el => el.classList.add('hidden'));
-        document.getElementById('view-' + viewId).classList.remove('hidden');
-        safeSetText('current-view-title', viewTitles[viewId] || 'Production App');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function switchProdSeg(seg) {
-        document.querySelectorAll('#view-prod .seg-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById('seg-prod-'+seg).classList.add('active');
-        ['live', 'archive', 'setup'].forEach(s => document.getElementById('prod-sec-'+s).classList.add('hidden'));
-        document.getElementById('prod-sec-'+seg).classList.remove('hidden');
-        if(seg === 'archive') loadProductionArchive(document.getElementById('archiveProdDate').value);
-    }
-
-    function switchDefSeg(seg) {
-        document.querySelectorAll('#view-defect .seg-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById('seg-def-'+seg).classList.add('active');
-        ['log', 'setup'].forEach(s => document.getElementById('def-sec-'+s).classList.add('hidden'));
-        document.getElementById('def-sec-'+seg).classList.remove('hidden');
-    }
-
-   function switchMonitorTab(tab) {
-        document.querySelectorAll('#view-monitor .seg-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById('seg-mon-'+tab).classList.add('active');
-        ['spray', 'cooling', 'ole', 'cooling-analysis'].forEach(t => {
-            const el = document.getElementById('mon-tab-'+t);
-            if(el) el.classList.add('hidden');
-        });
-        document.getElementById('mon-tab-'+tab).classList.remove('hidden');
-        
-        if(tab === 'spray') loadFoamingData();
-        if(tab === 'cooling') loadCoolingData();
-        if(tab === 'ole') loadOleData();
-        if(tab === 'cooling-analysis') loadCoolingAnalysis();
-    }
-    function switchBiChart(chartType) {
-        document.querySelectorAll('#view-bi .seg-btn').forEach(el => el.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-        document.querySelectorAll('.chart-container').forEach(el => el.classList.add('hidden'));
-        document.getElementById('chart-'+chartType+'-container').classList.remove('hidden');
-        if(chartType === 'dynamic') renderDynamicChart();
-    }
-
-    // --- 4. مدير حالة التطبيق الرئيسي (State Manager) ---
-    const appState = {
-     async init() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            State.date = todayStr; 
-            State.shift = "1";
-            
-            const options = { weekday: 'long', month: 'short', day: 'numeric' };
-            safeSetText('header-date', new Date().toLocaleDateString('ar-EG', options));
-
-            ['quickDate', 'foamDateSelector', 'coolingDateSelector', 'oleDateSelector', 'archiveProdDate'].forEach(id => safeSetVal(id, todayStr));
-            const monthStr = todayStr.substring(0, 7);
-            ['monthSelector', 'foamMonthSelector', 'analyticsMonthSelector'].forEach(id => safeSetVal(id, monthStr));
-            
-            loadLocalSettings();
-            loadDefectCategories();
-            
-            const localState = JSON.parse(localStorage.getItem('mes_active_state') || '{}');
-            if (localState.date === todayStr) {
-                State.shift = localState.shift || "1"; 
-                State.target = localState.target || 0; 
-                State.intervals = localState.intervals || [];
-                safeSetVal('quickShift', State.shift); 
-                safeSetVal('quickTarget', State.target);
-            } else { 
-                State.target = 0; 
-                State.intervals = []; 
-                this.persist(); 
-            }
-
-            State.currentDocId = `${State.date}_Shift_${State.shift}`;
-            
-            // البناء الآلي للساعات محلياً إذا كانت غير موجودة حتى لو الهدف صفر
-            if (State.intervals.length === 0) {
-                this.updateTarget();
-            }
-
-            await this.syncFromCloud();
-            await refreshAllGlobalKPIs();
-
-            if(supabaseClient) {
-                supabaseClient.channel('custom-all-channel')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'production_shifts' }, payload => {
-                    if(payload.new && payload.new.shift_id === State.currentDocId) {
-                        State.intervals = payload.new.shift_data.intervals || [];
-                        State.target = payload.new.shift_data.config.totalTarget || 0;
-                        safeSetVal('quickTarget', State.target);
-                        this.persist();
-                        this.renderProduction();
-                        this.renderDefects();
-                    }
-                    refreshAllGlobalKPIs();
-                }).subscribe();
-            }
-        },
-
-        persist() { 
-            localStorage.setItem('mes_active_state', JSON.stringify({ 
-                date: State.date, shift: State.shift, target: State.target, intervals: State.intervals 
-            })); 
-        },
-
-        async syncFromCloud() {
-            if(!supabaseClient) return;
-            try {
-                const { data } = await supabaseClient.from('production_shifts')
-                    .select('shift_data')
-                    .eq('shift_id', State.currentDocId)
-                    .maybeSingle();
-                    
-                if (data && data.shift_data && data.shift_data.intervals && data.shift_data.intervals.length > 0) {
-                    State.intervals = data.shift_data.intervals; 
-                    State.target = data.shift_data.config.totalTarget || 0;
-                    safeSetVal('quickTarget', State.target); 
-                    this.persist();
-                }
-                
-                // إجبار النظام على رسم الساعات في الشاشة الخلفية (DOM) سواء كانت مرئية أم لا
-                this.renderProduction();
-                this.renderDefects();
-                
-            } catch (err) {
-                console.error("Cloud Sync Failed", err);
-            }
-        },
-        async syncToCloud() {
-            if(!supabaseClient || !State.currentDocId || State.intervals.length === 0) return;
-            const payload = { shift_id: State.currentDocId, shift_data: { intervals: State.intervals, config: { totalTarget: State.target } }, updated_at: new Date().toISOString() };
-            await supabaseClient.from('production_shifts').upsert(payload);
-        },
-
-        loadProduction() {
-            const d = document.getElementById('quickDate').value; const s = document.getElementById('quickShift').value;
-            if (d !== State.date || s !== State.shift) {
-                State.date = d; State.shift = s; State.currentDocId = `${d}_Shift_${s}`;
-                this.syncFromCloud().then(() => this.renderProduction());
-            } else { this.renderProduction(); }
-        },
-
-updateTarget() {
-            const newTarget = parseInt(document.getElementById('quickTarget').value) || 0; 
-            State.target = newTarget;
-
-            // تأمين جلب القيم مع وضع بدائل افتراضية لو المدخلات فارغة
-            const sStartVal = document.getElementById('sStart').value || '08:00';
-            const sEndVal = document.getElementById('sEnd').value || '16:00';
-            const bStartVal = document.getElementById('bStart').value || '12:00';
-            const bEndVal = document.getElementById('bEnd').value || '12:45';
-
-            const sStartM = timeToMins(sStartVal); 
-            let sEndM = timeToMins(sEndVal);
-            const bStartM = timeToMins(bStartVal); 
-            let bEndM = timeToMins(bEndVal);
-            
-            if (sEndM <= sStartM) sEndM += 24 * 60; 
-            if (bEndM <= bStartM) bEndM += 24 * 60;
-            const netMins = (sEndM - sStartM) - (bEndM - bStartM);
-            
-            if (netMins <= 0) return;
-            
-            if(State.intervals.length === 0) {
-                const unitsPerMin = newTarget > 0 ? (newTarget / netMins) : 0; 
-                let current = sStartM; let accumulatedTarget = 0;
-                while (current < sEndM) {
-                    if (current === bStartM) { 
-                        State.intervals.push({ isBreak: true, start: bStartM, end: bEndM, duration: bEndM - bStartM }); 
-                        current = bEndM; continue; 
-                    }
-                    let intervalEnd = current + 60; 
-                    if (current < bStartM && intervalEnd > bStartM) intervalEnd = bStartM; 
-                    if (intervalEnd > sEndM) intervalEnd = sEndM;
-                    let duration = intervalEnd - current; let roundedTarget = Math.round(unitsPerMin * duration);
-                    State.intervals.push({ isBreak: false, start: current, end: intervalEnd, duration: duration, target: roundedTarget, actual: "", defects: [] });
-                    accumulatedTarget += roundedTarget; current = intervalEnd;
-                }
-                let diff = newTarget - accumulatedTarget;
-                for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
-                    if (!State.intervals[i].isBreak) { 
-                        let step = diff > 0 ? 1 : -1; 
-                        if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } 
-                    } 
-                }
-            } else {
-                let activeMins = 0; State.intervals.forEach(inv => { if(!inv.isBreak) activeMins += inv.duration; });
-                let unitsPerMin = activeMins > 0 ? (newTarget / activeMins) : 0; let accumulatedTarget = 0;
-                State.intervals.forEach(inv => { if(!inv.isBreak) { let t = Math.round(unitsPerMin * inv.duration); inv.target = t; accumulatedTarget += t; } });
-                let diff = newTarget - accumulatedTarget;
-                for (let i = State.intervals.length - 1; i >= 0 && diff !== 0; i--) { 
-                    if (!State.intervals[i].isBreak) { 
-                        let step = diff > 0 ? 1 : -1; 
-                        if (State.intervals[i].target + step >= 0) { State.intervals[i].target += step; diff -= step; if (diff !== 0) i++; } 
-                    } 
-                }
-            }
-            this.persist(); this.syncToCloud(); this.renderProduction();
-        },
-        applyNewTimeSettings() {
-            if(confirm("تطبيق المواعيد سيعيد بناء المصفوفة الساعية بالكامل. متابعة؟")) {
-                saveLocalSettings(); const oldTarget = State.target; State.intervals = []; 
-                document.getElementById('quickTarget').value = oldTarget; this.updateTarget(); 
-                showToast("تم تحديث وبناء الهيكل الزمني"); switchProdSeg('live'); 
-            }
-        },
-
-async deleteCurrentShiftData() {
-            if (confirm(`تنبيه هندسي حرج: هل أنت متأكد من حذف كافة بيانات الإنتاج والعيوب للوردية [${State.currentDocId}] نهائياً من السيرفر؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-                
-                const overlay = document.createElement('div');
-                overlay.className = 'loader-overlay';
-                overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-red);">جاري مسح البيانات من السيرفر...</div>`;
-                document.body.appendChild(overlay);
-
-                try {
-                    // 1. مسح السجل من قاعدة البيانات
-                    const { error } = await supabaseClient
-                        .from('production_shifts')
-                        .delete()
-                        .eq('shift_id', State.currentDocId);
-
-                    if (error) throw error;
-
-                    // 2. تصفير الحالة محلياً وإعادة بناء المصفوفة فارغة
-                    State.intervals = [];
-                    State.target = 0;
-                    document.getElementById('quickTarget').value = 0;
-                    this.persist();
-                    this.updateTarget(); // ستقوم بإعادة بناء المصفوفة بناءً على الإعدادات الزمنية الحالية
-                    
-                    await refreshAllGlobalKPIs(); // تحديث الأرقام في الصفحة الرئيسية
-                    
-                    showToast("تم مسح بيانات الوردية وتصفير المصفوفة");
-                    switchProdSeg('live'); // العودة للوحة الرئيسية
-
-                } catch (err) {
-                    console.error("Delete Failed:", err);
-                    alert("فشل حذف البيانات، يرجى التحقق من الاتصال بالإنترنت.");
-                } finally {
-                    overlay.remove();
-                }
-            }
-        },
-
-     renderProduction() {
-            const container = document.getElementById('productionCardsContainer');
-            if (!container) return; // حماية ضد عدم اكتمال تحميل الـ HTML
-            
-            // إذا كانت الساعات لا تزال فارغة لسبب ما، قم ببنائها فوراً وتخطي أي تعقيدات
-            if(State.intervals.length === 0) { 
-                this.updateTarget();
-                return; 
-            }
-            
-            const fragment = document.createDocumentFragment();
-            let shiftTargetTotal = 0, shiftActualTotal = 0;
-
-            State.intervals.forEach((inv, index) => {
-                const rowDiv = document.createElement('div');
-                if (inv.isBreak) {
-                    rowDiv.className = 'prod-list-item';
-                    rowDiv.style.borderColor = 'rgba(255, 179, 0, 0.3)'; rowDiv.style.background = 'rgba(255, 179, 0, 0.05)'; rowDiv.style.textAlign = 'center';
-                    rowDiv.innerHTML = `<span style="color:var(--accent-orange); font-weight:800; font-size: 1rem;"><i class="fa-solid fa-mug-hot"></i> وقت راحة مجدول (${formatTimeAMPM(inv.start)} - ${formatTimeAMPM(inv.end)})</span>`;
-                } else {
-                    let actualVal = inv.actual !== "" ? Number(inv.actual) : 0;
-                    if (inv.actual !== "") { shiftTargetTotal += inv.target; shiftActualTotal += actualVal; }
-                    let variance = inv.actual !== "" ? (actualVal - inv.target) : 0; 
-                    let varColor = variance < 0 ? 'var(--accent-red)' : (variance > 0 ? 'var(--accent-green)' : 'var(--text-primary)');
-                    
-                    rowDiv.className = 'prod-list-item';
-                    rowDiv.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
-                            <span class="prod-time"><i class="fa-regular fa-clock" style="font-size:0.8rem; margin-left: 5px; color:var(--text-secondary);"></i> ${formatTimeAMPM(inv.start)} - ${formatTimeAMPM(inv.end)}</span>
-                            <div style="text-align:left;"><div class="p-stat">الهدف: <span style="font-size: 1.1rem;">${inv.target}</span></div></div>
-                        </div>
-                        <div class="prod-action">
-                            <input type="number" id="act-input-${index}" value="${inv.actual !== '' ? inv.actual : ''}" min="0" placeholder="0" pattern="\\d*">
-                            <button class="btn btn-primary" style="width: auto; padding: 10px 25px; font-size: 1.1rem; border-radius: 10px;" onclick="appState.saveActualRow(${index})"><i class="fa-solid fa-check"></i></button>
-                        </div>
-                    `;
-                }
-                fragment.appendChild(rowDiv);
-            });
-            
-            container.innerHTML = ''; container.appendChild(fragment);
-            
-            safeSetText('kpi-prod-shift-actual', shiftActualTotal);
-            let shiftVar = shiftActualTotal - shiftTargetTotal;
-            const board = document.getElementById('kpi-prod-shift-variance');
-            if(board) { board.innerText = (shiftVar > 0 ? '+' : '') + shiftVar; board.style.color = (shiftVar >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'); }
-
-            let fullShiftTarget = 0; State.intervals.forEach(inv => { if(!inv.isBreak) fullShiftTarget += inv.target; });
-            let progressPerc = fullShiftTarget > 0 ? Math.min((shiftActualTotal / fullShiftTarget) * 100, 100).toFixed(1) : 0;
-            document.getElementById('shift-progress-bar').style.width = progressPerc + '%'; 
-            document.getElementById('shift-progress-text').innerText = progressPerc + '%';
-        },
-
-       async saveActualRow(index) { 
-            const val = document.getElementById(`act-input-${index}`).value; 
-            State.intervals[index].actual = val === "" ? "" : parseInt(val); 
-            this.persist(); 
-            this.renderProduction(); // تحديث فوري للواجهة
-            await this.syncToCloud(); // انتظار المزامنة السحابية
-            refreshAllGlobalKPIs(); // إجبار الصفحة الرئيسية على قراءة الرقم الجديد فوراً
-            showToast("تم تحديث الإنتاج للساعة"); 
-        },
-
-        loadDefects() { this.syncFromCloud().then(() => this.renderDefects()); },
-
-        renderDefects() {
-            const tbody = document.getElementById('defectsTableBody');
-            if(State.intervals.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">قم بإعداد الإنتاج أولاً</td></tr>`; return; }
-            
-            const fragment = document.createDocumentFragment();
-            State.intervals.forEach((inv, index) => {
-                const tr = document.createElement('tr');
-                if (inv.isBreak) { tr.className = 'row-break'; tr.innerHTML = `<td colspan="4"><i class="fa-solid fa-mug-hot"></i> راحة</td>`; } 
-                else {
-                    if(!inv.defects) inv.defects = []; let defectHTML = '';
-                    inv.defects.forEach((d, dIdx) => { defectHTML += `<span class="defect-badge ${d.discoverer === 'quality' ? 'quality' : ''}"><span>${d.category} <strong style="font-family:'Orbitron';">(${d.qty})</strong></span><i class="fa-solid fa-circle-xmark" style="margin-right: 5px; opacity: 0.8;" onclick="appState.removeDefect(${index}, ${dIdx})"></i></span>`; });
-                    tr.innerHTML = `<td style="font-family:'Orbitron'; font-size:0.8rem; color: var(--text-secondary);">${formatTimeAMPM(inv.start)}<br>${formatTimeAMPM(inv.end)}</td><td class="eng-num" style="color:var(--text-primary); font-size: 1.1rem;">${inv.actual !== "" ? inv.actual : 0}</td><td style="white-space:normal; min-width: 120px;">${defectHTML}</td><td style="text-align:center;"><button class="btn btn-danger" style="padding: 8px 12px; width:auto; border-radius:8px; margin: auto;" onclick="appState.openDefectModal(${index})"><i class="fa-solid fa-plus"></i></button></td>`;
-                }
-                fragment.appendChild(tr);
-            });
-            tbody.innerHTML = ''; tbody.appendChild(fragment);
-            this.calcYields();
-        },
-
-        openDefectModal(index) { safeSetVal('modalIntervalIndex', index); safeSetVal('modalDefectQty', 1); const catSelect = document.getElementById('modalDefectCategory'); catSelect.innerHTML = ''; defectCategories.forEach(cat => { catSelect.innerHTML += `<option value="${cat}">${cat}</option>`; }); openModal('defectModal'); },
-
-        saveDefect() {
-            const index = document.getElementById('modalIntervalIndex').value; const cat = document.getElementById('modalDefectCategory').value;
-            const qty = parseInt(document.getElementById('modalDefectQty').value) || 1; const disc = document.getElementById('modalDefectDiscoverer').value;
-            if(!State.intervals[index].defects) State.intervals[index].defects = [];
-            State.intervals[index].defects.push({ category: cat, qty: qty, discoverer: disc });
-            this.persist(); this.syncToCloud(); closeModal('defectModal'); this.renderDefects(); showToast("تم تسجيل العيب");
-        },
-
-        removeDefect(intervalIndex, defectIndex) { State.intervals[intervalIndex].defects.splice(defectIndex, 1); this.persist(); this.syncToCloud(); this.renderDefects(); },
-
-    calcYields() {
-            let totalActual = 0, totalQualityDefects = 0, totalAllDefects = 0;
-            State.intervals.forEach(inv => {
-                if (!inv.isBreak) {
-                    let aVal = Number(inv.actual) || 0; totalActual += aVal;
-                    if(inv.defects) { inv.defects.forEach(d => { totalAllDefects += d.qty; if(d.discoverer === 'quality') totalQualityDefects += d.qty; }); }
-                }
-            });
-            let qYield = totalActual > 0 ? (Math.max(0, totalActual - totalQualityDefects) / totalActual * 100).toFixed(1) : 100;
-            let oYield = totalActual > 0 ? (Math.max(0, totalActual - totalAllDefects) / totalActual * 100).toFixed(1) : 100;
-            
-            safeSetText('kpi-quality-yield', qYield + '%'); 
-            safeSetText('kpi-overall-yield', oYield + '%');
-            
-            // حقن مباشر للصفحة الرئيسية
-            safeSetText('main-kpi-dyield', qYield + '%');
-        }
-};
-    // --- Boot Sequence ---
-    window.onload = async function() { 
-        initTheme();
-        try {
-            await appState.init(); 
-        } catch (error) { console.error("System Failure:", error); } 
-        finally {
-            setTimeout(() => {
-                const splash = document.getElementById('splash');
-                if(splash) {
-                    splash.style.opacity = '0';
-                    setTimeout(() => { splash.style.display = 'none'; document.getElementById('main-menu').classList.remove('hidden'); }, 500);
-                }
-            }, 2500); // 2.5s Delay for Splash to be readable
-        }
-    };
-
-    // --- BI & KPI Engine ---
- async function refreshAllGlobalKPIs() {
-        if(!supabaseClient) return;
-        const targetDateStr = State.date || new Date().toISOString().split('T')[0]; 
-        const monthStr = targetDateStr.substring(0, 7);
-        
-        try {
-            const { data } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${monthStr}%`);
-            let mProd = 0, mQualDefects = 0, dProd = 0, sProd = 0, sQualDefects = 0, dFoaming = 0;
-
-            if(data) {
-                // دمج بيانات الوردية اللحظية مع بيانات السيرفر
-                let activeShiftFound = false;
-                data.forEach(row => {
-                    if (row.shift_id === State.currentDocId) { row.shift_data.intervals = State.intervals; activeShiftFound = true; }
-                });
-                if (!activeShiftFound && State.intervals && State.intervals.length > 0) {
-                    data.push({ shift_id: State.currentDocId, shift_data: { intervals: State.intervals } });
-                }
-
-                data.forEach(row => {
-                    let isTargetDay = row.shift_id.startsWith(targetDateStr);
-                    let isTargetShift = row.shift_id === State.currentDocId;
-                    
-                    if (row.shift_id.includes('_Shift_') && row.shift_data && row.shift_data.intervals) {
-                        row.shift_data.intervals.forEach(inv => {
-                            if(!inv.isBreak) {
-                                let act = Number(inv.actual) || 0; 
-                                mProd += act; 
-                                if(isTargetDay) dProd += act;
-                                if(isTargetShift) sProd += act; // حساب الوردية النشطة فقط
-                                
-                                if(inv.defects) { 
-                                    inv.defects.forEach(d => { 
-                                        if(d.discoverer === 'quality') { 
-                                            mQualDefects += d.qty; 
-                                            if(isTargetShift) sQualDefects += d.qty; 
-                                        } 
-                                    }); 
-                                }
-                            }
-                        });
-                    } else if (row.shift_id === `${targetDateStr}_FOAMING` && row.shift_data.records) { dFoaming += row.shift_data.records.length; }
-                });
-            }
-            
-            let mYield = mProd > 0 ? (Math.max(0, mProd - mQualDefects)/mProd * 100).toFixed(1) : 100;
-            let sYield = sProd > 0 ? (Math.max(0, sProd - sQualDefects)/sProd * 100).toFixed(1) : 100; // Yield الوردية الحقيقي
-
-            safeSetText('main-kpi-myield', mYield + '%'); 
-            safeSetText('main-kpi-dyield', sYield + '%'); // تحديث الرئيسية
-            safeSetText('main-kpi-dprod', dProd); 
-            safeSetText('main-kpi-dfoam', dFoaming);
-            safeSetText('kpi-prod-daily-total', dProd);
-            
-            // تحديث مؤشر الشهر داخل صفحة الجودة أيضاً إذا كان مفتوحاً على نفس الشهر
-            const currentMonthSelector = document.getElementById('monthSelector');
-            if(currentMonthSelector && currentMonthSelector.value === monthStr) {
-                safeSetText('kpi-monthly-yield', mYield + '%');
-            }
-            
-            if(!document.getElementById('view-bi').classList.contains('hidden')) loadAnalyticsData();
-        } catch (e) { console.error("Global Metrics Refresh Failed", e); }
-    }
-
-   async function loadAnalyticsData() {
-        if(!supabaseClient) return;
-        
-        const dFrom = document.getElementById('analyticsDateFrom').value; 
-        const dTo = document.getElementById('analyticsDateTo').value; 
-        
-        try {
-            let query = supabaseClient.from('production_shifts').select('shift_id, shift_data');
-            
-            // تطبيق فلتر التاريخ (أكبر من / أصغر من)
-            if (dFrom) query = query.gte('shift_id', dFrom);
-            if (dTo) query = query.lte('shift_id', dTo + '_z'); // حرف z لضمان شمول آخر وردية في نفس اليوم
-            
-            const { data } = await query;
-            cachedBiData = data || []; 
-            
-            let totalUnits = 0, totalQualDefects = 0, totalDefects = 0, daysMap = {}, topDefectsMap = {}, downtimeMap = {}, oleSum = 0, oleCount = 0;
-            if(data) {
-                data.forEach(row => {
-                    let day = row.shift_id.substring(8, 10); if(!day || isNaN(day)) return;
-                    if(!daysMap[day]) daysMap[day] = { actual:0, qualDef:0, ole:0, dt:0, foamDef:0, coolDef:0 };
-
-                    if (row.shift_id.includes('_Shift_') && row.shift_data.intervals) {
-                        row.shift_data.intervals.forEach(inv => {
-                            if(!inv.isBreak) {
-                                let act = Number(inv.actual) || 0; daysMap[day].actual += act; totalUnits += act;
-                                if(inv.defects) { inv.defects.forEach(d => { totalDefects += d.qty; if(d.discoverer === 'quality') { daysMap[day].qualDef += d.qty; totalQualDefects += d.qty; } topDefectsMap[d.category] = (topDefectsMap[d.category] || 0) + d.qty; }); }
-                            }
-                        });
-                    } else if (row.shift_id.includes('_OLE_') && row.shift_data.data) {
-                        let d = row.shift_data.data; if(d.ole > 0) { oleSum += d.ole; oleCount++; daysMap[day].ole = d.ole * 100; }
-                        if(d.downtime > 0 && d.downtimeReason) { let reason = d.downtimeReason.trim(); downtimeMap[reason] = (downtimeMap[reason] || 0) + d.downtime; daysMap[day].dt += d.downtime; }
-                    } else if (row.shift_id.includes('_FOAMING') && row.shift_data.records) { daysMap[day].foamDef += row.shift_data.records.length; } 
-                    else if (row.shift_id.includes('_COOLING_') && row.shift_data.records) { row.shift_data.records.forEach(r => daysMap[day].coolDef += (r.qty || 1)); }
-                });
-            }
-
-            let avgYield = totalUnits > 0 ? (Math.max(0, totalUnits - totalQualDefects) / totalUnits * 100).toFixed(1) : 0;
-            let avgOle = oleCount > 0 ? ((oleSum / oleCount) * 100).toFixed(1) : 0;
-
-            safeSetText('bi-kpi-prod', totalUnits); safeSetText('bi-kpi-yield', avgYield + '%');
-            safeSetText('bi-kpi-defects', totalDefects); safeSetText('bi-kpi-ole', avgOle + '%');
-
-            let topSorted = Object.keys(topDefectsMap).sort((a,b) => topDefectsMap[b] - topDefectsMap[a]);
-            let dtSorted = Object.keys(downtimeMap).sort((a,b) => downtimeMap[b] - downtimeMap[a]);
-
-            if(topSorted.length > 0) { safeSetText('insight-top-defect', `${topSorted[0]} (${topDefectsMap[topSorted[0]]} حالة)`); } else { safeSetText('insight-top-defect', 'مستقر'); }
-            if(dtSorted.length > 0) { safeSetText('insight-bottleneck', `${dtSorted[0]} (${downtimeMap[dtSorted[0]]} دقيقة)`); } else { safeSetText('insight-bottleneck', 'مستقر'); }
-
-            renderCharts(daysMap, topSorted, topDefectsMap, avgOle); renderDynamicChart();
-        } catch (e) {}
-    }
-
-    function renderCharts(daysMap, topSorted, topDefectsMap, avgOle) {
-        let isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        Chart.defaults.color = isLight ? '#475569' : '#8e8e93'; Chart.defaults.font.family = 'Cairo';
-        let gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-
-        let labels = Object.keys(daysMap).sort((a,b)=>parseInt(a)-parseInt(b));
-        let yieldData = labels.map(l => { let d = daysMap[l]; return d.actual > 0 ? (Math.max(0, d.actual - d.qualDef)/d.actual * 100).toFixed(1) : 100; });
-
-        if(chartYield) chartYield.destroy();
-        chartYield = new Chart(document.getElementById('yieldChart'), {
-            type: 'line', data: { labels: labels, datasets: [ { label: 'Yield %', data: yieldData, borderColor: '#00e5ff', backgroundColor: 'rgba(0, 229, 255, 0.1)', fill: true, tension: 0.4, borderWidth: 3 } ] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 80, max: 100, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
-        });
-
-        if(chartPareto) chartPareto.destroy();
-        let paretoLabels = topSorted.slice(0,5); let paretoData = paretoLabels.map(k => topDefectsMap[k]);
-        let cumulative = []; let cumSum = 0; let totalParetoDef = paretoData.reduce((a,b)=>a+b, 0);
-        paretoData.forEach(v => { cumSum += v; cumulative.push(totalParetoDef > 0 ? (cumSum/totalParetoDef*100) : 0); });
-
-       chartPareto = new Chart(document.getElementById('paretoChart'), {
-            type: 'bar',
-            data: { 
-                labels: paretoLabels, 
-                datasets: [ 
-                    { label: 'تراكمي %', data: cumulative, type: 'line', borderColor: '#ffb300', yAxisID: 'y1', tension: 0.3, borderWidth: 2 },
-                    { label: 'العيوب', data: paretoData, backgroundColor: '#ff1744', borderRadius: 4, yAxisID: 'y' } 
-                ] 
-            },
-            options: { 
-                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                // التعديل المعلمي: تفعيل الضغط للتحليل الجذري
-                onClick: (event, elements) => {
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const defectName = paretoLabels[index];
-                        openMasterDefectDeepDive(defectName); 
-                    }
-                },
-                onHover: (event, elements) => {
-                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-                },
-                scales: { y: { grid: { color: gridColor } }, y1: { type: 'linear', position: 'left', min: 0, max: 100, grid: { drawOnChartArea: false } }, x: { grid: { display: false } } } 
-            }
-        });
-
-        renderGauge('gaugeAvailability', 'A', 85, '#00e5ff'); renderGauge('gaugePerformance', 'P', 92, '#ffb300'); renderGauge('gaugeQuality', 'Q', parseFloat(avgOle) > 0 ? 98 : 0, '#00e676');
-    }
-
-    function renderGauge(id, label, val, color) {
-        let isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        let emptyColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; let textColor = isLight ? '#0f172a' : '#ffffff';
-        let chartStatus = Chart.getChart(id); if(chartStatus) chartStatus.destroy();
-        new Chart(document.getElementById(id), {
-            type: 'doughnut', data: { datasets: [{ data: [val, 100-val], backgroundColor: [color, emptyColor], borderWidth: 0, circumference: 250, rotation: -125 }] },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { tooltip: { enabled: false }, title: { display: true, text: label, position: 'bottom', color: textColor, font: { family: 'Cairo' } } } },
-            plugins: [{ id: 'textCenter', beforeDraw: function(chart) { let width = chart.width, height = chart.height, ctx = chart.ctx; ctx.restore(); let fontSize = (height / 114).toFixed(2); ctx.font = "900 " + fontSize + "em Orbitron"; ctx.textBaseline = "middle"; ctx.fillStyle = color; let text = val + "%", textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 1.7; ctx.fillText(text, textX, textY); ctx.save(); } }]
-        });
-    }
-
-    function renderDynamicChart() {
-        if(!cachedBiData || cachedBiData.length === 0) return;
-        const xVar = document.getElementById('dynX').value; const yVar = document.getElementById('dynY').value; let dataMap = {};
-
-        cachedBiData.forEach(row => {
-            let day = row.shift_id.substring(8, 10); if(xVar === 'date' && !dataMap[day]) dataMap[day] = 0;
-            if(yVar === 'actual' && row.shift_id.includes('_Shift_')) { row.shift_data.intervals.forEach(i => { if(!i.isBreak && xVar === 'date') dataMap[day] += (Number(i.actual)||0); }); }
-            if(yVar === 'quality' && row.shift_id.includes('_Shift_')) { row.shift_data.intervals.forEach(i => { if(!i.isBreak && i.defects) i.defects.forEach(d => { if(d.discoverer === 'quality' && xVar === 'date') dataMap[day] += d.qty; }); }); }
-            if(yVar === 'foam' && row.shift_id.includes('_FOAMING')) { if(xVar === 'date' && row.shift_data.records) dataMap[day] += row.shift_data.records.length; }
-            if(yVar === 'cool' && row.shift_id.includes('_COOLING_')) { if(row.shift_data.records) { row.shift_data.records.forEach(r => { let q = r.qty || 1; if(xVar === 'date') dataMap[day] += q; if(xVar === 'model') { dataMap[r.model] = (dataMap[r.model] || 0) + q; } }); } }
-            if(xVar === 'reason' && row.shift_id.includes('_OLE_')) { if(row.shift_data.data && row.shift_data.data.downtime > 0) { let r = row.shift_data.data.downtimeReason.trim() || 'غير محدد'; dataMap[r] = (dataMap[r] || 0) + row.shift_data.data.downtime; } }
-        });
-
-        let labels = Object.keys(dataMap).sort(); let vals = labels.map(l => dataMap[l]);
-        let isLight = document.documentElement.getAttribute('data-theme') === 'light'; let gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-        if(chartCustomDynamic) chartCustomDynamic.destroy();
-        chartCustomDynamic = new Chart(document.getElementById('dynamicCustomChart'), { type: 'bar', data: { labels: labels, datasets: [{ label: 'مؤشر', data: vals, backgroundColor: '#00e5ff', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { display: false } } } } });
-    }
-function shareToWhatsApp() {
-        if(!State || !State.intervals || State.intervals.length === 0) { 
-            alert("لا توجد بيانات للوردية الحالية لإرسالها."); 
-            return; 
-        }
-        
-        let msg = `*تقرير انتاج ساعة بساعة*\nالثلاجة A | Final Assembly\nالتاريخ: ${State.date}\nالوردية: ${State.shift}\n\n`;
-        let totalA = 0;
-        
-        function stripHTML(html) { return html.replace(/<[^>]*>?/gm, ''); }
-        
-        State.intervals.forEach(inv => {
-            if(!inv.isBreak) {
-                let act = inv.actual !== "" ? Number(inv.actual) : 0; 
-                // التعديلات: وقت النهاية - حذف "وحدة" - رموز بسيطة جداً
-                msg += `${stripHTML(formatTimeAMPM(inv.end))} : ${act}\n`;
-                totalA += act;
-            } else {
-                msg += `فترة راحة\n`;
-            }
-        });
-        
-        msg += `\n*إجمالي الإنتاج الفعلي: ${totalA}*`;
-        
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    // --- Defect Categories Logic ---
-    function loadDefectCategories() { defectCategories = JSON.parse(localStorage.getItem('mes_defect_categories')) || ['تسريب فريون', 'سدد', 'عطل كباس', 'خفس']; renderCategoriesList(); }
-    function saveDefectCategories() { localStorage.setItem('mes_defect_categories', JSON.stringify(defectCategories)); renderCategoriesList(); }
-    function addDefectCategory() { const val = document.getElementById('newDefectName').value.trim(); if(val && !defectCategories.includes(val)) { defectCategories.push(val); saveDefectCategories(); safeSetVal('newDefectName', ''); } }
-    function removeDefectCategory(index) { defectCategories.splice(index, 1); saveDefectCategories(); }
-    function renderCategoriesList() { 
-        const list = document.getElementById('categoriesList'); list.innerHTML = ''; 
-        defectCategories.forEach((cat, index) => { 
-            list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-2); padding:12px 15px; border-radius:10px; border:1px solid var(--border-subtle);">
-                <span style="font-weight:bold;">${cat}</span>
-                <span style="color:var(--accent-red); cursor:pointer; padding: 5px;" onclick="removeDefectCategory(${index})"><i class="fa-solid fa-trash-can"></i></span>
-            </div>`; 
-        }); 
-    }
-
-    // --- Foaming Module ---
-    function openFoamingModal() { safeSetVal('foamDefectName', ''); safeSetVal('foamDefectDesc', ''); safeSetVal('foamDefectImage', ''); openModal('foamingModal'); }
-    function openImageViewer(src) { if(!src) return; document.getElementById('viewerImage').src = src; openModal('imageViewModal'); }
-
-    function dataURLtoBlob(dataurl) { let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1], bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n); while(n--){ u8arr[n] = bstr.charCodeAt(n); } return new Blob([u8arr], {type:mime}); }
-    function compressImage(file) {
-        return new Promise((resolve) => {
-            if(!file) resolve(null);
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = event => {
-                const img = new Image(); img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; 
-                    let width = img.width; let height = img.height;
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height); resolve(canvas.toDataURL('image/jpeg', 0.6));
-                }
-            }
-        });
-    }
-
-    async function saveFoamingDefect() {
-        const name = document.getElementById('foamDefectName').value.trim(); if(!name) { alert("أدخل المشكلة."); return; }
-        document.getElementById('uploadProgress').style.display = 'block';
-        let finalImageUrl = null, imageFileName = null; let fileInput = document.getElementById('foamDefectImage');
-        try {
-            if(fileInput.files.length > 0) {
-                const base64Image = await compressImage(fileInput.files[0]); const blob = dataURLtoBlob(base64Image); imageFileName = `foam_defect_${Date.now()}.jpg`;
-                const { error } = await supabaseClient.storage.from('defect-images').upload(imageFileName, blob, { contentType: 'image/jpeg' });
-                if(!error) { finalImageUrl = supabaseClient.storage.from('defect-images').getPublicUrl(imageFileName).data.publicUrl; }
-            }
-        } catch(e) {}
-        foamingRecords.push({ id: Date.now().toString(), timestamp: new Date().toLocaleTimeString('en-US', { hour12: true, hour: "numeric", minute: "numeric"}), name: name, desc: document.getElementById('foamDefectDesc').value.trim(), image: finalImageUrl, fileName: imageFileName, status: 'pending' });
-        await syncFoamingData(); document.getElementById('uploadProgress').style.display = 'none'; closeModal('foamingModal'); showToast("تم الحفظ");
-    }
-
-    async function syncFoamingData() { const fDate = document.getElementById('foamDateSelector').value; await supabaseClient.from('production_shifts').upsert({ shift_id: `${fDate}_FOAMING`, shift_data: { type: 'foaming', records: foamingRecords }, updated_at: new Date().toISOString() }); renderFoamingTable(); }
-   async function updateFoamingStatus(recordId, newStatus) { 
-        const rec = foamingRecords.find(r => r.id === recordId); 
-        if(rec) { 
-            rec.status = newStatus; 
-            await syncFoamingData(); 
-            await calculateGlobalFoamingBacklog(); // تحديث العداد فوراً
-            showToast(newStatus === 'done' ? "تم التسليم بنجاح" : "تمت العودة لحالة الإصلاح");
-        } 
-    }
-  async function deleteFoamingRecord(recordId) { if(confirm("حذف السجل؟")) { const rec = foamingRecords.find(r => r.id === recordId); if(rec && rec.fileName) { await supabaseClient.storage.from('defect-images').remove([rec.fileName]); } foamingRecords = foamingRecords.filter(r => r.id !== recordId); await syncFoamingData(); } }
-
-   async function loadFoamingData() {
-        const fDate = document.getElementById('foamDateSelector').value; 
-        if(!fDate) return;
-        
-        const todayId = `${fDate}_FOAMING`;
-        
-        // 1. جلب كل بيانات الرش (اليوم + القديم)
-        const { data } = await supabaseClient.from('production_shifts')
-            .select('shift_id, shift_data')
-            .like('shift_id', '%_FOAMING');
-            
-        // 2. استخراج سجلات اليوم الحالي
-        let todayRow = data.find(r => r.shift_id === todayId);
-        foamingRecords = (todayRow && todayRow.shift_data.records) ? todayRow.shift_data.records : [];
-
-        // 3. خوارزمية الترحيل: البحث عن أي "Pending" في الأيام السابقة لم يتم نقله لليوم
-        data.forEach(row => {
-            if (row.shift_id !== todayId) {
-                const oldRecords = row.shift_data.records || [];
-                oldRecords.forEach(oldRec => {
-                    if (oldRec.status === 'pending') {
-                        // لو العيب ده مش موجود في لستة النهاردة، ضيفه (ترحيل)
-                        if (!foamingRecords.find(r => r.id === oldRec.id)) {
-                            foamingRecords.push(oldRec);
-                        }
-                    }
-                });
-            }
-        });
-
-        // 4. حفظ الحالة الجديدة لليوم (حتى تظل العيوب المرحّلة موجودة)
-        await supabaseClient.from('production_shifts').upsert({ 
-            shift_id: todayId, 
-            shift_data: { type: 'foaming', records: foamingRecords }, 
-            updated_at: new Date().toISOString() 
-        });
-
-        renderFoamingTable();
-        calculateGlobalFoamingBacklog();
-    }
-
-    function renderFoamingTable() {
-        const container = document.getElementById('foamingCardsContainer'); container.innerHTML = '';
-        if(foamingRecords.length === 0) { container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-secondary);">لا توجد تذاكر</div>`; }
-        [...foamingRecords].reverse().forEach(rec => {
-            let imgHTML = rec.image ? `<img src="${rec.image}" class="image-preview" onclick="openImageViewer('${rec.image}')">` : ``;
-            let statusColor = rec.status === 'pending' ? 'var(--accent-orange)' : 'var(--accent-green)';
-            let statusHTML = `<select style="width:100%; padding:8px; background:var(--surface-1); border-color: ${statusColor}; color: ${statusColor}; border-radius: 6px; font-weight: bold; appearance:none; text-align:center;" onchange="updateFoamingStatus('${rec.id}', this.value)">
-                <option value="pending" ${rec.status === 'pending' ? 'selected' : ''}>⏳ تحت الإصلاح</option><option value="done" ${rec.status === 'done' ? 'selected' : ''}>✅ تم التسليم</option>
-            </select>`;
-            const div = document.createElement('div'); div.className = 'glass-card'; div.style.marginBottom = '0px'; div.style.padding = '12px'; div.style.borderLeft = `4px solid ${statusColor}`;
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><strong style="color:var(--text-primary); font-size:1rem;">${rec.name}</strong><span style="font-family:'Orbitron'; font-size:0.75rem; color:var(--text-secondary);">${rec.timestamp}</span></div>
-                <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:10px;">${rec.desc || 'لا توجد ملاحظات'}</div>
-                <div style="display:flex; gap:10px; align-items:center;">${imgHTML} <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">${statusHTML}<button class="btn btn-secondary" style="padding:8px; font-size: 0.8rem; color: var(--accent-red);" onclick="deleteFoamingRecord('${rec.id}')"><i class="fa-solid fa-trash-can"></i> حذف</button></div></div>
-            `;
-            container.appendChild(div);
-        });
-        safeSetText('kpi-foam-day-total', foamingRecords.length); safeSetText('kpi-foam-day-done', foamingRecords.filter(r=>r.status==='done').length);
-    }
-    
-    async function loadMonthlyFoamingData() {
-        const monthVal = document.getElementById('foamMonthSelector').value; if(!monthVal) return;
-        const { data } = await supabaseClient.from('production_shifts').select('shift_data').like('shift_id', '%_FOAMING');
-        let totalPending = 0; if(data && data.length > 0) { data.forEach(row => { if(row.shift_data && row.shift_data.records) { totalPending += row.shift_data.records.filter(r => r.status === 'pending').length; } }); }
-        safeSetText('kpi-foam-total-backlog', totalPending);
-    }
-
-    // --- Cooling Module Logic ---
-    function openCoolingModal() { safeSetVal('coolQty', 1); safeSetVal('coolStamp', ''); safeSetVal('coolResponsibleName', ''); updateCoolingCascades(); openModal('coolingModal'); }
-    function updateCoolingCascades() {
-        const dept = document.getElementById('coolDept').value; const typeSelect = document.getElementById('coolDefectType'); const pointSelect = document.getElementById('coolDefectPoint');
-        typeSelect.innerHTML = ''; coolingMasterData.defectTypes[dept].forEach(t => { typeSelect.innerHTML += `<option value="${t}">${t}</option>`; });
-        pointSelect.innerHTML = '';
-        if (typeSelect.value === 'عيوب منوعة') { coolingMasterData.miscDefects.forEach(m => { pointSelect.innerHTML += `<option value="${m}">${m}</option>`; }); } 
-        else { coolingMasterData.points.forEach(p => { pointSelect.innerHTML += `<option value="${p}">${p}</option>`; }); }
-    }
-    function autoFillStampName() { safeSetVal('coolResponsibleName', coolingMasterData.stamps[document.getElementById('coolStamp').value.trim()] || 'غير مدرج'); }
-
-    async function saveCoolingDefect() {
-        const date = document.getElementById('coolingDateSelector').value; const shift = document.getElementById('coolingShiftSelector').value; const stamp = document.getElementById('coolStamp').value.trim();
-        coolingRecords.push({ id: Date.now().toString(), time: new Date().toLocaleTimeString('en-US', { hour12: true, hour: "numeric", minute: "numeric"}), supervisor: document.getElementById('coolSupervisor').value, dept: document.getElementById('coolDept').value, type: document.getElementById('coolDefectType').value, point: document.getElementById('coolDefectPoint').value, model: document.getElementById('coolModel').value, qty: parseInt(document.getElementById('coolQty').value) || 1, stamp: stamp, name: document.getElementById('coolResponsibleName').value });
-        await supabaseClient.from('production_shifts').upsert({ shift_id: `${date}_COOLING_${shift}`, shift_data: { type: 'cooling', records: coolingRecords }, updated_at: new Date().toISOString() });
-        closeModal('coolingModal'); renderCoolingTable(); showToast("تم إدراج العيب"); 
-    }
-
-    async function loadCoolingData() {
-        const date = document.getElementById('coolingDateSelector').value; const shift = document.getElementById('coolingShiftSelector').value; if(!date) return;
-        const { data } = await supabaseClient.from('production_shifts').select('shift_data').eq('shift_id', `${date}_COOLING_${shift}`).maybeSingle();
-        coolingRecords = (data && data.shift_data && data.shift_data.records) ? data.shift_data.records : []; renderCoolingTable();
-    }
-
-    function renderCoolingTable() {
-        const tbody = document.getElementById('coolingTableBody'); tbody.innerHTML = ''; let totalShift = 0;
-        if(coolingRecords.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 15px;">السجل نظيف.</td></tr>`; }
-        [...coolingRecords].reverse().forEach(rec => {
-            const tr = document.createElement('tr'); let isFinal = rec.dept === 'تجميع نهائي';
-            tr.innerHTML = `
-                <td><span style="color:${isFinal ? 'var(--accent-cyan)' : 'var(--accent-orange)'}; font-weight:800; font-size:0.85rem;">${rec.dept}</span><br><span style="font-size:0.75rem; color:var(--text-secondary);">${rec.model}</span></td>
-                <td><strong style="color:var(--accent-red); font-size:0.85rem;">${rec.type}</strong><br><span style="font-size:0.75rem; color:var(--text-secondary);">${rec.point}</span></td>
-                <td class="eng-num">${rec.qty}</td>
-                <td style="text-align:center;"><i class="fa-solid fa-trash-can" style="color:var(--accent-red); cursor:pointer; padding:8px; background:rgba(255,23,68,0.1); border-radius:6px;" onclick="deleteCoolingRecord('${rec.id}')"></i></td>
-            `;
-            tbody.appendChild(tr); totalShift += rec.qty;
-        });
-        safeSetText('kpi-cooling-shift-total', totalShift);
-    }
-    
-    async function deleteCoolingRecord(recordId) { if(confirm("حذف العيب الموثق؟")) { coolingRecords = coolingRecords.filter(r => r.id !== recordId); await supabaseClient.from('production_shifts').upsert({ shift_id: `${document.getElementById('coolingDateSelector').value}_COOLING_${document.getElementById('coolingShiftSelector').value}`, shift_data: { type: 'cooling', records: coolingRecords }, updated_at: new Date().toISOString() }); renderCoolingTable(); } }
-
-    // --- OLE Engineering Logic & Equations ---
-    let oleRecord = {};
-    function calculateOle() {
-        const plannedLabor = parseFloat(document.getElementById('olePlannedLabor').value) || 0; const actualProdLabor = parseFloat(document.getElementById('oleActualProdLabor').value) || 0; const actualQualLabor = parseFloat(document.getElementById('oleActualQualLabor').value) || 0; const shiftTime = parseFloat(document.getElementById('oleShiftTime').value) || 0; const downtime = parseFloat(document.getElementById('oleDowntime').value) || 0; const totalProd = parseFloat(document.getElementById('oleTotalProd').value) || 0; const defects = parseFloat(document.getElementById('oleDefects').value) || 0; const cycleTime = parseFloat(document.getElementById('oleCycleTime').value) || 0;
-        const totalActualLabor = actualProdLabor + actualQualLabor; const netOperatingTime = Math.max(0, shiftTime - downtime);
-        let availability = shiftTime > 0 ? (netOperatingTime / shiftTime) : 0; let performance = netOperatingTime > 0 ? (totalProd * cycleTime) / netOperatingTime : 0; performance = Math.min(performance, 1.0); 
-        let quality = totalProd > 0 ? Math.max(0, (totalProd - defects) / totalProd) : 0; let laborUtilization = plannedLabor > 0 ? Math.min((totalActualLabor / plannedLabor), 1.0) : 0;
-        let ole = availability * performance * quality * laborUtilization;
-        safeSetText('kpi-ole-availability', (availability * 100).toFixed(1) + '%'); safeSetText('kpi-ole-performance', (performance * 100).toFixed(1) + '%'); safeSetText('kpi-ole-quality', (quality * 100).toFixed(1) + '%'); safeSetText('kpi-ole-total', (ole * 100).toFixed(1) + '%');
-        oleRecord = { plannedLabor, actualProdLabor, actualQualLabor, shiftTime, downtime, downtimeReason: document.getElementById('oleDowntimeReason').value, totalProd, defects, cycleTime, availability, performance, quality, ole };
-    }
-
-    async function saveOleRecord() { calculateOle(); const dateStr = document.getElementById('oleDateSelector').value; const shiftStr = document.getElementById('oleShiftSelector').value; if (!dateStr) return; await supabaseClient.from('production_shifts').upsert({ shift_id: `${dateStr}_OLE_${shiftStr}`, shift_data: { type: 'ole', data: oleRecord }, updated_at: new Date().toISOString() }); showToast("تم تحديث مؤشرات الأداء"); refreshAllGlobalKPIs(); }
-
-    async function loadOleData() {
-        const dateStr = document.getElementById('oleDateSelector').value; const shiftStr = document.getElementById('oleShiftSelector').value; if (!dateStr) return;
-        const { data } = await supabaseClient.from('production_shifts').select('shift_data').eq('shift_id', `${dateStr}_OLE_${shiftStr}`).maybeSingle();
-        if (data && data.shift_data && data.shift_data.data) { const d = data.shift_data.data; safeSetVal('olePlannedLabor', d.plannedLabor || 0); safeSetVal('oleActualProdLabor', d.actualProdLabor || 0); safeSetVal('oleActualQualLabor', d.actualQualLabor || 0); safeSetVal('oleShiftTime', d.shiftTime || 450); safeSetVal('oleDowntime', d.downtime || 0); safeSetVal('oleDowntimeReason', d.downtimeReason || ''); safeSetVal('oleTotalProd', d.totalProd || 0); safeSetVal('oleDefects', d.defects || 0); safeSetVal('oleCycleTime', d.cycleTime || 0.75); } 
-        else { safeSetVal('olePlannedLabor', 0); safeSetVal('oleActualProdLabor', 0); safeSetVal('oleActualQualLabor', 0); safeSetVal('oleShiftTime', 450); safeSetVal('oleDowntime', 0); safeSetVal('oleDowntimeReason', ''); safeSetVal('oleTotalProd', 0); safeSetVal('oleDefects', 0); safeSetVal('oleCycleTime', 0.75); }
-        calculateOle();
-    }
-
-    // --- Labor (Workforce SAP System) ---
-    async function loadWorkforceData() { const { data } = await supabaseClient.from('production_shifts').select('shift_data').eq('shift_id', 'MASTER_WORKFORCE').maybeSingle(); if(data && data.shift_data && data.shift_data.records) { workforceData = data.shift_data.records; } else { workforceData = []; } renderWorkforceTable(); }
-    async function syncWorkforceData() { await supabaseClient.from('production_shifts').upsert({ shift_id: 'MASTER_WORKFORCE', shift_data: { records: workforceData }, updated_at: new Date().toISOString() }); }
-
-    function renderWorkforceTable(dataToRender = workforceData) {
-        const tbody = document.getElementById('laborTableBody'); tbody.innerHTML = ''; let dirCount = 0;
-        if(dataToRender.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">القاعدة فارغة.</td></tr>`; }
-        dataToRender.forEach((emp, index) => {
-            if(emp.type === 'مباشر') dirCount++;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="eng-num">${emp.id}</td><td style="font-weight: 800;">${emp.name}</td><td><span style="font-size: 0.8rem; color:${emp.type === 'مباشر' ? 'var(--accent-green)' : 'var(--accent-orange)'};">${emp.type}</span></td><td style="text-align:center;"><button class="btn btn-secondary" style="padding: 6px; border-radius: 8px; width: auto; margin:auto;" onclick="editLaborRecord(${index})"><i class="fa-solid fa-pen-to-square" style="color:var(--accent-cyan);"></i></button></td>`;
-            tbody.appendChild(tr);
-        });
-        safeSetText('kpi-labor-total', dataToRender.length); safeSetText('kpi-labor-direct', dirCount);
-    }
-
-    function openLaborModal() { safeSetVal('laborEditIndex', -1); safeSetVal('laborSap', ''); safeSetVal('laborName', ''); safeSetVal('laborDept', ''); safeSetVal('laborJob', ''); safeSetVal('laborShoeSize', ''); safeSetVal('laborWorkType', 'مباشر'); safeSetText('laborModalTitle', 'إضافة موظف'); openModal('laborModal'); }
-
-    async function saveWorkforceRecord() {
-        const id = document.getElementById('laborSap').value.trim(); const name = document.getElementById('laborName').value.trim(); if(!id || !name) { alert("رقم הـ SAP والاسم إلزامي."); return; }
-        const newRecord = { id, name, dept: document.getElementById('laborDept').value.trim(), type: document.getElementById('laborWorkType').value, job: document.getElementById('laborJob').value.trim(), shoe: document.getElementById('laborShoeSize').value.trim() };
-        const editIndex = parseInt(document.getElementById('laborEditIndex').value);
-        if(editIndex > -1) { workforceData[editIndex] = newRecord; } else { if(workforceData.find(e => e.id === id)) { alert("الرقم مسجل بالفعل."); return; } workforceData.push(newRecord); }
-        await syncWorkforceData(); closeModal('laborModal'); renderWorkforceTable(); showToast("تم الحفظ");
-    }
-
-    function editLaborRecord(index) { const emp = workforceData[index]; safeSetVal('laborEditIndex', index); safeSetVal('laborSap', emp.id); safeSetVal('laborName', emp.name); safeSetVal('laborDept', emp.dept); safeSetVal('laborWorkType', emp.type); safeSetVal('laborJob', emp.job); safeSetVal('laborShoeSize', emp.shoe); safeSetText('laborModalTitle', 'تعديل موظف'); openModal('laborModal'); }
-    function searchWorkforce() { const term = document.getElementById('laborSearchInput').value.toLowerCase(); renderWorkforceTable(workforceData.filter(emp => emp.name.toLowerCase().includes(term) || emp.id.includes(term))); }
-
-    function handleLaborExcelUpload(event) {
-        const file = event.target.files[0]; if (!file) return;
-        const overlay = document.createElement('div'); overlay.className = 'loader-overlay'; overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري التحليل...</div>`; document.body.appendChild(overlay);
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                let newRecords = [];
-                for (let i = 1; i < rows.length; i++) { 
-                    const row = rows[i]; if (!row || row.length === 0) continue;
-                    const id = row[1] ? String(row[1]).trim() : null; const name = row[2] ? String(row[2]).trim() : null; if (!id || !name) continue;
-                    newRecords.push({ id, name, dept: row[3] ? String(row[3]).trim() : '', type: row[4] ? String(row[4]).trim() : 'مباشر', job: row[6] ? String(row[6]).trim() : '', shoe: row[11] ? String(row[11]).trim() : '' });
-                }
-                overlay.remove(); 
-                if (newRecords.length > 0 && confirm(`وجدنا ${newRecords.length} سجل. دمجها بالقاعدة؟`)) {
-                    newRecords.forEach(nr => { const existsIndex = workforceData.findIndex(w => w.id === nr.id); if (existsIndex > -1) workforceData[existsIndex] = nr; else workforceData.push(nr); });
-                    document.body.appendChild(overlay); overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-green);">جاري الرفع...</div>`;
-                    await syncWorkforceData(); renderWorkforceTable(); showToast("تم الرفع");
-                } 
-            } catch (error) { console.error(error); alert("حدث خطأ."); } finally { if(document.body.contains(overlay)) overlay.remove(); event.target.value = ''; }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-// --- دالة استيراد العيوب من ملف إكسيل ---
-    function handleDefectExcelUpload(event) {
-        const file = event.target.files[0]; 
-        if (!file) return;
-
-        // إظهار واجهة التحميل
-        const overlay = document.createElement('div');
-        overlay.className = 'loader-overlay';
-        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري تحليل ملف العيوب...</div>`;
-        document.body.appendChild(overlay);
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                
-                let importedCount = 0;
-                // نفترض أن أسماء العيوب موجودة في العمود الأول (العمود A) بداية من الصف الثاني
-                for (let i = 1; i < rows.length; i++) {
-                    const defectName = rows[i][0] ? String(rows[i][0]).trim() : null;
-                    if (defectName && !defectCategories.includes(defectName)) {
-                        defectCategories.push(defectName);
-                        importedCount++;
-                    }
-                }
-
-                if (importedCount > 0) {
-                    saveDefectCategories(); // حفظ في الذاكرة المحلية وتحديث القائمة
-                    showToast(`تم استيراد ${importedCount} تصنيف عيب جديد بنجاح`);
-                } else {
-                    showToast("لم يتم العثور على عيوب جديدة لإضافتها");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("فشل في قراءة ملف الإكسيل. تأكد من جودة الملف.");
-            } finally {
-                overlay.remove();
-                event.target.value = ''; // تفريغ المدخل
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-async function loadMonthlyYield() {
-        const monthVal = document.getElementById('monthSelector').value; if(!monthVal) return;
-        const { data } = await supabaseClient.from('production_shifts').select('shift_id, shift_data').like('shift_id', `${monthVal}%`);
-        let monthActual = 0, monthDefects = 0;
-        
-        if (data) {
-            // دمج الوردية النشطة إذا كانت تابعة لنفس الشهر المحدد
-            let activeShiftFound = false;
-            data.forEach(row => {
-                if (row.shift_id === State.currentDocId) { row.shift_data.intervals = State.intervals; activeShiftFound = true; }
-            });
-            if (!activeShiftFound && State.currentDocId.startsWith(monthVal) && State.intervals && State.intervals.length > 0) {
-                data.push({ shift_id: State.currentDocId, shift_data: { intervals: State.intervals } });
-            }
-
-            data.forEach(row => {
-                if (row.shift_id.includes('_Shift_') && row.shift_data && row.shift_data.intervals) {
-                    row.shift_data.intervals.forEach(inv => {
-                        if (!inv.isBreak) {
-                            monthActual += Number(inv.actual) || 0;
-                            if (inv.defects) { inv.defects.forEach(d => { if(d.discoverer === 'quality') monthDefects += d.qty; }); }
-                        }
-                    });
-                }
-            });
-        }
-        let yieldVal = monthActual > 0 ? (Math.max(0, monthActual - monthDefects) / monthActual * 100).toFixed(1) : 100;
-        safeSetText('kpi-monthly-yield', yieldVal + '%');
-    }
-
-// --- خوارزمية استيراد الداتا التاريخية الجبارة (Smart Pivot & Level Parser) ---
-    async function handleHistoricalDataUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        if (!confirm("تأكيد: سيتم تحليل ورفع البيانات التاريخية مع الموديلات. متابعة؟")) return;
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loader-overlay';
-        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري المعالجة المعمارية لبيانات الموديلات...</div>`;
-        document.body.appendChild(overlay);
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const text = e.target.result;
-                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-                const delimiter = lines[0].includes(';') ? ';' : ','; 
-                
-                let shiftDataMap = {}; 
-                const monthMap = { 'يناير':'01', 'فبراير':'02', 'مارس':'03', 'أبريل':'04', 'مايو':'05', 'يونيو':'06', 'يوليو':'07', 'أغسطس':'08', 'سبتمبر':'09', 'أكتوبر':'10', 'نوفمبر':'11', 'ديسمبر':'12' };
-
-                let parsedLines = [];
-                for(let i=1; i<lines.length; i++) {
-                    let cols = lines[i].split(delimiter);
-                    let lbl = cols[0] ? cols[0].replace(/['"]/g, '').trim() : '';
-                    if(!lbl) continue;
-                    parsedLines.push({
-                        lbl: lbl,
-                        prod: parseInt(cols[1]) || 0,
-                        qty: parseInt(cols[2]) || 0
-                    });
-                }
-
-                // 1. تحديد المستويات الهرمية (Levels Analyzer)
-                for(let i=0; i<parsedLines.length; i++) {
-                    let lbl = parsedLines[i].lbl;
-                    let nextLbl = i+1 < parsedLines.length ? parsedLines[i+1].lbl : 'EOF';
-                    
-                    let level = 4; // افتراضي: موديل
-                    let isDate = false;
-                    for (const mName of Object.keys(monthMap)) {
-                        if (lbl.includes(mName)) { level = 1; isDate = true; break; }
-                    }
-                    if (isDate) { parsedLines[i].level = level; continue; }
-                    
-                    if (['أولى', 'ثانية', 'ثالثة'].includes(lbl)) { level = 3; parsedLines[i].level = level; continue; }
-                    if (['أولى', 'ثانية', 'ثالثة'].includes(nextLbl)) { level = 2; parsedLines[i].level = level; continue; }
-                    
-                    parsedLines[i].level = level;
-                }
-
-                // 2. استخراج البيانات والربط الدقيق
-                let currentDate = null;
-                let currentDefect = null;
-                let currentShiftNum = '1';
-
-                for(let i=0; i<parsedLines.length; i++) {
-                    let item = parsedLines[i];
-                    let nextItem = i+1 < parsedLines.length ? parsedLines[i+1] : {level: 1}; 
-
-                    if (item.level === 1) {
-                        for (const [mName, mNum] of Object.entries(monthMap)) {
-                            if (item.lbl.includes(mName)) {
-                                let day = item.lbl.split('-')[0].padStart(2, '0');
-                                if (day.length === 1) day = '0' + day;
-                                currentDate = `2026-${mNum}-${day}`;
-                                break;
-                            }
-                        }
-                    }
-                    else if (item.level === 2) currentDefect = item.lbl;
-                    else if (item.level === 3) currentShiftNum = (item.lbl === 'ثانية') ? '2' : ((item.lbl === 'ثالثة') ? '3' : '1');
-                    
-                    // إذا كان السطر هو التفرع الأخير (Leaf Node)، نجمع البيانات
-                    if (item.level >= nextItem.level && currentDate) {
-                        let shiftId = `${currentDate}_Shift_${currentShiftNum}`;
-                        if (!shiftDataMap[shiftId]) shiftDataMap[shiftId] = { actual: 0, defects: [] };
-                        
-                        // جمع الإنتاج دون ازدواجية
-                        shiftDataMap[shiftId].actual += item.prod;
-                        
-                        if (currentDefect && currentDefect !== '(blank)' && item.qty > 0) {
-                            if (!defectCategories.includes(currentDefect)) defectCategories.push(currentDefect);
-                            
-                            let modelName = (item.level === 4) ? item.lbl : 'عام';
-                            if (modelName === '(blank)') modelName = 'عام';
-
-                            shiftDataMap[shiftId].defects.push({
-                                category: currentDefect,
-                                qty: item.qty,
-                                model: modelName,
-                                discoverer: 'quality'
-                            });
-                        }
-                    }
-                }
-
-                saveDefectCategories(); 
-
-                // 3. حزم البيانات ورفعها للسيرفر
-                let upsertPromises = [];
-                for (const [shiftId, data] of Object.entries(shiftDataMap)) {
-                    let finalActual = data.actual || 0;
-                    const payload = {
-                        shift_id: shiftId,
-                        shift_data: {
-                            config: { totalTarget: finalActual },
-                            intervals: [
-                                {
-                                    start: 8 * 60, end: 16 * 60, duration: 8 * 60,
-                                    isBreak: false, target: finalActual, actual: finalActual,
-                                    defects: data.defects
-                                }
-                            ]
-                        },
-                        updated_at: new Date().toISOString()
-                    };
-                    
-                    upsertPromises.push(supabaseClient.from('production_shifts').upsert(payload));
-                    if(upsertPromises.length >= 10) { await Promise.all(upsertPromises); upsertPromises = []; }
-                }
-                if(upsertPromises.length > 0) await Promise.all(upsertPromises);
-
-                showToast("تم دمج بيانات الموديلات بنجاح!");
-                loadAnalyticsData(); // تحديث فوري للشارتات
-                refreshAllGlobalKPIs();
-            } catch(err) {
-                console.error(err);
-                alert("حدث خطأ أثناء المعالجة.");
-            } finally {
-                if(document.body.contains(overlay)) overlay.remove();
-                event.target.value = '';
-            }
-        };
-        reader.readAsText(file, 'UTF-8'); 
-    }
-
-
-async function loadProductionArchive(dateStr) {
-        if(!dateStr) return;
-        
-        showToast("جاري استدعاء سجلات اليوم...");
-        const tbody = document.getElementById('archiveTableBody'); 
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري جلب البيانات...</td></tr>';
-        
-        try {
-            const { data, error } = await supabaseClient.from('production_shifts')
-                .select('shift_id, shift_data')
-                .like('shift_id', `${dateStr}_Shift_%`);
-            
-            if(error) throw error;
-            
-            tbody.innerHTML = ''; 
-            let dailyArchiveTotal = 0;
-            
-            if(data && data.length > 0) {
-                // ترتيب الورديات تصاعدياً
-                data.sort((a,b) => a.shift_id.localeCompare(b.shift_id));
-                
-                data.forEach(row => {
-                    let shiftNum = row.shift_id.split('_Shift_')[1]; 
-                    // تحويل رقم الوردية لاسم عربي
-                    let sNameAr = shiftNum === "1" ? "الأولى" : (shiftNum === "2" ? "الثانية" : "الثالثة");
-                    let sTarget = 0, sActual = 0;
-                    
-                    // تأمين قراءة البيانات سواء كانت Object أو String
-                    let sData = typeof row.shift_data === 'string' ? JSON.parse(row.shift_data) : row.shift_data;
-                    
-                    if(sData && sData.intervals) { 
-                        sData.intervals.forEach(inv => { 
-                            if(!inv.isBreak) { 
-                                sTarget += (inv.target || 0); 
-                                sActual += (Number(inv.actual) || 0); 
-                            } 
-                        }); 
-                    }
-                    
-                    let variance = sActual - sTarget;
-                    let varColor = variance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                    dailyArchiveTotal += sActual;
-                    
-                    const tr = document.createElement('tr'); 
-                    tr.innerHTML = `
-                        <td style="font-weight:bold; color:var(--accent-cyan);">وردية ${sNameAr}</td>
-                        <td>${sTarget}</td>
-                        <td class="eng-num">${sActual}</td>
-                        <td style="color:${varColor}; font-weight:900;">${variance > 0 ? '+' : ''}${variance}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-                
-                document.getElementById('archive-table-panel').classList.remove('hidden');
-                safeSetText('kpi-archive-daily-total', dailyArchiveTotal);
-            } else { 
-                document.getElementById('archive-table-panel').classList.add('hidden'); 
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">لا توجد سجلات محفوظة لهذا التاريخ</td></tr>';
-                showToast("لا يوجد أرشيف لهذا اليوم");
-            }
-        } catch (err) {
-            console.error("Archive Error:", err);
-            showToast("خطأ في الاتصال بقاعدة البيانات");
-        }
-    }
-
-async function calculateGlobalFoamingBacklog() {
-        if(!supabaseClient) return;
-        // جلب كل سجلات الرش من البداية
-        const { data } = await supabaseClient.from('production_shifts')
-            .select('shift_data')
-            .like('shift_id', '%_FOAMING');
-            
-        let pendingIds = new Set(); // استخدام Set لمنع التكرار
-        if(data) {
-            data.forEach(row => {
-                if(row.shift_data && row.shift_data.records) {
-                    row.shift_data.records.forEach(r => {
-                        if(r.status === 'pending') pendingIds.add(r.id);
-                    });
-                }
-            });
-        }
-        safeSetText('kpi-foam-total-backlog', pendingIds.size);
-    }
-
-async function calculateFoamingKPIs() {
-        let totalDefects = foamingRecords.length;
-        let doneCount = foamingRecords.filter(r => r.status === 'done').length;
-        let repairCount = totalDefects - doneCount;
-        
-        safeSetText('kpi-foam-day-total', totalDefects); 
-        safeSetText('kpi-foam-day-done', doneCount);
-        safeSetText('kpi-foam-day-repair', repairCount);
-        
-        // جلب إنتاج اليوم الفعلي لحساب النسبة المئوية
-        const fDate = document.getElementById('foamDateSelector').value;
-        const { data } = await supabaseClient.from('production_shifts')
-            .select('shift_data')
-            .like('shift_id', `${fDate}_Shift_%`);
-            
-        let prodToday = 0;
-        if(data) {
-            data.forEach(s => {
-                if(s.shift_data.intervals) {
-                    s.shift_data.intervals.forEach(inv => { if(!inv.isBreak) prodToday += (Number(inv.actual) || 0); });
-                }
-            });
-        }
-
-        let dailyPerc = prodToday > 0 ? ((totalDefects / prodToday) * 100).toFixed(1) : 0;
-        const percEl = document.getElementById('kpi-foam-day-perc');
-        if(percEl) { 
-            percEl.innerText = dailyPerc + '%'; 
-            percEl.className = 'kpi-val ' + (dailyPerc > 2 ? 'red' : 'green');
-        }
-    }
-// --- 1. خوارزمية استيراد داتا التبريد التاريخية ---
-    async function handleCoolingHistoricalUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loader-overlay';
-        overlay.innerHTML = `<div class="spinner"></div><div style="margin-top:20px; font-weight:bold; color:var(--accent-cyan);">جاري تحليل ودمج سجلات التبريد...</div>`;
-        document.body.appendChild(overlay);
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const text = e.target.result;
-                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-                const delimiter = lines[1].includes(';') ? ';' : ','; // الكشف التلقائي عن الفاصل
-                
-                let shiftRecordsMap = {};
-
-                // تخطي العناوين (أول سطرين في ملفك)
-                for (let i = 2; i < lines.length; i++) {
-                   const cols = lines[i].split(delimiter);
-                    if (cols.length < 11) continue;
-
-                    let dateRaw = cols[0] ? cols[0].replace(/['"]/g, '').trim() : '';
-                    let normDate = dateRaw;
-                    
-                    // توحيد التاريخ قبل الحفظ في السيرفر
-                    if (dateRaw.includes('/')) {
-                        let p = dateRaw.split('/');
-                        if (p[2] && p[2].length >= 4) {
-                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
-                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
-                            normDate = `${y}-${m}-${d}`;
-                        }
-                    } else if (dateRaw.includes('-')) {
-                        let p = dateRaw.split('-');
-                        if (p[0].length !== 4 && p[2] && p[2].length >= 4) {
-                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
-                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
-                            normDate = `${y}-${m}-${d}`;
-                        }
-                    }
-                    
-                    const date = normDate; // التاريخ الموحد
-                    const shiftStr = cols[3]; // الورديه
-                    const supervisor = cols[4]; // المشرف
-                    const dept = cols[5]; // القسم
-                    const type = cols[6]; // العيب
-                    const point = cols[7]; // النقطه
-                    const stamp = cols[8]; // الختم
-                    const name = cols[9]; // اسم المتسبب
-                    const qty = parseInt(cols[10]) || 0;
-                    const model = cols[11]; // الموديل
-
-                    if(!date || !shiftStr) continue;
-
-                    let shiftNum = (shiftStr === 'ثانية' || shiftStr === 'ثانيه') ? '2' : ((shiftStr === 'ثالثة' || shiftStr === 'ثالثه') ? '3' : '1');
-                    let shiftId = `${date}_COOLING_${shiftNum}`;
-
-                    if (!shiftRecordsMap[shiftId]) shiftRecordsMap[shiftId] = [];
-
-                    shiftRecordsMap[shiftId].push({
-                        id: Date.now().toString() + Math.random(),
-                        time: "00:00", // داتا تاريخية
-                        supervisor, dept, type, point, model, qty, stamp, name
-                    });
-                }
-
-                // رفع البيانات للسيرفر على دفعات
-                let promises = [];
-                for (const [id, records] of Object.entries(shiftRecordsMap)) {
-                    promises.push(supabaseClient.from('production_shifts').upsert({
-                        shift_id: id,
-                        shift_data: { type: 'cooling', records: records },
-                        updated_at: new Date().toISOString()
-                    }));
-                    if(promises.length >= 10) { await Promise.all(promises); promises = []; }
-                }
-                if(promises.length > 0) await Promise.all(promises);
-
-                showToast("تم استيراد سجلات التبريد بنجاح!");
-                loadCoolingData();
-            } catch (err) {
-                console.error(err);
-                alert("فشل الاستيراد. تأكد من صيغة الملف.");
-            } finally {
-                overlay.remove();
-                event.target.value = '';
-            }
-        };
-        reader.readAsText(file, 'UTF-8');
-    }
-
- // --- 2. محرك التحليلات الهندسية لعيووب التبريد (بالفلاتر) ---
-    async function loadCoolingAnalysis(filterType = null) {
-        if(!supabaseClient) return;
-        showToast("جاري استخراج الرؤى الهندسية...");
-        
-        const monthInput = document.getElementById('coolingAnaMonth');
-        const dateInput = document.getElementById('coolingAnaDate');
-
-        // ميكانيزم ذكي: لو اختار شهر يمسح اليوم، ولو اختار يوم يمسح الشهر لعدم التضارب
-        if(filterType === 'month' && monthInput.value) dateInput.value = '';
-        if(filterType === 'date' && dateInput.value) monthInput.value = '';
-
-        const activeMonth = monthInput ? monthInput.value : '';
-        const activeDate = dateInput ? dateInput.value : '';
-
-        try {
-            // جلب البيانات مع الـ shift_id لكي نستطيع فلترة التواريخ
-            const { data } = await supabaseClient.from('production_shifts')
-                .select('shift_id, shift_data')
-                .like('shift_id', '%_COOLING_%');
-
-            let allRecords = [];
-            if(data) {
-                data.forEach(row => {
-                    let rawDate = row.shift_id.split('_COOLING_')[0];
-                    if(!rawDate) return;
-                    rawDate = rawDate.replace(/['"]/g, '').trim();
-                    let normDate = rawDate;
-
-                    // معالجة وتوحيد صيغ التواريخ المعكوسة من الإكسيل (DD/MM/YYYY أو DD-MM-YYYY)
-                    if (rawDate.includes('/')) {
-                        let p = rawDate.split('/');
-                        if (p[2] && p[2].length >= 4) {
-                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
-                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
-                            normDate = `${y}-${m}-${d}`;
-                        } else if (p[0].length === 4) {
-                            normDate = `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
-                        }
-                    } else if (rawDate.includes('-')) {
-                        let p = rawDate.split('-');
-                        if (p[0].length !== 4 && p[2] && p[2].length >= 4) {
-                            let y = p[2].substring(0,4), m = p[1].padStart(2, '0'), d = p[0].padStart(2, '0');
-                            if (parseInt(m) > 12) { m = p[0].padStart(2, '0'); d = p[1].padStart(2, '0'); }
-                            normDate = `${y}-${m}-${d}`;
-                        }
-                    }
-
-                    // تطبيق الفلاتر على التاريخ الموحد (normDate)
-                    if (activeMonth && !normDate.startsWith(activeMonth)) return;
-                    if (activeDate && normDate !== activeDate) return;
-
-                  if(row.shift_data && row.shift_data.records) {
-                        allRecords = allRecords.concat(row.shift_data.records);
-                    }
-                });
-            }
-
-            // تخزين مؤقت للبيانات لتمكين وظيفة "التشريح التفصيلي"
-            window.cachedCoolingRecords = allRecords;
-
-            if(allRecords.length === 0) {
-                safeSetText('cooling-analysis-summary', "لا توجد بيانات مطابقة للفلتر المحدد.");
-                safeSetText('ana-cool-total', 0);
-                safeSetText('ana-cool-model', '--');
-                renderCoolingCharts({}, {}, {}); // تصفير الشارتات إذا كانت النتيجة صفر
-                return;
-            }
-
-            // تجميع الإحصائيات بعد الفلترة
-            let pointsMap = {}, modelMap = {}, responsibleMap = {}, typeMap = {};
-            allRecords.forEach(r => {
-                pointsMap[r.point] = (pointsMap[r.point] || 0) + (r.qty || 1);
-                modelMap[r.model] = (modelMap[r.model] || 0) + (r.qty || 1);
-                typeMap[r.type] = (typeMap[r.type] || 0) + (r.qty || 1);
-                let person = `${r.stamp} - ${r.name}`;
-                responsibleMap[person] = (responsibleMap[person] || 0) + (r.qty || 1);
-            });
-
-            // تحديث الـ KPIs
-            safeSetText('ana-cool-total', allRecords.reduce((sum, r) => sum + (r.qty || 1), 0));
-            let topModel = Object.keys(modelMap).sort((a,b) => modelMap[b] - modelMap[a])[0];
-            safeSetText('ana-cool-model', topModel || '--');
-
-            let topPoint = Object.keys(pointsMap).sort((a,b) => pointsMap[b] - pointsMap[a])[0];
-            safeSetText('cooling-analysis-summary', `أكبر فرصة تحسين للوقت المحدد تكمن في معالجة عيوب [${topPoint}]، حيث تمثل بؤرة الهدر الرئيسية.`);
-
-            // رسم المخططات
-            renderCoolingCharts(pointsMap, responsibleMap, modelMap);
-
-        } catch (e) { console.error(e); }
-    }
-
-    function renderCoolingCharts(points, res, models) {
-        const ctxP = document.getElementById('coolParetoChart');
-        const sortedPoints = Object.keys(points).sort((a,b) => points[b] - points[a]).slice(0, 15);
-       if(window.chCool1) window.chCool1.destroy();
-        window.chCool1 = new Chart(ctxP, {
-            type: 'bar',
-            data: { labels: sortedPoints, datasets: [{ label: 'عدد العيوب', data: sortedPoints.map(k => points[k]), backgroundColor: '#ff1744', borderRadius: 8 }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                onClick: (event, elements) => {
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const defectName = sortedPoints[index];
-                        openDefectDeepDive(defectName); // استدعاء دالة التشريح
-                    }
-                },
-                onHover: (event, elements) => {
-                    // تغيير شكل الماوس ليدل على أنه قابل للضغط
-                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-                }
-            }
-        });
-
-        const ctxR = document.getElementById('coolResponsibleChart');
-        const sortedRes = Object.keys(res).sort((a,b) => res[b] - res[a]).slice(0, 10);
-        if(window.chCool2) window.chCool2.destroy();
-        window.chCool2 = new Chart(ctxR, {
-            type: 'bar',
-            data: { labels: sortedRes, datasets: [{ label: 'إجمالي الأخطاء المرصودة', data: sortedRes.map(k => res[k]), backgroundColor: '#ff9f0a', borderRadius: 8 }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
-        });
-
-        const ctxM = document.getElementById('coolModelChart');
-        if(window.chCool3) window.chCool3.destroy();
-        window.chCool3 = new Chart(ctxM, {
-            type: 'doughnut',
-            data: { labels: Object.keys(models), datasets: [{ data: Object.values(models), backgroundColor: ['#00e5ff', '#00e676', '#ffb300', '#ff1744', '#bf5af2'], borderWidth: 0 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-        });
-    }
-// --- دالة التشريح الهندسي التفصيلي للعيب (Cooling Drill-down) ---
-    function openDefectDeepDive(defectPointName) {
-        if (!window.cachedCoolingRecords) return;
-        const defectRecords = window.cachedCoolingRecords.filter(r => r.point === defectPointName);
-        if (defectRecords.length === 0) return;
-
-        let totalQty = 0;
-        let models = {}, techs = {}, depts = {};
-        
-        defectRecords.forEach(r => {
-            let q = r.qty || 1;
-            totalQty += q;
-            models[r.model] = (models[r.model] || 0) + q;
-            depts[r.dept] = (depts[r.dept] || 0) + q;
-            let person = r.stamp ? `${r.stamp} - ${r.name}` : 'غير مسجل';
-            techs[person] = (techs[person] || 0) + q;
-        });
-
-        safeSetText('cool-dd-name', defectPointName);
-        safeSetText('cool-dd-total', totalQty);
-        
-        let topModel = Object.keys(models).sort((a,b) => models[b] - models[a])[0] || '--';
-        let topTech = Object.keys(techs).sort((a,b) => techs[b] - techs[a])[0] || '--';
-        let topDept = Object.keys(depts).sort((a,b) => depts[b] - depts[a])[0] || '--';
-        
-        safeSetText('cool-dd-model', topModel);
-        safeSetText('cool-dd-tech', topTech.split(' - ')[0]); 
-        safeSetText('cool-dd-dept', topDept);
-
-        let isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        Chart.defaults.color = isLight ? '#475569' : '#8e8e93';
-
-        if(window.chCoolDD1) window.chCoolDD1.destroy();
-        window.chCoolDD1 = new Chart(document.getElementById('cool-dd-model-chart'), {
-            type: 'doughnut',
-            data: { labels: Object.keys(models), datasets: [{ data: Object.values(models), backgroundColor: ['#00e5ff', '#ff1744', '#ffb300', '#00e676', '#bf5af2'], borderWidth:0 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: {font: {size: 10}} } } }
-        });
-
-        let sortedTechKeys = Object.keys(techs).sort((a,b) => techs[b] - techs[a]).slice(0, 5); 
-        if(window.chCoolDD2) window.chCoolDD2.destroy();
-        window.chCoolDD2 = new Chart(document.getElementById('cool-dd-tech-chart'), {
-            type: 'bar',
-            data: { labels: sortedTechKeys, datasets: [{ label: 'العدد', data: sortedTechKeys.map(k=>techs[k]), backgroundColor: '#ffb300', borderRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: {display: false} } }
-        });
-
-        openModal('coolingDeepDiveModal');
-    }
-// --- محرك التحليل الجذري الشامل (Master Analytics Engine) ---
-    function openMasterDefectDeepDive(defectName) {
-        if(!cachedBiData || cachedBiData.length === 0) return;
-        showToast(`جاري تشريح العيب: ${defectName}`);
-        
-        let dailyTrend = {}; let shiftStats = { "1": 0, "2": 0, "3": 0 }; let modelStats = {}; 
-        let totalCount = 0; let totalAllProduction = 0;
-
-        cachedBiData.forEach(row => {
-            if (!row.shift_data || !row.shift_data.intervals) return;
-            let dateKey = row.shift_id.substring(0, 10);
-            let shiftNum = row.shift_id.includes('_Shift_') ? row.shift_id.split('_Shift_')[1] : "1";
-
-            row.shift_data.intervals.forEach(inv => {
-                if(inv.isBreak) return;
-                totalAllProduction += (Number(inv.actual) || 0);
-
-                if(inv.defects) {
-                    inv.defects.forEach(d => {
-                        if(d.category === defectName) {
-                            let q = d.qty || 1;
-                            totalCount += q;
-                            dailyTrend[dateKey] = (dailyTrend[dateKey] || 0) + q;
-                            shiftStats[shiftNum] = (shiftStats[shiftNum] || 0) + q;
-                            if(d.model) modelStats[d.model] = (modelStats[d.model] || 0) + q;
-                        }
-                    });
-                }
-            });
-        });
-
-        safeSetText('master-dd-name', defectName);
-        safeSetText('master-dd-total', totalCount);
-        
-        let impact = totalAllProduction > 0 ? ((totalCount / totalAllProduction) * 100).toFixed(2) : 0;
-        safeSetText('master-dd-impact', impact + '%');
-
-        let topShift = Object.keys(shiftStats).sort((a,b) => shiftStats[b] - shiftStats[a])[0];
-        let shiftNames = {"1":"الأولى", "2":"الثانية", "3":"الثالثة"};
-        safeSetText('master-dd-shift', `الوردية ${shiftNames[topShift]}`);
-
-        let sortedDates = Object.keys(dailyTrend).sort();
-        if(window.chMasterTrend) window.chMasterTrend.destroy();
-        window.chMasterTrend = new Chart(document.getElementById('master-dd-trend-chart'), {
-            type: 'line',
-            data: {
-                labels: sortedDates,
-                datasets: [{ label: 'التكرار اليومي', data: sortedDates.map(d => dailyTrend[d]), borderColor: '#ff1744', backgroundColor: 'rgba(255, 23, 68, 0.1)', fill: true, tension: 0.4, borderWidth: 3 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-
-        if(window.chMasterShift) window.chMasterShift.destroy();
-        window.chMasterShift = new Chart(document.getElementById('master-dd-shift-chart'), {
-            type: 'bar',
-            data: {
-                labels: ['الوردية 1', 'الوردية 2', 'الوردية 3'],
-                datasets: [{ data: [shiftStats["1"], shiftStats["2"], shiftStats["3"]], backgroundColor: ['#00e5ff', '#ffb300', '#bf5af2'], borderRadius: 5 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-
-        let modelLabels = Object.keys(modelStats);
-        if(window.chMasterModel) window.chMasterModel.destroy();
-        window.chMasterModel = new Chart(document.getElementById('master-dd-model-chart'), {
-            type: 'pie',
-            data: {
-                labels: modelLabels.length ? modelLabels : ['عام / غير محدد'],
-                datasets: [{ data: modelLabels.length ? Object.values(modelStats) : [totalCount], backgroundColor: ['#00e676', '#ff1744', '#00e5ff', '#ffb300'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: {boxWidth: 10, font: {size: 9}} } } }
-        });
-
-        openModal('masterDeepDiveModal');
-    }
-</script>
 </body>
 </html>
