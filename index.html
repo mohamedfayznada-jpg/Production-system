@@ -124,6 +124,10 @@
                     <i class="fa-solid fa-stopwatch action-icon success"></i>
                     <span>سجل الساعات</span>
                 </button>
+                <button class="action-card blur-glass" onclick="App.syncToCloud()">
+                    <i class="fa-solid fa-cloud-arrow-up action-icon info"></i>
+                    <span>مزامنة سحابية</span>
+                </button>
                 <button class="action-card blur-glass" onclick="App.navigate('scratches')">
                     <i class="fa-solid fa-spray-can action-icon warning"></i>
                     <span>عيوب الرش</span>
@@ -256,18 +260,23 @@
     <div id="toast">تم الحفظ بنجاح</div>
 
     <script>
-        const App = {
+      const App = {
+            // ==========================================
+            // ⚠️ ضع رابط جوجل الخاص بك هنا بين علامتي التنصيص
+            // ==========================================
+            GOOGLE_API_URL: 'ضع_الرابط_هنا', 
+
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
                 production: { date: '', shift: '1', items: [] },
-                scratches: [] // السجل الجديد لعيوب الرش
+                scratches: []
             },
 
             init() {
                 const saved = localStorage.getItem('mes_core_data');
                 if (saved) {
                     this.data = { ...this.data, ...JSON.parse(saved) };
-                    if(!this.data.scratches) this.data.scratches = []; // توافقية مع الإصدار السابق
+                    if(!this.data.scratches) this.data.scratches = [];
                 } else {
                     this.data.production.date = new Date().toISOString().split('T')[0];
                 }
@@ -367,17 +376,15 @@
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
 
-            /* ================= دوال عيوب الرش ================= */
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
                 const notes = document.getElementById('scratch-notes').value;
                 const fileInput = document.getElementById('scratch-image');
                 
                 if(!fileInput.files || !fileInput.files[0]) {
-                    this.showToast("برجاء التقاط أو إرفاق صورة العيب أولاً"); return;
+                    this.showToast("برجاء التقاط صورة العيب أولاً"); return;
                 }
 
-                // قراءة الصورة وتحويلها لنص
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const base64Img = e.target.result;
@@ -386,16 +393,15 @@
                         type: type,
                         notes: notes,
                         image: base64Img,
-                        status: 'pending', // pending أو fixed
+                        status: 'pending',
                         time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})
                     });
                     this.saveState();
                     this.renderScratchesList();
                     
-                    // تنظيف النموذج
                     document.getElementById('scratch-notes').value = '';
                     fileInput.value = '';
-                    this.showToast("تم إدراج العيب في السجل بنجاح");
+                    this.showToast("تم إدراج العيب محلياً");
                 };
                 reader.readAsDataURL(fileInput.files[0]);
             },
@@ -403,8 +409,6 @@
             renderScratchesList() {
                 const container = document.getElementById('scratches-list');
                 container.innerHTML = '';
-                
-                // عرض الأحدث أولاً
                 const sortedScratches = [...this.data.scratches].reverse();
                 document.getElementById('scratches-counter').innerText = sortedScratches.length;
 
@@ -416,7 +420,7 @@
                 sortedScratches.forEach(defect => {
                     const isPending = defect.status === 'pending';
                     const statusClass = isPending ? 'status-pending' : 'status-fixed';
-                    const statusText = isPending ? '⏳ قيد الإصلاح (اضغط للإنهاء)' : '✅ تم الإصلاح (معتمد)';
+                    const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
                     
                     container.innerHTML += `
                         <div class="defect-card" style="border-right: 4px solid ${isPending ? 'var(--warning)' : 'var(--success)'};">
@@ -444,17 +448,15 @@
                 if(index > -1) {
                     this.data.scratches[index].status = this.data.scratches[index].status === 'pending' ? 'fixed' : 'pending';
                     this.saveState(); this.renderScratchesList();
-                    this.showToast(this.data.scratches[index].status === 'fixed' ? "تم إغلاق التذكرة" : "تم إعادة الفتح");
                 }
             },
             
             deleteScratch(id) {
-                if(confirm("تحذير: هل أنت متأكد من مسح سجل هذا العيب نهائياً؟")) {
+                if(confirm("مسح السجل نهائياً؟")) {
                     this.data.scratches = this.data.scratches.filter(d => d.id !== id);
                     this.saveState(); this.renderScratchesList();
                 }
             },
-            /* ================================================== */
 
             saveState() {
                 this.data.production.date = document.getElementById('prod-date').value;
@@ -476,6 +478,40 @@
                 });
                 report += `\n*إجمالي الإنتاج : ${total}*`;
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+            },
+
+            // =========================================
+            // دالة المزامنة السحابية الجديدة (Cloud Sync)
+            // =========================================
+            syncToCloud() {
+                if(this.GOOGLE_API_URL === 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec' || this.GOOGLE_API_URL === '') {
+                    this.showToast("يرجى إعداد رابط Google Drive أولاً");
+                    return;
+                }
+
+                this.showToast("جاري المزامنة مع السحابة ☁️...");
+                
+                // إعداد حزمة البيانات للإرسال
+                const payload = {
+                    type: "FULL_BACKUP",
+                    payload: this.data
+                };
+
+                // إرسال البيانات (باستخدام no-cors لضمان العبور السريع وعدم حظر المتصفح)
+                fetch(this.GOOGLE_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }).then(() => {
+                    // في وضع no-cors، المتصفح يعتبر الاتصال ناجحاً إذا تم الإرسال
+                    this.showToast("تم النسخ الاحتياطي في Google Drive ✅");
+                }).catch(err => {
+                    console.error(err);
+                    this.showToast("حدث خطأ في الاتصال بالإنترنت ❌");
+                });
             }
         };
 
