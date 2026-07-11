@@ -118,18 +118,24 @@
                 <h2>إجمالي إنتاج اليوم</h2>
                 <div class="hero-number eng-font" id="home-total-prod">0</div>
             </div>
-            <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
+          <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
             <div class="grid-actions">
                 <button class="action-card blur-glass" onclick="App.navigate('production')">
                     <i class="fa-solid fa-stopwatch action-icon success"></i>
                     <span>سجل الساعات</span>
                 </button>
                 <button class="action-card blur-glass" onclick="App.syncToCloud()">
-                    <i class="fa-solid fa-cloud-arrow-up action-icon info"></i>
-                    <span>مزامنة سحابية</span>
+                    <i class="fa-solid fa-cloud-arrow-up action-icon warning"></i>
+                    <span>حفظ للسحابة</span>
                 </button>
+                <!-- الزر الجديد -->
+                <button class="action-card blur-glass" onclick="App.fetchFromCloud()">
+                    <i class="fa-solid fa-cloud-arrow-down action-icon info"></i>
+                    <span>استرداد البيانات</span>
+                </button>
+                <!-- ======== -->
                 <button class="action-card blur-glass" onclick="App.navigate('scratches')">
-                    <i class="fa-solid fa-spray-can action-icon warning"></i>
+                    <i class="fa-solid fa-spray-can action-icon primary"></i>
                     <span>عيوب الرش</span>
                 </button>
             </div>
@@ -541,6 +547,48 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+        // =========================================
+            // دالة استرداد البيانات من السحابة (للموبايل)
+            // =========================================
+            async fetchFromCloud() {
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
+                    this.showToast("يرجى إعداد رابط Google Drive أولاً");
+                    return;
+                }
+
+                this.showToast("جاري الاسترداد من السحابة ⏳...");
+
+                try {
+                    // طلب البيانات من جوجل
+                    let response = await fetch(this.GOOGLE_API_URL);
+                    let result = await response.json();
+
+                    if(result.status === 'success' && result.data) {
+                        // تحديث بيانات التطبيق
+                        this.data = result.data;
+                        this.saveState();
+                        
+                        // إعادة تهيئة الواجهة بالبيانات الجديدة
+                        document.getElementById('set-shift-start').value = this.data.settings.start;
+                        document.getElementById('set-shift-end').value = this.data.settings.end;
+                        document.getElementById('set-break-start').value = this.data.settings.bStart;
+                        document.getElementById('set-break-end').value = this.data.settings.bEnd;
+                        document.getElementById('set-line-name').value = this.data.settings.lineName;
+                        document.getElementById('prod-date').value = this.data.production.date;
+                        document.getElementById('prod-shift').value = this.data.production.shift;
+                        
+                        this.renderProductionList();
+                        this.renderScratchesList();
+                        
+                        this.showToast("تم تحديث البيانات من السحابة ✅");
+                    } else {
+                        this.showToast("لم يتم العثور على بيانات سابقة");
+                    }
+                } catch(err) {
+                    console.error(err);
+                    this.showToast("حدث خطأ في جلب البيانات ❌");
+                }
+            }
     </script>
 </body>
 </html>
