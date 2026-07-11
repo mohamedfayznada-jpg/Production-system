@@ -72,12 +72,22 @@
         .actual-input { width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: 'Orbitron'; font-size: 1.2rem; text-align: center; padding: 8px; outline: none; }
         .actual-input:focus { border-color: var(--success); }
 
+        /* Defects Cards (Scratches) */
+        .defect-card { display: flex; gap: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 15px; border-radius: var(--radius-lg); margin-bottom: 15px; transition: 0.3s; }
+        .defect-img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--bg-dark); }
+        .defect-info { flex: 1; }
+        .defect-info h4 { color: var(--danger); margin-bottom: 5px; font-size: 1.1rem; }
+        .defect-status { margin-top: 10px; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; cursor: pointer; display: inline-block; transition: 0.2s; }
+        .status-pending { background: rgba(255, 177, 153, 0.1); color: var(--warning); border: 1px solid var(--warning); }
+        .status-fixed { background: rgba(0, 255, 135, 0.1); color: var(--success); border: 1px solid var(--success); }
+        .defect-status:active { transform: scale(0.95); }
+
+        /* Navigation */
         .bottom-nav { position: fixed; bottom: 15px; left: 15px; right: 15px; height: var(--nav-height); border-radius: var(--radius-xl); display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.75rem; font-weight: bold; transition: all 0.3s; cursor: pointer; }
         .nav-item i { font-size: 1.2rem; transition: transform 0.3s; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active i { transform: translateY(-3px) scale(1.1); filter: drop-shadow(0 0 8px var(--primary-glow)); }
-
         .special-nav .fab-btn { width: 60px; height: 60px; background: linear-gradient(135deg, #25D366, #128C7E); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.8rem; margin-top: -30px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); border: 4px solid var(--bg-dark); cursor: pointer; transition: transform 0.2s; }
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
@@ -114,14 +124,14 @@
                     <i class="fa-solid fa-stopwatch action-icon success"></i>
                     <span>سجل الساعات</span>
                 </button>
-                <button class="action-card blur-glass">
-                    <i class="fa-solid fa-shield-virus action-icon danger"></i>
-                    <span>تسجيل عيب</span>
+                <button class="action-card blur-glass" onclick="App.navigate('scratches')">
+                    <i class="fa-solid fa-spray-can action-icon warning"></i>
+                    <span>عيوب الرش</span>
                 </button>
             </div>
         </section>
 
-        <!-- ================= شاشة الإنتاج ساعة بساعة ================= -->
+        <!-- ================= شاشة الإنتاج ================= -->
         <section id="screen-production" class="screen">
             <h3 class="section-title"><i class="fa-solid fa-clipboard-list text-gradient"></i> سجل الإنتاج اللحظي</h3>
             
@@ -141,13 +151,50 @@
             </div>
 
             <div class="blur-glass" style="border-radius: var(--radius-xl); padding: 15px; margin-bottom: 20px;">
-                <div id="production-list">
-                    <!-- سيتم توليد الأوقات هنا عن طريق الجافاسكريبت -->
-                </div>
+                <div id="production-list"></div>
                 <div style="text-align: left; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
                     <span style="color: var(--text-muted); font-weight: bold; font-size: 0.9rem;">الإجمالي: </span>
                     <span id="prod-total-calc" class="eng-font" style="font-size: 1.5rem; color: var(--primary);">0</span>
                 </div>
+            </div>
+        </section>
+
+        <!-- ================= شاشة عيوب الرش ================= -->
+        <section id="screen-scratches" class="screen">
+            <h3 class="section-title"><i class="fa-solid fa-spray-can text-gradient"></i> سجل عيوب الرش الظاهرية</h3>
+            
+            <!-- نموذج إضافة عيب -->
+            <div class="blur-glass" style="border-radius: var(--radius-xl); padding: 20px; margin-bottom: 25px;">
+                <div class="input-group">
+                    <label>نوع العيب</label>
+                    <select id="scratch-type" class="glass-input">
+                        <option value="خدش خفيف">خدش خفيف</option>
+                        <option value="خدش عميق">خدش عميق</option>
+                        <option value="خبطة">خبطة</option>
+                        <option value="تسييل لون">تسييل لون</option>
+                        <option value="رايش">رايش</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>إرفاق صورة العيب (من الكاميرا)</label>
+                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 9px; background: rgba(0,242,254,0.1); border-color: rgba(0,242,254,0.3);">
+                </div>
+                <div class="input-group">
+                    <label>ملاحظات (اختياري)</label>
+                    <input type="text" id="scratch-notes" class="glass-input" placeholder="مثال: يمين الباب السفلي...">
+                </div>
+                <button class="glass-btn" onclick="App.addScratchDefect()">
+                    <i class="fa-solid fa-plus"></i> تسجيل العيب في السجل
+                </button>
+            </div>
+
+            <!-- قائمة العيوب -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h4 style="color:var(--text-muted);"><i class="fa-solid fa-list-check"></i> العيوب المسجلة اليوم</h4>
+                <span class="eng-font" id="scratches-counter" style="color:var(--warning); font-size:1.2rem;">0</span>
+            </div>
+            <div id="scratches-list">
+                <!-- سيتم توليد البطاقات هنا -->
             </div>
         </section>
 
@@ -212,19 +259,19 @@
         const App = {
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
-                production: { date: '', shift: '1', items: [] }
+                production: { date: '', shift: '1', items: [] },
+                scratches: [] // السجل الجديد لعيوب الرش
             },
 
             init() {
-                // تحميل البيانات من الذاكرة المحلية
                 const saved = localStorage.getItem('mes_core_data');
                 if (saved) {
-                    this.data = JSON.parse(saved);
+                    this.data = { ...this.data, ...JSON.parse(saved) };
+                    if(!this.data.scratches) this.data.scratches = []; // توافقية مع الإصدار السابق
                 } else {
                     this.data.production.date = new Date().toISOString().split('T')[0];
                 }
 
-                // تعبئة حقول الإعدادات
                 document.getElementById('set-shift-start').value = this.data.settings.start;
                 document.getElementById('set-shift-end').value = this.data.settings.end;
                 document.getElementById('set-break-start').value = this.data.settings.bStart;
@@ -238,9 +285,12 @@
                 } else {
                     this.renderProductionList();
                 }
+
+                this.renderScratchesList();
             },
 
             navigate(screenId) {
+                if(screenId === 'analytics') { this.showToast("سيتم تفعيل شاشة التحليلات قريباً"); return; }
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 const targetScreen = document.getElementById('screen-' + screenId);
                 if(targetScreen) targetScreen.classList.add('active');
@@ -256,66 +306,38 @@
                 let [hours, minutes] = timeStr.split(':');
                 hours = parseInt(hours);
                 let ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12; 
+                hours = hours % 12; hours = hours ? hours : 12; 
                 let hoursStr = hours < 10 ? '0' + hours : hours;
                 return `${hoursStr}:${minutes} ${ampm}`;
             },
 
             addMinutes(timeStr, minsToAdd) {
                 let [h, m] = timeStr.split(':').map(Number);
-                let date = new Date();
-                date.setHours(h, m, 0);
+                let date = new Date(); date.setHours(h, m, 0);
                 date.setMinutes(date.getMinutes() + minsToAdd);
-                let newH = date.getHours().toString().padStart(2, '0');
-                let newM = date.getMinutes().toString().padStart(2, '0');
-                return `${newH}:${newM}`;
+                return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
             },
 
-            timeToMins(t) {
-                let [h, m] = t.split(':').map(Number);
-                return h * 60 + m;
-            },
+            timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
 
             generateIntervals() {
                 const { start, end, bStart, bEnd } = this.data.settings;
-                let current = start;
-                let intervals = [];
-
+                let current = start; let intervals = [];
                 let endMins = this.timeToMins(end);
-                if (endMins <= this.timeToMins(start)) endMins += 24 * 60; // وردية ليلية
+                if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
 
                 while (this.timeToMins(current) < endMins) {
-                    if (current === bStart) {
-                        intervals.push({ isBreak: true, label: "فترة راحة" });
-                        current = bEnd;
-                        continue;
-                    }
-                    
+                    if (current === bStart) { intervals.push({ isBreak: true, label: "فترة راحة" }); current = bEnd; continue; }
                     let nextHour = this.addMinutes(current, 60);
-                    // معالجة فترات الكسر أو دخول وقت الراحة
-                    if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) {
-                        nextHour = bStart;
-                    }
-                    if (this.timeToMins(nextHour) > endMins) {
-                        nextHour = end;
-                    }
-
-                    intervals.push({
-                        isBreak: false,
-                        label: this.formatAMPM(nextHour),
-                        rawTime: nextHour,
-                        actual: ""
-                    });
-                    
+                    if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
+                    if (this.timeToMins(nextHour) > endMins) nextHour = end;
+                    intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour, actual: "" });
                     current = nextHour;
                 }
 
                 this.data.production.items = intervals;
-                this.saveState();
-                this.renderProductionList();
-                this.showToast("تم توليد سجل الساعات بنجاح");
-                this.navigate('production');
+                this.saveState(); this.renderProductionList();
+                this.showToast("تم توليد سجل الساعات بنجاح"); this.navigate('production');
             },
 
             applySettings() {
@@ -328,37 +350,111 @@
             },
 
             renderProductionList() {
-                const container = document.getElementById('production-list');
-                container.innerHTML = '';
-                let total = 0;
-
+                const container = document.getElementById('production-list'); container.innerHTML = ''; let total = 0;
                 this.data.production.items.forEach((item, index) => {
-                    if (item.isBreak) {
-                        container.innerHTML += `<div class="prod-row break-row"><i class="fa-solid fa-mug-hot" style="margin-left: 8px;"></i> ${item.label}</div>`;
-                    } else {
+                    if (item.isBreak) { container.innerHTML += `<div class="prod-row break-row"><i class="fa-solid fa-mug-hot" style="margin-left: 8px;"></i> ${item.label}</div>`; } 
+                    else {
                         total += Number(item.actual) || 0;
-                        container.innerHTML += `
-                            <div class="prod-row">
-                                <span class="time-label">${item.label}</span>
-                                <input type="number" class="actual-input" pattern="\\d*" value="${item.actual}" oninput="App.updateActual(${index}, this.value)">
-                            </div>
-                        `;
+                        container.innerHTML += `<div class="prod-row"><span class="time-label">${item.label}</span><input type="number" class="actual-input" pattern="\\d*" value="${item.actual}" oninput="App.updateActual(${index}, this.value)"></div>`;
                     }
                 });
-
-                document.getElementById('prod-total-calc').innerText = total;
-                document.getElementById('home-total-prod').innerText = total;
+                document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
 
             updateActual(index, value) {
-                this.data.production.items[index].actual = value;
-                this.saveState();
-                // تحديث الإجمالي فقط دون إعادة رسم القائمة للحفاظ على التركيز (Focus)
-                let total = 0;
-                this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
-                document.getElementById('prod-total-calc').innerText = total;
-                document.getElementById('home-total-prod').innerText = total;
+                this.data.production.items[index].actual = value; this.saveState();
+                let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
+                document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
+
+            /* ================= دوال عيوب الرش ================= */
+            addScratchDefect() {
+                const type = document.getElementById('scratch-type').value;
+                const notes = document.getElementById('scratch-notes').value;
+                const fileInput = document.getElementById('scratch-image');
+                
+                if(!fileInput.files || !fileInput.files[0]) {
+                    this.showToast("برجاء التقاط أو إرفاق صورة العيب أولاً"); return;
+                }
+
+                // قراءة الصورة وتحويلها لنص
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Img = e.target.result;
+                    this.data.scratches.push({
+                        id: Date.now(),
+                        type: type,
+                        notes: notes,
+                        image: base64Img,
+                        status: 'pending', // pending أو fixed
+                        time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})
+                    });
+                    this.saveState();
+                    this.renderScratchesList();
+                    
+                    // تنظيف النموذج
+                    document.getElementById('scratch-notes').value = '';
+                    fileInput.value = '';
+                    this.showToast("تم إدراج العيب في السجل بنجاح");
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            },
+
+            renderScratchesList() {
+                const container = document.getElementById('scratches-list');
+                container.innerHTML = '';
+                
+                // عرض الأحدث أولاً
+                const sortedScratches = [...this.data.scratches].reverse();
+                document.getElementById('scratches-counter').innerText = sortedScratches.length;
+
+                if(sortedScratches.length === 0) {
+                    container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 20px;">لا توجد عيوب مسجلة اليوم.</div>`;
+                    return;
+                }
+                
+                sortedScratches.forEach(defect => {
+                    const isPending = defect.status === 'pending';
+                    const statusClass = isPending ? 'status-pending' : 'status-fixed';
+                    const statusText = isPending ? '⏳ قيد الإصلاح (اضغط للإنهاء)' : '✅ تم الإصلاح (معتمد)';
+                    
+                    container.innerHTML += `
+                        <div class="defect-card" style="border-right: 4px solid ${isPending ? 'var(--warning)' : 'var(--success)'};">
+                            <img src="${defect.image}" class="defect-img">
+                            <div class="defect-info">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h4>${defect.type}</h4>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); font-family:'Orbitron';">${defect.time}</span>
+                                </div>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات إضافية'}</p>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="defect-status ${statusClass}" onclick="App.toggleScratchStatus(${defect.id})">
+                                        ${statusText}
+                                    </div>
+                                    <i class="fa-solid fa-trash-can" style="color: var(--danger); padding:8px; cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            },
+
+            toggleScratchStatus(id) {
+                const index = this.data.scratches.findIndex(d => d.id === id);
+                if(index > -1) {
+                    this.data.scratches[index].status = this.data.scratches[index].status === 'pending' ? 'fixed' : 'pending';
+                    this.saveState(); this.renderScratchesList();
+                    this.showToast(this.data.scratches[index].status === 'fixed' ? "تم إغلاق التذكرة" : "تم إعادة الفتح");
+                }
+            },
+            
+            deleteScratch(id) {
+                if(confirm("تحذير: هل أنت متأكد من مسح سجل هذا العيب نهائياً؟")) {
+                    this.data.scratches = this.data.scratches.filter(d => d.id !== id);
+                    this.saveState(); this.renderScratchesList();
+                }
+            },
+            /* ================================================== */
 
             saveState() {
                 this.data.production.date = document.getElementById('prod-date').value;
@@ -367,42 +463,22 @@
             },
 
             showToast(msg) {
-                const toast = document.getElementById('toast');
-                toast.innerText = msg;
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 3000);
+                const toast = document.getElementById('toast'); toast.innerText = msg;
+                toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
             },
 
             sendWhatsAppReport() {
-                // تجميع بيانات التقرير بتنسيق يطابق الصورة المطلوبة تماماً
-                let dParts = this.data.production.date.split('-');
-                let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; // DD-MM-YYYY
-                let total = 0;
-
-                let report = `*تقرير انتاج ساعة بساعة*\n`;
-                report += `${this.data.settings.lineName}\n`;
-                report += `التاريخ: ${formattedDate}\n`;
-                report += `الوردية: ${this.data.production.shift}\n\n`;
-
+                let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
+                let total = 0; let report = `*تقرير انتاج ساعة بساعة*\n${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${this.data.production.shift}\n\n`;
                 this.data.production.items.forEach(item => {
-                    if (item.isBreak) {
-                        report += `\n*${item.label}*\n\n`;
-                    } else {
-                        let actVal = item.actual === "" ? "0" : item.actual;
-                        report += `${item.label} : ${actVal}\n`;
-                        total += Number(item.actual) || 0;
-                    }
+                    if (item.isBreak) report += `\n*${item.label}*\n\n`;
+                    else { let actVal = item.actual === "" ? "0" : item.actual; report += `${item.label} : ${actVal}\n`; total += Number(item.actual) || 0; }
                 });
-
                 report += `\n*إجمالي الإنتاج : ${total}*`;
-
-                const encodedText = encodeURIComponent(report);
-                window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-                this.showToast("جاري التوجيه للواتساب...");
+                const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             }
         };
 
-        // تشغيل التطبيق عند تحميل الصفحة
         document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
