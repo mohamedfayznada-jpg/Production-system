@@ -515,6 +515,32 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => App.init());
+        // دالة جديدة لإرسال أحدث بيانات من الشيت إلى التطبيق (للموبايل)
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Data");
+    var lastRow = sheet.getLastRow();
+    
+    // التأكد من وجود بيانات
+    if (lastRow <= 0) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "empty"}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // جلب البيانات من العمود الثالث (C) في آخر صف
+    var lastPayload = sheet.getRange(lastRow, 3).getValue();
+    
+    // إرسال البيانات للتطبيق
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "success", 
+      "data": JSON.parse(lastPayload)
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
     </script>
 </body>
 </html>
