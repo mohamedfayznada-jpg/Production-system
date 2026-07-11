@@ -63,6 +63,14 @@
             </div>
             <div id="prod-sec-live">
                 <div class="glass-card form-grid two-cols responsive">
+                    <div class="form-group">
+    <label>المصنع</label>
+    <select id="factorySelector" onchange="appState.loadProduction()">
+        <option value="FAC_1">االتجميع النهائي</option>
+        <option value="FAC_2">اختبار الاداء</option>
+        <option value="FAC_3">التغليف</option>
+    </select>
+</div>
                     <div class="form-group"><label>تاريخ الوردية</label><input type="date" id="quickDate" onchange="appState.loadProduction()"></div>
                     <div class="form-group"><label>الوردية النشطة</label><select id="quickShift" onchange="appState.loadProduction()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
                     <div class="form-group full-width"><label>الهدف الكلي للوردية</label><input type="number" id="quickTarget" onchange="appState.updateTarget()" style="font-size: 1.5rem; font-family:'Orbitron'; color: var(--accent-cyan); text-align:center;"></div>
