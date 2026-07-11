@@ -54,6 +54,7 @@
         .action-icon.danger { color: var(--danger); }
         .action-icon.warning { color: var(--warning); }
         .action-icon.info { color: var(--info); }
+        .action-icon.primary { color: var(--primary); }
         .action-card span { font-weight: bold; font-size: 0.9rem; }
 
         /* Form & Inputs */
@@ -118,7 +119,7 @@
                 <h2>إجمالي إنتاج اليوم</h2>
                 <div class="hero-number eng-font" id="home-total-prod">0</div>
             </div>
-          <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
+            <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
             <div class="grid-actions">
                 <button class="action-card blur-glass" onclick="App.navigate('production')">
                     <i class="fa-solid fa-stopwatch action-icon success"></i>
@@ -128,12 +129,10 @@
                     <i class="fa-solid fa-cloud-arrow-up action-icon warning"></i>
                     <span>حفظ للسحابة</span>
                 </button>
-                <!-- الزر الجديد -->
                 <button class="action-card blur-glass" onclick="App.fetchFromCloud()">
                     <i class="fa-solid fa-cloud-arrow-down action-icon info"></i>
                     <span>استرداد البيانات</span>
                 </button>
-                <!-- ======== -->
                 <button class="action-card blur-glass" onclick="App.navigate('scratches')">
                     <i class="fa-solid fa-spray-can action-icon primary"></i>
                     <span>عيوب الرش</span>
@@ -203,9 +202,7 @@
                 <h4 style="color:var(--text-muted);"><i class="fa-solid fa-list-check"></i> العيوب المسجلة اليوم</h4>
                 <span class="eng-font" id="scratches-counter" style="color:var(--warning); font-size:1.2rem;">0</span>
             </div>
-            <div id="scratches-list">
-                <!-- سيتم توليد البطاقات هنا -->
-            </div>
+            <div id="scratches-list"></div>
         </section>
 
         <!-- ================= شاشة الإعدادات ================= -->
@@ -266,14 +263,14 @@
     <div id="toast">تم الحفظ بنجاح</div>
 
     <script>
- const App = {
-            // ==========================================
-            // تم وضع الرابط في مكانه الصحيح هنا:
+        const App = {
             // ==========================================
             GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec', 
+            // ==========================================
 
             data: {
-                settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },                production: { date: '', shift: '1', items: [] },
+                settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
+                production: { date: '', shift: '1', items: [] },
                 scratches: []
             },
 
@@ -485,71 +482,31 @@
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
 
-         // =========================================
-            // دالة المزامنة السحابية الجديدة (Cloud Sync)
-            // =========================================
             syncToCloud() {
-                // تم إرجاع الشرط لأصله ليتحقق من عدم وجود الرابط الافتراضي
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
                     this.showToast("يرجى إعداد رابط Google Drive أولاً");
                     return;
                 }
 
                 this.showToast("جاري المزامنة مع السحابة ☁️...");
-                // إعداد حزمة البيانات للإرسال
                 const payload = {
                     type: "FULL_BACKUP",
                     payload: this.data
                 };
 
-                // إرسال البيانات (باستخدام no-cors لضمان العبور السريع وعدم حظر المتصفح)
                 fetch(this.GOOGLE_API_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 }).then(() => {
-                    // في وضع no-cors، المتصفح يعتبر الاتصال ناجحاً إذا تم الإرسال
                     this.showToast("تم النسخ الاحتياطي في Google Drive ✅");
                 }).catch(err => {
                     console.error(err);
                     this.showToast("حدث خطأ في الاتصال بالإنترنت ❌");
                 });
-            }
-        };
+            },
 
-        document.addEventListener('DOMContentLoaded', () => App.init());
-        // دالة جديدة لإرسال أحدث بيانات من الشيت إلى التطبيق (للموبايل)
-function doGet(e) {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Data");
-    var lastRow = sheet.getLastRow();
-    
-    // التأكد من وجود بيانات
-    if (lastRow <= 0) {
-      return ContentService.createTextOutput(JSON.stringify({"status": "empty"}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // جلب البيانات من العمود الثالث (C) في آخر صف
-    var lastPayload = sheet.getRange(lastRow, 3).getValue();
-    
-    // إرسال البيانات للتطبيق
-    return ContentService.createTextOutput(JSON.stringify({
-      "status": "success", 
-      "data": JSON.parse(lastPayload)
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-        // =========================================
-            // دالة استرداد البيانات من السحابة (للموبايل)
-            // =========================================
             async fetchFromCloud() {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
                     this.showToast("يرجى إعداد رابط Google Drive أولاً");
@@ -559,16 +516,13 @@ function doGet(e) {
                 this.showToast("جاري الاسترداد من السحابة ⏳...");
 
                 try {
-                    // طلب البيانات من جوجل
                     let response = await fetch(this.GOOGLE_API_URL);
                     let result = await response.json();
 
                     if(result.status === 'success' && result.data) {
-                        // تحديث بيانات التطبيق
                         this.data = result.data;
                         this.saveState();
                         
-                        // إعادة تهيئة الواجهة بالبيانات الجديدة
                         document.getElementById('set-shift-start').value = this.data.settings.start;
                         document.getElementById('set-shift-end').value = this.data.settings.end;
                         document.getElementById('set-break-start').value = this.data.settings.bStart;
@@ -589,6 +543,9 @@ function doGet(e) {
                     this.showToast("حدث خطأ في جلب البيانات ❌");
                 }
             }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
 </html>
