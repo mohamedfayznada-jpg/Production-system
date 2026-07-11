@@ -2,342 +2,112 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>MES CORE | Production App</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#030305">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="display" content="standalone">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MES | Final Assembly & Packaging</title>
+    <!-- خطوط جوجل -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- أيقونات مجانية -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="splash" class="loader-overlay">
-        <i class="fa-solid fa-microchip" style="font-size: 3.5rem; color: var(--accent-cyan); margin-bottom: 20px;"></i>
-        <div style="font-family: 'Orbitron'; font-size: 2rem; font-weight: 900; color: var(--text-primary); text-transform: uppercase;">Production App</div>
-        <div style="font-family: 'Orbitron'; font-size: 1rem; color: var(--text-secondary); margin-top: 5px; font-weight: 800; letter-spacing: 3px;">Final assembly | Ref. A</div>
-        <div style="font-family: 'Cairo'; font-size: 1.1rem; color: var(--accent-cyan); margin-top: 15px; font-weight: bold; background: rgba(0, 229, 255, 0.1); padding: 4px 12px; border-radius: 20px;">Eng. M. Fayez</div>
-        <div class="spinner" style="margin-top: 30px;"></div>
+    <!-- شاشة الترحيب الإبداعية -->
+    <div id="splash-screen" class="splash-layer">
+        <div class="logo-container">
+            <i class="fa-solid fa-boxes-packing splash-icon"></i>
+            <h1 class="splash-title">MES CORE</h1>
+            <p class="splash-subtitle">Final Assembly & Packaging</p>
+            <div class="eng-badge">مدير الإنتاج | مُحَمَّد فَايِز</div>
+        </div>
+        <div class="loader-bar"><div class="progress"></div></div>
     </div>
 
-    <header class="app-header">
-        <div class="app-title"><i class="fa-solid fa-layer-group"></i> <span id="current-view-title">الرئيسية</span></div>
-        <button class="btn btn-secondary" style="padding: 8px 15px; width: auto; border-radius: 8px; font-size: 0.9rem;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> إضاءة</button>
+    <!-- الرأس (Header) -->
+    <header class="app-header blur-glass">
+        <div class="header-content">
+            <div class="dept-title">
+                <i class="fa-solid fa-microchip text-gradient"></i>
+                <span>التجميع النهائي والتغليف</span>
+            </div>
+            <button class="icon-btn"><i class="fa-solid fa-bell"></i></button>
+        </div>
     </header>
 
-    <div class="content-area">
-
-        <div id="view-home" class="view-layer">
-            <div class="glass-card">
-                <div class="section-header"><i class="fa-solid fa-chart-pie"></i> ملخص الأداء العام</div>
-                <div class="kpi-grid">
-                    <div class="kpi-box"><span class="kpi-label">Yield الشهر</span><span class="kpi-val cyan" id="main-kpi-myield">--%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">Yield الوردية</span><span class="kpi-val green" id="main-kpi-dyield">--%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">الإنتاج الفعلي</span><span class="kpi-val" id="main-kpi-dprod">0</span></div>
-                    <div class="kpi-box"><span class="kpi-label">العيوب المفتوحة</span><span class="kpi-val red" id="main-kpi-dfoam">0</span></div>
-                </div>
-            </div>
-            <div class="glass-card">
-                <div class="section-header"><i class="fa-solid fa-bolt"></i> الوصول السريع</div>
-                <div class="form-grid two-cols responsive">
-                    <button class="btn btn-secondary" onclick="switchNav('prod')"><i class="fa-solid fa-play" style="color:var(--accent-green);"></i> الإنتاج</button>
-                    <button class="btn btn-secondary" onclick="switchNav('defect')"><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-red);"></i> تسجيل عيب</button>
-                    <button class="btn btn-secondary" onclick="switchNav('monitor')"><i class="fa-solid fa-network-wired" style="color:var(--accent-orange);"></i> المراقبة</button>
-                    <button class="btn btn-secondary" onclick="switchNav('bi')"><i class="fa-solid fa-chart-line" style="color:var(--accent-cyan);"></i> التحليلات</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-prod" class="view-layer hidden">
-            <div class="segmented-control">
-                <div class="seg-btn active" id="seg-prod-live" onclick="switchProdSeg('live')">اللوحة اللحظية</div>
-                <div class="seg-btn" id="seg-prod-setup" onclick="switchProdSeg('setup')">الإعدادات</div>
-            </div>
-            <div id="prod-sec-live">
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group">
-    <label>المصنع</label>
-    <select id="factorySelector" onchange="appState.loadProduction()">
-        <option value="FAC_1">االتجميع النهائي</option>
-        <option value="FAC_2">اختبار الاداء</option>
-        <option value="FAC_3">التغليف</option>
-    </select>
-</div>
-                    <div class="form-group"><label>تاريخ الوردية</label><input type="date" id="quickDate" onchange="appState.loadProduction()"></div>
-                    <div class="form-group"><label>الوردية النشطة</label><select id="quickShift" onchange="appState.loadProduction()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                    <div class="form-group full-width"><label>الهدف الكلي للوردية</label><input type="number" id="quickTarget" onchange="appState.updateTarget()" style="font-size: 1.5rem; font-family:'Orbitron'; color: var(--accent-cyan); text-align:center;"></div>
-                </div>
-                <div class="glass-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-weight: 800;">مؤشر الإنجاز</span>
-                        <span id="shift-progress-text" style="font-family:'Orbitron'; font-weight:900; color:var(--accent-green); font-size: 1.2rem;">0%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-bar" id="shift-progress-bar"></div></div>
-                    <div style="display:flex; justify-content:space-between; margin-top:15px; background: var(--surface-1); padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle);">
-                        <div class="kpi-label" style="margin:0;">الإنتاج التراكمي:<br><strong id="kpi-prod-shift-actual" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
-                        <div class="kpi-label" style="margin:0; text-align:left;">الفارق:<br><strong id="kpi-prod-shift-variance" style="font-family:'Orbitron'; font-size:1.4rem; color:var(--text-primary);">0</strong></div>
-                    </div>
-                </div>
-                <div id="productionCardsContainer"></div>
-                <button class="btn btn-wa" style="margin-top: 15px;" onclick="shareToWhatsApp()"><i class="fa-brands fa-whatsapp"></i> إرسال التقرير (WhatsApp)</button>
-            </div>
-            <div id="prod-sec-setup" class="hidden glass-card">
-                <div class="section-header"><i class="fa-solid fa-clock"></i> إعدادات هيكل الأوقات</div>
-                <div class="form-grid two-cols responsive">
-                    <div class="form-group"><label>بداية الوردية</label><input type="time" id="sStart" onchange="saveLocalSettings()"></div>
-                    <div class="form-group"><label>نهاية الوردية</label><input type="time" id="sEnd" onchange="saveLocalSettings()"></div>
-                    <div class="form-group"><label>بداية الراحة</label><input type="time" id="bStart" onchange="saveLocalSettings()"></div>
-                    <div class="form-group"><label>نهاية الراحة</label><input type="time" id="bEnd" onchange="saveLocalSettings()"></div>
-                </div>
-                <div class="form-group full-width" style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="appState.applyNewTimeSettings()"><i class="fa-solid fa-arrows-rotate"></i> تحديث وبناء الساعات</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-defect" class="view-layer hidden">
-            <div class="segmented-control">
-                <div class="seg-btn active" id="seg-def-log" onclick="switchDefSeg('log')">سجل العيوب اللحظي</div>
-                <div class="seg-btn" id="seg-def-setup" onclick="switchDefSeg('setup')">قاعدة التصنيفات</div>
-            </div>
-            <div id="def-sec-log">
-                <div class="kpi-grid">
-                    <div class="kpi-box"><span class="kpi-label">Quality Yield</span><span class="kpi-val green" id="kpi-quality-yield">100%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">Overall Yield</span><span class="kpi-val" id="kpi-overall-yield">100%</span></div>
-                </div>
-                <div class="glass-card" style="padding: 10px;">
-                    <div class="table-wrap" style="border:none;">
-                        <table>
-                            <thead><tr><th>الساعة</th><th>الإنتاج</th><th>العيوب</th><th>إجراء</th></tr></thead>
-                            <tbody id="defectsTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div id="def-sec-setup" class="hidden glass-card">
-                <div class="section-header"><i class="fa-solid fa-folder-tree"></i> مهندس تصنيفات العيوب</div>
-                <div class="form-grid two-cols responsive" style="margin-bottom: 20px;">
-                    <div class="form-group">
-                        <label>إنشاء مجموعة جديدة (Group)</label>
-                        <div style="display:flex; gap:5px;"><input type="text" id="newGroupName" placeholder="مثال: الأبواب"><button class="btn btn-primary" style="width:auto;" onclick="addNewDefectGroup()"><i class="fa-solid fa-plus"></i></button></div>
-                    </div>
-                </div>
-                <div id="defectGroupsContainer" style="display:flex; flex-direction:column; gap:15px;"></div>
-            </div>
-        </div>
-
-        <div id="view-bi" class="view-layer hidden">
-            <div class="glass-card form-grid two-cols responsive">
-                <div class="form-group"><label>من تاريخ</label><input type="date" id="analyticsDateFrom" onchange="loadAnalyticsData()"></div>
-                <div class="form-group"><label>إلى تاريخ</label><input type="date" id="analyticsDateTo" onchange="loadAnalyticsData()"></div>
-                <button class="btn btn-secondary" style="grid-column: 1 / -1;" onclick="document.getElementById('analyticsDateFrom').value=''; document.getElementById('analyticsDateTo').value=''; loadAnalyticsData();"><i class="fa-solid fa-filter-circle-xmark"></i> عرض كل البيانات</button>
-            </div>
-
-            <div class="kpi-grid">
-                <div class="kpi-box"><span class="kpi-label">الإنتاج التام</span><span class="kpi-val cyan" id="bi-kpi-prod">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">متوسط Yield</span><span class="kpi-val green" id="bi-kpi-yield">0%</span></div>
-                <div class="kpi-box"><span class="kpi-label">إجمالي العيوب</span><span class="kpi-val red" id="bi-kpi-defects">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">متوسط OLE</span><span class="kpi-val orange" id="bi-kpi-ole">0%</span></div>
-            </div>
-
-            <div class="ai-insight">
-                <span><i class="fa-solid fa-robot"></i> تحليل التوقفات (اضغط لمعرفة الأسباب)</span>
-                <strong id="insight-bottleneck" style="cursor:pointer;" onclick="MES.Analytics.drillDownOLE()">جاري المعالجة...</strong>
-            </div>
-
-            <div class="segmented-control" style="margin-top: 20px;">
-                <div class="seg-btn active" onclick="switchBiChart('yield')">منحنى الجودة</div>
-                <div class="seg-btn" onclick="switchBiChart('pareto')">باريتو العيوب</div>
-                <div class="seg-btn" onclick="switchBiChart('gauges')">لوحة OLE</div>
-            </div>
-
-            <div class="glass-card chart-container" id="chart-yield-container"><div class="chart-box" style="cursor:pointer;" onclick="MES.Analytics.triggerYieldDrillDown(event)"><canvas id="yieldChart"></canvas></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على أي نقطة في المنحنى لتحليل اليوم</div></div>
-            <div class="glass-card chart-container hidden" id="chart-pareto-container"><div class="chart-box" style="cursor:pointer;"><canvas id="paretoChart"></canvas></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على عمود العيب لتشريحه</div></div>
-            <div class="glass-card chart-container hidden" id="chart-gauges-container"><div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; cursor:pointer;" onclick="MES.Analytics.drillDownOLE()"><div style="height: 180px; position: relative;"><canvas id="gaugeAvailability"></canvas></div><div style="height: 180px; position: relative;"><canvas id="gaugePerformance"></canvas></div><div style="height: 180px; position: relative;"><canvas id="gaugeQuality"></canvas></div></div><div style="font-size:0.75rem; text-align:center; color:var(--text-secondary); margin-top:5px;">اضغط على العدادات لتحليل أسباب الفقد</div></div>
-
-            <div class="glass-card form-grid two-cols responsive">
-                <button class="btn btn-success" onclick="exportAnalyticsToCSV()"><i class="fa-solid fa-file-csv"></i> تصدير التحليل (CSV)</button>
-                <input type="file" id="historicalDataUpload" accept=".csv" style="display: none;" onchange="handleHistoricalDataUpload(event)">
-                <button class="btn btn-primary" onclick="document.getElementById('historicalDataUpload').click()"><i class="fa-solid fa-database"></i> استيراد داتا تاريخية</button>
-            </div>
-        </div>
-
-        <div id="view-monitor" class="view-layer hidden">
-            <div class="segmented-control">
-                <div class="seg-btn active" id="seg-mon-spray" onclick="switchMonitorTab('spray')">الرش</div>
-                <div class="seg-btn" id="seg-mon-cooling" onclick="switchMonitorTab('cooling')">التبريد</div>
-                <div class="seg-btn" id="seg-mon-ole" onclick="switchMonitorTab('ole')">أداء العمالة</div>
-            </div>
+    <!-- منطقة المحتوى الرئيسية -->
+    <main class="content-area">
+        
+        <!-- شاشة لوحة التحكم (Home) -->
+        <section id="screen-home" class="screen active fade-in-up">
             
-            <div id="mon-tab-spray">
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group"><label>التاريخ</label><input type="date" id="foamDateSelector" onchange="loadFoamingData()"></div>
-                    <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openFoamingModal()"><i class="fa-solid fa-plus"></i> تذكرة حقن جديدة</button>
+            <div class="hero-card blur-glass">
+                <h2>إنتاج اليوم</h2>
+                <div class="hero-number eng-font">0</div>
+                <div class="hero-stats">
+                    <div class="stat"><span class="label">Yield الجودة</span><span class="value success eng-font">100%</span></div>
+                    <div class="stat"><span class="label">الهالك (Scrap)</span><span class="value danger eng-font">0</span></div>
                 </div>
-                <div id="foamingCardsContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
             </div>
 
-            <div id="mon-tab-cooling" class="hidden">
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group"><label>التاريخ</label><input type="date" id="coolingDateSelector" onchange="loadCoolingData()"></div>
-                    <div class="form-group"><label>الوردية</label><select id="coolingShiftSelector" onchange="loadCoolingData()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                    <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="openCoolingModal()"><i class="fa-solid fa-plus"></i> عيب تبريد جديد</button>
-                </div>
-                <div class="glass-card" style="padding:10px;"><div class="table-wrap" style="border:none;"><table id="coolingTable"><thead><tr><th>القسم والموديل</th><th>العيب</th><th>العدد</th><th>حذف</th></tr></thead><tbody id="coolingTableBody"></tbody></table></div></div>
+            <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
+            <div class="grid-actions">
+                <button class="action-card blur-glass" onclick="app.navigate('production')">
+                    <i class="fa-solid fa-stopwatch action-icon success"></i>
+                    <span>سجل الساعات</span>
+                </button>
+                <button class="action-card blur-glass" onclick="app.navigate('defects')">
+                    <i class="fa-solid fa-shield-virus action-icon danger"></i>
+                    <span>تسجيل عيب</span>
+                </button>
+                <button class="action-card blur-glass" onclick="app.navigate('scratches')">
+                    <i class="fa-solid fa-spray-can action-icon warning"></i>
+                    <span>عيوب الرش</span>
+                </button>
+                <button class="action-card blur-glass" onclick="app.navigate('analytics')">
+                    <i class="fa-solid fa-chart-pie action-icon info"></i>
+                    <span>التحليلات</span>
+                </button>
             </div>
 
-            <div id="mon-tab-ole" class="hidden">
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group"><label>التاريخ</label><input type="date" id="oleDateSelector" onchange="loadOleData()"></div>
-                    <div class="form-group"><label>الوردية</label><select id="oleShiftSelector" onchange="loadOleData()"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                </div>
-                <div class="kpi-grid">
-                    <div class="kpi-box"><span class="kpi-label">Availability (A)</span><span class="kpi-val cyan" id="kpi-ole-availability">0%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">Performance (P)</span><span class="kpi-val orange" id="kpi-ole-performance">0%</span></div>
-                    <div class="kpi-box"><span class="kpi-label">Quality (Q)</span><span class="kpi-val green" id="kpi-ole-quality">0%</span></div>
-                    <div class="kpi-box" style="border-color: var(--accent-cyan);"><span class="kpi-label">OLE</span><span class="kpi-val cyan" id="kpi-ole-total">0%</span></div>
-                </div>
-                <div class="glass-card form-grid two-cols responsive">
-                    <div class="form-group"><label>العمالة المخططة</label><input type="number" id="olePlannedLabor" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>عمالة الإنتاج</label><input type="number" id="oleActualProdLabor" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>وقت الوردية المتاح (دقيقة)</label><input type="number" id="oleShiftTime" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>زمن التوقفات (دقيقة)</label><input type="number" id="oleDowntime" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group full-width"><label>سبب التوقف الرئيسي</label><input type="text" id="oleDowntimeReason"></div>
-                    <div class="form-group"><label>الإنتاج الكلي</label><input type="number" id="oleTotalProd" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group"><label>العيوب الكلية</label><input type="number" id="oleDefects" pattern="\d*" oninput="calculateOle()"></div>
-                    <div class="form-group" style="grid-column: 1 / -1;"><label>زمن الدورة (Cycle Time) - دقيقة</label><input type="number" id="oleCycleTime" step="0.01" inputmode="decimal" oninput="calculateOle()"></div>
-                    <button class="btn btn-primary" style="grid-column: 1 / -1;" onclick="saveOleRecord()"><i class="fa-solid fa-floppy-disk"></i> حفظ بيانات OLE</button>
-                </div>
+        </section>
+
+        <!-- سيتم إضافة باقي الشاشات هنا تباعاً -->
+
+    </main>
+
+    <!-- شريط التنقل السفلي -->
+    <nav class="bottom-nav blur-glass">
+        <div class="nav-item active" data-target="home">
+            <i class="fa-solid fa-house"></i>
+            <span>الرئيسية</span>
+        </div>
+        <div class="nav-item" data-target="production">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <span>الإنتاج</span>
+        </div>
+        <div class="nav-item special-nav">
+            <div class="fab-btn">
+                <i class="fa-brands fa-whatsapp"></i>
             </div>
         </div>
-    </div>
-
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchNav('home')"><i class="fa-solid fa-house"></i><span>الرئيسية</span></div>
-        <div class="nav-item" onclick="switchNav('prod')"><i class="fa-solid fa-industry"></i><span>الإنتاج</span></div>
-        <div class="nav-item" onclick="switchNav('defect')"><i class="fa-solid fa-shield-halved"></i><span>الجودة</span></div>
-        <div class="nav-item" onclick="switchNav('monitor')"><i class="fa-solid fa-network-wired"></i><span>المراقبة</span></div>
-        <div class="nav-item" onclick="switchNav('bi'); loadAnalyticsData();"><i class="fa-solid fa-chart-line"></i><span>التحليل</span></div>
+        <div class="nav-item" data-target="scratches">
+            <i class="fa-solid fa-spray-can"></i>
+            <span>الرش</span>
+        </div>
+        <div class="nav-item" data-target="analytics">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>التحليل</span>
+        </div>
     </nav>
 
-    <div id="toast"></div>
-
-    <div id="defectModal" class="modal-backdrop">
-        <div class="modal-sheet">
-            <h2 class="section-header" style="color:var(--accent-red);"><i class="fa-solid fa-circle-exclamation"></i> إدراج عيب</h2>
-            <input type="hidden" id="modalIntervalIndex">
-            <div class="form-grid">
-                <div class="form-group"><label>المجموعة</label><select id="modalDefectGroup" onchange="updateDefectSubList()"></select></div>
-                <div class="form-group"><label>العيب</label><select id="modalDefectCategory"></select></div>
-                <div class="form-group"><label>العدد</label><input type="number" id="modalDefectQty" value="1" min="1" pattern="\d*"></div>
-                <div class="form-group"><label>الخصم</label><select id="modalDefectDiscoverer"><option value="quality">يخصم من Yield (أحمر)</option><option value="production">لا يخصم (أزرق)</option></select></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('defectModal')">إلغاء</button><button class="btn btn-danger" style="flex:2;" onclick="appState.saveDefect()">إضافة</button></div>
-        </div>
-    </div>
-
-    <div id="ddDayModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 800px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="section-header" style="color:var(--accent-cyan); margin:0;"><i class="fa-solid fa-calendar-day"></i> تشريح يوم: <span id="dd-day-title"></span></h2>
-                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddDayModal')">إغلاق</button>
-            </div>
-            <div class="kpi-grid">
-                <div class="kpi-box"><span class="kpi-label">إنتاج اليوم</span><span class="kpi-val cyan" id="dd-day-prod">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">Yield اليوم</span><span class="kpi-val green" id="dd-day-yield">0%</span></div>
-            </div>
-            <div class="glass-card">
-                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-column"></i> الأداء حسب الوردية (اضغط للتعمق)</div>
-                <div class="chart-box" style="height: 250px; cursor:pointer;" onclick="MES.Analytics.triggerShiftDrillDown(event)"><canvas id="dd-day-chart"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="ddShiftModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 800px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="section-header" style="color:var(--accent-orange); margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> تشريح وردية: <span id="dd-shift-title"></span></h2>
-                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddShiftModal')">عودة لليوم</button>
-            </div>
-            <div class="glass-card">
-                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-timeline"></i> مسار الإنتاج (ساعة بساعة)</div>
-                <div class="chart-box" style="height: 300px;"><canvas id="dd-shift-hourly-chart"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="ddOleModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 800px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="section-header" style="color:var(--accent-orange); margin:0;"><i class="fa-solid fa-stopwatch"></i> تشريح أسباب التوقف والأداء</h2>
-                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('ddOleModal')">إغلاق</button>
-            </div>
-            <div class="glass-card">
-                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-bar"></i> باريتو توقفات المعدات (دقائق)</div>
-                <div class="chart-box" style="height: 250px;"><canvas id="dd-dt-chart"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="masterDeepDiveModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 800px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 class="section-header" style="color:var(--accent-red); margin:0;"><i class="fa-solid fa-microscope"></i> تشريح جذري: <span id="master-dd-name"></span></h2>
-                <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="closeModal('masterDeepDiveModal')">إغلاق</button>
-            </div>
-            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
-                <div class="kpi-box"><span class="kpi-label">تكرار كلي</span><span class="kpi-val red" id="master-dd-total">0</span></div>
-                <div class="kpi-box"><span class="kpi-label">تأثير הـ Yield</span><span class="kpi-val orange" id="master-dd-impact">0%</span></div>
-                <div class="kpi-box"><span class="kpi-label">الوردية الأسوأ</span><span class="kpi-val cyan" id="master-dd-shift">--</span></div>
-            </div>
-            <div class="glass-card">
-                <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-chart-line"></i> منحنى التكرار الزمني</div>
-                <div class="chart-box" style="height: 200px;"><canvas id="master-dd-trend-chart"></canvas></div>
-            </div>
-            <div class="form-grid two-cols responsive">
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-clock"></i> التوزيع بالوردية</div>
-                    <div class="chart-box" style="height: 200px;"><canvas id="master-dd-shift-chart"></canvas></div>
-                </div>
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="section-header" style="font-size: 0.9rem;"><i class="fa-solid fa-boxes-stacked"></i> الموديلات المصابة</div>
-                    <div class="chart-box" style="height: 200px;"><canvas id="master-dd-model-chart"></canvas></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="foamingModal" class="modal-backdrop"><div class="modal-sheet"><h2 class="section-header"><i class="fa-solid fa-spray-can"></i> تذكرة حقن/رش</h2><div class="form-grid"><div class="form-group"><label>وصف المشكلة</label><input type="text" id="foamDefectName"></div><div class="form-group"><label>ملاحظات</label><textarea id="foamDefectDesc" rows="2"></textarea></div><div class="form-group"><label>إرفاق صورة</label><input type="file" id="foamDefectImage" accept="image/*"></div></div><div id="uploadProgress" style="display:none; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> جاري الرفع...</div><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('foamingModal')">إلغاء</button><button class="btn btn-primary" style="flex:2;" onclick="saveFoamingDefect()">إصدار التذكرة</button></div></div></div>
-    
-    <div id="coolingModal" class="modal-backdrop"><div class="modal-sheet"><h2 class="section-header"><i class="fa-solid fa-snowflake"></i> عيب تبريد</h2><div class="form-grid two-cols responsive"><div class="form-group" style="grid-column: 1 / -1;"><label>القسم</label><select id="coolDept" onchange="updateCoolingCascades()"><option value="تجميع ابتدائي">تجميع ابتدائي</option><option value="تجميع نهائي">تجميع نهائي</option></select></div><div class="form-group"><label>المشرف</label><select id="coolSupervisor"><option value="شريف">م. شريف</option><option value="رمضان">م. رمضان</option></select></div><div class="form-group"><label>الموديل</label><select id="coolModel"><option value="HF">HF</option><option value="31">31 قدم</option></select></div><div class="form-group" style="grid-column: 1 / -1;"><label>نوع العيب</label><select id="coolDefectType" onchange="updateCoolingCascades()"></select></div><div class="form-group" style="grid-column: 1 / -1;"><label>النقطة/السبب</label><select id="coolDefectPoint"></select></div><div class="form-group"><label>كود الفني</label><input type="text" id="coolStamp" oninput="autoFillStampName()"></div><div class="form-group"><label>اسم الفني</label><input type="text" id="coolResponsibleName" disabled></div><div class="form-group" style="grid-column: 1 / -1;"><label>العدد</label><input type="number" id="coolQty" value="1"></div></div><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn btn-secondary" onclick="closeModal('coolingModal')">إلغاء</button><button class="btn btn-primary" style="flex:2;" onclick="saveCoolingDefect()">اعتماد السجل</button></div></div></div>
-
-    <script src="js/app.js"></script>
-
-<div id="waReportModal" class="modal-backdrop">
-        <div class="modal-sheet" style="max-width: 600px;">
-            <h2 class="section-header" style="color: #25D366; margin-bottom: 20px;"><i class="fa-brands fa-whatsapp"></i> مركز التقارير الذكية</h2>
-            <div class="form-grid">
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('production')"><i class="fa-solid fa-industry" style="color:var(--accent-cyan); width:25px;"></i> رسالة الإنتاج اللحظية</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('daily')"><i class="fa-solid fa-calendar-day" style="color:var(--accent-green); width:25px;"></i> المؤشرات اليومية</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('monthly')"><i class="fa-solid fa-calendar-days" style="color:var(--accent-orange); width:25px;"></i> المؤشرات الشهرية التراكمية</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('prev_month')"><i class="fa-solid fa-clock-rotate-left" style="color:var(--text-secondary); width:25px;"></i> مؤشرات الشهر السابق</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('foaming')"><i class="fa-solid fa-spray-can" style="color:var(--accent-cyan); width:25px;"></i> تحليل بيانات الرش (الفوم)</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('cooling')"><i class="fa-solid fa-snowflake" style="color:#0088cc; width:25px;"></i> تحليل بيانات التبريد</button>
-                <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="MES.Reports.send('quality')"><i class="fa-solid fa-shield-halved" style="color:var(--accent-red); width:25px;"></i> تحليل عيوب الجودة</button>
-            </div>
-            <div style="margin-top: 25px;">
-                <button class="btn btn-secondary" style="width:100%; border-color:var(--accent-red); color:var(--accent-red);" onclick="closeModal('waReportModal')">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
+    <script>
+        // إزالة شاشة الترحيب بعد ثانيتين للبدء
+        setTimeout(() => {
+            document.getElementById('splash-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('splash-screen').style.display = 'none';
+            }, 500);
+        }, 2500);
+    </script>
 </body>
 </html>
