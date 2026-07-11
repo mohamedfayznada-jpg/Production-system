@@ -5,9 +5,9 @@
 
 const MES = {
     Config: {
-        supabaseUrl: 'https://xaqqbxtxkzximwsnwezw.supabase.co',
-        supabaseKey: 'sb_publishable_F-NNQh4BT3lpEgHIszFCvg_ZJvCmERP',
+     googleDriveApiUrl: 'YOUR_GOOGLE_SCRIPT_URL_HERE', // سنضع الرابط هنا لاحقاً
         time: { sStart: '08:00', sEnd: '16:00', bStart: '12:00', bEnd: '12:45' },
+     
         defaultSchema: {
             "النظافة والمظهر": ["عفرة دهان", "رايش", "حصوة", "نظافة كاب"],
             "التبريد واللحام": ["تسريب", "سدد", "خفس مواسير"],
@@ -28,40 +28,55 @@ const MES = {
         defectSchema: {}, monitor: { foaming: [], cooling: [], ole: {} },
         init() {
             const todayStr = new Date().toISOString().split('T')[0];
-            this.current.date = todayStr; this.current.currentDocId = `${todayStr}_Shift_${this.current.shift}`;
+            this.current.date = todayStr; const currentFactory = document.getElementById('factorySelector') ? document.getElementById('factorySelector').value : 'FAC_1';
+this.current.currentDocId = `${currentFactory}_${todayStr}_Shift_${this.current.shift}_MFayez`;
             ['quickDate', 'foamDateSelector', 'coolingDateSelector', 'oleDateSelector'].forEach(id => { const el = document.getElementById(id); if(el) el.value = todayStr; });
         },
         persist() { localStorage.setItem('mes_core_state', JSON.stringify(this.current)); MES.API.syncShiftToCloud(); },
         load() { const saved = JSON.parse(localStorage.getItem('mes_core_state') || '{}'); if (saved.date === this.current.date) { this.current = { ...this.current, ...saved }; const qt = document.getElementById('quickTarget'); if(qt) qt.value = this.current.target; } }
     },
 
-    API: {
-        client: null,
-        init() { try { this.client = supabase.createClient(MES.Config.supabaseUrl, MES.Config.supabaseKey); } catch (e) { console.error("API Error", e); } },
+  API: {
+        init() {
+            console.log("Google Drive API Ready.");
+        },
+        async syncToDrive(sheetName, dataPayload) {
+            if(MES.Config.googleDriveApiUrl === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                console.warn("لم يتم ربط جوجل درايف بعد.");
+                return;
+            }
+            try {
+                MES.UI.showToast("جاري الإرسال إلى Google Drive...", "success");
+                await fetch(MES.Config.googleDriveApiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', // مهم جداً لجوجل
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sheet: sheetName,
+                        data: dataPayload
+                    })
+                });
+                MES.UI.showToast("تم حفظ البيانات بنجاح", "success");
+            } catch(e) {
+                MES.UI.showToast("فشل الاتصال بالخادم", "error");
+            }
+        },
         async syncShiftToCloud() {
-            if(!this.client || MES.State.current.intervals.length === 0) return;
-            await this.client.from('production_shifts').upsert({ shift_id: MES.State.current.currentDocId, shift_data: { intervals: MES.State.current.intervals, config: { totalTarget: MES.State.current.target } }, updated_at: new Date().toISOString() });
+            // سيتم توجيه حفظ الوردية إلى جوجل درايف
+            if(MES.State.current.intervals.length === 0) return;
+            await this.syncToDrive('Production_Log', MES.State.current);
         },
         async loadSchemaFromCloud() {
-            if(!this.client) { MES.State.defectSchema = MES.Config.defaultSchema; return; }
-            try {
-                const { data } = await this.client.from('production_shifts').select('shift_data').eq('shift_id', 'CONFIG_DEFECT_SCHEMA').maybeSingle();
-                if(data && data.shift_data && data.shift_data.schema) { MES.State.defectSchema = data.shift_data.schema; }
-                else { MES.State.defectSchema = MES.Config.defaultSchema; this.syncSchemaToCloud(); }
-            } catch(e) { MES.State.defectSchema = MES.Config.defaultSchema; }
+            // مؤقتاً سنعتمد على السكيما المحلية لحين جلبها من جوجل
+            MES.State.defectSchema = MES.Config.defaultSchema;
         },
         async syncSchemaToCloud() {
-            if(!this.client) return;
-            await this.client.from('production_shifts').upsert({ shift_id: 'CONFIG_DEFECT_SCHEMA', shift_data: { schema: MES.State.defectSchema }, updated_at: new Date().toISOString() });
+            await this.syncToDrive('Config_Schema', MES.State.defectSchema);
         },
         async syncMonitorDoc(type, date, shift, payload) {
-            if(!this.client) return;
-            let docId = type === 'foaming' ? `${date}_FOAMING` : (type === 'cooling' ? `${date}_COOLING_${shift}` : `${date}_OLE_${shift}`);
-            let dataPacket = (type === 'ole') ? { data: payload } : { records: payload };
-            await this.client.from('production_shifts').upsert({ shift_id: docId, shift_data: { type: type, ...dataPacket }, updated_at: new Date().toISOString() });
+            await this.syncToDrive(`Monitor_${type}`, payload);
         }
     },
-
     Production: {
         timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
         formatAMPM(mins) { mins = mins % (24 * 60); let h = Math.floor(mins / 60); let m = (mins % 60).toString().padStart(2, '0'); let ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h.toString().padStart(2, '0')}:${m} <span style="font-size:0.7rem; color:var(--text-secondary);">${ampm}</span>`; },
