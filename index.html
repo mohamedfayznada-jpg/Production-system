@@ -3,117 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MES | Final Assembly & Packaging</title>
-    <!-- خطوط جوجل -->
+    <title>MES | Final Assembly</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-    <!-- أيقونات مجانية -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- كود التصميم المدمج لضمان العمل 100% -->
     <style>
-        /* =========================================
-           الأساسيات والمتغيرات (Design Tokens)
-        ========================================= */
         :root {
             --bg-dark: #0a0a0c;
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.05);
             --text-main: #ffffff;
             --text-muted: #a0a0a5;
-            
             --primary: #00f2fe;
             --primary-glow: rgba(0, 242, 254, 0.3);
             --success: #00ff87;
             --danger: #ff0844;
             --warning: #ffb199;
             --info: #4facfe;
-            
             --radius-xl: 24px;
             --radius-lg: 16px;
             --nav-height: 80px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            overflow-x: hidden;
-            padding-bottom: calc(var(--nav-height) + 20px);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 242, 254, 0.05), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(255, 8, 68, 0.05), transparent 25%);
-        }
-
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; padding-bottom: calc(var(--nav-height) + 20px); background-image: radial-gradient(circle at 15% 50%, rgba(0, 242, 254, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(255, 8, 68, 0.05), transparent 25%); }
         .eng-font { font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px; }
         .text-gradient { background: linear-gradient(135deg, var(--primary), var(--info)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .blur-glass { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
 
-        /* =========================================
-           التأثيرات الزجاجية (Glassmorphism)
-        ========================================= */
-        .blur-glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        }
-
-        /* =========================================
-           شاشة الترحيب (Splash Screen)
-        ========================================= */
-        .splash-layer {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-dark); z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 0.5s ease;
-        }
-        .splash-icon { font-size: 5rem; color: var(--primary); margin-bottom: 20px; filter: drop-shadow(0 0 20px var(--primary-glow)); animation: float 3s ease-in-out infinite; }
-        .splash-title { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; background: linear-gradient(to right, #00f2fe, #4facfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .splash-subtitle { color: var(--text-muted); font-size: 1.2rem; margin-top: 5px; font-weight: 700; letter-spacing: 2px;}
-        .eng-badge { margin-top: 30px; padding: 8px 20px; background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 50px; font-weight: bold; color: var(--primary); }
-        .loader-bar { width: 200px; height: 4px; background: var(--glass-border); border-radius: 4px; margin-top: 40px; overflow: hidden; }
-        .loader-bar .progress { width: 0%; height: 100%; background: var(--primary); animation: loadBar 2s ease-in-out forwards; }
-
-        /* =========================================
-           الواجهة الرئيسية (Layout)
-        ========================================= */
-        .app-header {
-            position: sticky; top: 0; z-index: 100;
-            padding: 20px; border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl);
-        }
+        .app-header { position: sticky; top: 0; z-index: 100; padding: 20px; border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); }
         .header-content { display: flex; justify-content: space-between; align-items: center; }
         .dept-title { font-weight: 900; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
-        .icon-btn { background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; }
+        .icon-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 50%; color: var(--text-main); font-size: 1.2rem; cursor: pointer; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .icon-btn:active { transform: scale(0.9); background: var(--primary-glow); }
 
         .content-area { padding: 20px; }
-        .screen { display: none; }
+        .screen { display: none; animation: fadeInUp 0.4s ease forwards; }
         .screen.active { display: block; }
 
-        /* =========================================
-           البطاقات (Cards & Dashboard)
-        ========================================= */
-        .hero-card {
-            border-radius: var(--radius-xl); padding: 25px; text-align: center; margin-bottom: 25px;
-            position: relative; overflow: hidden;
-        }
-        .hero-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(0, 242, 254, 0.1) 0%, transparent 60%); z-index: -1; }
+        .hero-card { border-radius: var(--radius-xl); padding: 25px; text-align: center; margin-bottom: 25px; position: relative; overflow: hidden; }
         .hero-card h2 { font-size: 1rem; color: var(--text-muted); font-weight: 700; }
         .hero-number { font-size: 4rem; background: linear-gradient(to bottom, #fff, #a0a0a5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.1; margin: 10px 0; }
-        .hero-stats { display: flex; justify-content: space-around; margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 20px; }
-        .stat { display: flex; flex-direction: column; gap: 5px; }
-        .stat .label { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; }
-        .stat .value { font-size: 1.2rem; }
-        .value.success { color: var(--success); text-shadow: 0 0 10px rgba(0, 255, 135, 0.3); }
-        .value.danger { color: var(--danger); text-shadow: 0 0 10px rgba(255, 8, 68, 0.3); }
-
+        
         .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
         .grid-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .action-card {
-            border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 20px;
-            display: flex; flex-direction: column; align-items: center; gap: 15px; color: var(--text-main); cursor: pointer; transition: transform 0.2s;
-        }
+        .action-card { border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; color: var(--text-main); cursor: pointer; transition: transform 0.2s; }
         .action-card:active { transform: scale(0.95); }
         .action-icon { font-size: 2rem; }
         .action-icon.success { color: var(--success); }
@@ -122,78 +56,61 @@
         .action-icon.info { color: var(--info); }
         .action-card span { font-weight: bold; font-size: 0.9rem; }
 
-        /* =========================================
-           شريط التنقل السفلي (Bottom Navigation)
-        ========================================= */
-        .bottom-nav {
-            position: fixed; bottom: 15px; left: 15px; right: 15px; height: var(--nav-height);
-            border-radius: var(--radius-xl); display: flex; justify-content: space-around; align-items: center; z-index: 1000;
-        }
+        /* Form & Inputs */
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: bold; }
+        .glass-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px 15px; border-radius: var(--radius-lg); color: var(--text-main); font-family: 'Cairo'; font-size: 1rem; outline: none; transition: 0.3s; }
+        .glass-input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        .glass-btn { width: 100%; background: linear-gradient(135deg, var(--primary), var(--info)); color: #000; border: none; padding: 15px; border-radius: var(--radius-lg); font-weight: 900; font-size: 1.1rem; cursor: pointer; margin-top: 10px; transition: 0.2s; font-family: 'Cairo'; }
+        .glass-btn:active { transform: scale(0.98); opacity: 0.8; }
+
+        /* Production List */
+        .prod-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .prod-row { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: var(--radius-lg); margin-bottom: 10px; }
+        .prod-row.break-row { background: rgba(255, 179, 153, 0.05); border-color: rgba(255, 179, 153, 0.2); justify-content: center; color: var(--warning); font-weight: bold; }
+        .time-label { font-family: 'Orbitron'; color: var(--primary); font-weight: 700; font-size: 1.1rem; }
+        .actual-input { width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: 'Orbitron'; font-size: 1.2rem; text-align: center; padding: 8px; outline: none; }
+        .actual-input:focus { border-color: var(--success); }
+
+        .bottom-nav { position: fixed; bottom: 15px; left: 15px; right: 15px; height: var(--nav-height); border-radius: var(--radius-xl); display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.75rem; font-weight: bold; transition: all 0.3s; cursor: pointer; }
         .nav-item i { font-size: 1.2rem; transition: transform 0.3s; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active i { transform: translateY(-3px) scale(1.1); filter: drop-shadow(0 0 8px var(--primary-glow)); }
 
-        /* الزر العائم (واتساب) */
-        .special-nav .fab-btn {
-            width: 60px; height: 60px; background: linear-gradient(135deg, #25D366, #128C7E);
-            border-radius: 50%; display: flex; justify-content: center; align-items: center;
-            color: white; font-size: 1.8rem; margin-top: -30px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4);
-            border: 4px solid var(--bg-dark); cursor: pointer; transition: transform 0.2s;
-        }
+        .special-nav .fab-btn { width: 60px; height: 60px; background: linear-gradient(135deg, #25D366, #128C7E); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.8rem; margin-top: -30px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); border: 4px solid var(--bg-dark); cursor: pointer; transition: transform 0.2s; }
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        /* =========================================
-           الحركات (Animations)
-        ========================================= */
-        @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
-        @keyframes loadBar { 0% { width: 0; } 100% { width: 100%; } }
-        .fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Toast Notification */
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #000; padding: 10px 20px; border-radius: 30px; font-weight: bold; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.3s; box-shadow: 0 5px 15px rgba(0, 255, 135, 0.3); }
+        #toast.show { opacity: 1; transform: translate(-50%, 10px); }
     </style>
 </head>
 <body>
 
-    <!-- شاشة الترحيب الإبداعية -->
-    <div id="splash-screen" class="splash-layer">
-        <div class="logo-container">
-            <i class="fa-solid fa-boxes-packing splash-icon" style="text-align: center; display: block;"></i>
-            <h1 class="splash-title">MES CORE</h1>
-            <p class="splash-subtitle" style="text-align: center;">Final Assembly</p>
-            <div class="eng-badge">مدير الإنتاج | م.مُحَمَّد فَايِز</div>
-        </div>
-        <div class="loader-bar"><div class="progress"></div></div>
-    </div>
-
-    <!-- الرأس (Header) -->
     <header class="app-header blur-glass">
         <div class="header-content">
             <div class="dept-title">
                 <i class="fa-solid fa-microchip text-gradient"></i>
                 <span>التجميع النهائي والتغليف</span>
             </div>
-            <button class="icon-btn"><i class="fa-solid fa-bell"></i></button>
+            <button class="icon-btn" onclick="App.navigate('settings')"><i class="fa-solid fa-gear"></i></button>
         </div>
     </header>
 
-    <!-- منطقة المحتوى الرئيسية -->
     <main class="content-area">
         
-        <!-- شاشة لوحة التحكم (Home) -->
-        <section id="screen-home" class="screen active fade-in-up">
-            
+        <!-- ================= الشاشة الرئيسية ================= -->
+        <section id="screen-home" class="screen active">
             <div class="hero-card blur-glass">
-                <h2>إنتاج اليوم</h2>
-                <div class="hero-number eng-font">0</div>
-                <div class="hero-stats">
-                    <div class="stat"><span class="label">Yield الجودة</span><span class="value success eng-font">100%</span></div>
-                    <div class="stat"><span class="label">الهالك (Scrap)</span><span class="value danger eng-font">0</span></div>
-                </div>
+                <h2>إجمالي إنتاج اليوم</h2>
+                <div class="hero-number eng-font" id="home-total-prod">0</div>
             </div>
-
             <h3 class="section-title"><i class="fa-solid fa-bolt"></i> العمليات السريعة</h3>
             <div class="grid-actions">
-                <button class="action-card blur-glass">
+                <button class="action-card blur-glass" onclick="App.navigate('production')">
                     <i class="fa-solid fa-stopwatch action-icon success"></i>
                     <span>سجل الساعات</span>
                 </button>
@@ -201,53 +118,292 @@
                     <i class="fa-solid fa-shield-virus action-icon danger"></i>
                     <span>تسجيل عيب</span>
                 </button>
-                <button class="action-card blur-glass">
-                    <i class="fa-solid fa-spray-can action-icon warning"></i>
-                    <span>عيوب الرش</span>
-                </button>
-                <button class="action-card blur-glass">
-                    <i class="fa-solid fa-chart-pie action-icon info"></i>
-                    <span>التحليلات</span>
-                </button>
+            </div>
+        </section>
+
+        <!-- ================= شاشة الإنتاج ساعة بساعة ================= -->
+        <section id="screen-production" class="screen">
+            <h3 class="section-title"><i class="fa-solid fa-clipboard-list text-gradient"></i> سجل الإنتاج اللحظي</h3>
+            
+            <div class="prod-header">
+                <div class="input-group">
+                    <label>تاريخ اليوم</label>
+                    <input type="date" id="prod-date" class="glass-input" onchange="App.saveState()">
+                </div>
+                <div class="input-group">
+                    <label>الوردية</label>
+                    <select id="prod-shift" class="glass-input" onchange="App.saveState()">
+                        <option value="1">الوردية الأولى (1)</option>
+                        <option value="2">الوردية الثانية (2)</option>
+                        <option value="3">الوردية الثالثة (3)</option>
+                    </select>
+                </div>
             </div>
 
+            <div class="blur-glass" style="border-radius: var(--radius-xl); padding: 15px; margin-bottom: 20px;">
+                <div id="production-list">
+                    <!-- سيتم توليد الأوقات هنا عن طريق الجافاسكريبت -->
+                </div>
+                <div style="text-align: left; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
+                    <span style="color: var(--text-muted); font-weight: bold; font-size: 0.9rem;">الإجمالي: </span>
+                    <span id="prod-total-calc" class="eng-font" style="font-size: 1.5rem; color: var(--primary);">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= شاشة الإعدادات ================= -->
+        <section id="screen-settings" class="screen">
+            <h3 class="section-title"><i class="fa-solid fa-sliders text-gradient"></i> مهندس الوردية (الجدولة)</h3>
+            <div class="blur-glass" style="border-radius: var(--radius-xl); padding: 20px;">
+                <div class="input-group">
+                    <label>بداية الوردية</label>
+                    <input type="time" id="set-shift-start" class="glass-input" value="07:30">
+                </div>
+                <div class="input-group">
+                    <label>نهاية الوردية</label>
+                    <input type="time" id="set-shift-end" class="glass-input" value="16:00">
+                </div>
+                <div class="input-group">
+                    <label>بداية الراحة</label>
+                    <input type="time" id="set-break-start" class="glass-input" value="12:30">
+                </div>
+                <div class="input-group">
+                    <label>نهاية الراحة</label>
+                    <input type="time" id="set-break-end" class="glass-input" value="13:30">
+                </div>
+                <div class="input-group" style="margin-top: 25px;">
+                    <label>المنتج الحالي (Line Name)</label>
+                    <input type="text" id="set-line-name" class="glass-input" value="الثلاجة A | Final Assembly">
+                </div>
+                
+                <button class="glass-btn" onclick="App.applySettings()">
+                    <i class="fa-solid fa-check-double"></i> اعتماد وتوليد الساعات
+                </button>
+            </div>
         </section>
 
     </main>
 
-    <!-- شريط التنقل السفلي -->
     <nav class="bottom-nav blur-glass">
-        <div class="nav-item active" data-target="home">
+        <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
             <i class="fa-solid fa-house"></i>
             <span>الرئيسية</span>
         </div>
-        <div class="nav-item" data-target="production">
+        <div class="nav-item" data-target="production" onclick="App.navigate('production')">
             <i class="fa-solid fa-clipboard-list"></i>
             <span>الإنتاج</span>
         </div>
-        <div class="nav-item special-nav">
-            <div class="fab-btn">
-                <i class="fa-brands fa-whatsapp"></i>
-            </div>
+        <div class="nav-item special-nav" onclick="App.sendWhatsAppReport()">
+            <div class="fab-btn"><i class="fa-brands fa-whatsapp"></i></div>
         </div>
-        <div class="nav-item" data-target="scratches">
+        <div class="nav-item" data-target="scratches" onclick="App.navigate('scratches')">
             <i class="fa-solid fa-spray-can"></i>
             <span>الرش</span>
         </div>
-        <div class="nav-item" data-target="analytics">
+        <div class="nav-item" data-target="analytics" onclick="App.navigate('analytics')">
             <i class="fa-solid fa-chart-line"></i>
             <span>التحليل</span>
         </div>
     </nav>
 
+    <div id="toast">تم الحفظ بنجاح</div>
+
     <script>
-        // إزالة شاشة الترحيب بعد ثانيتين للبدء
-        setTimeout(() => {
-            document.getElementById('splash-screen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('splash-screen').style.display = 'none';
-            }, 500);
-        }, 2500);
+        const App = {
+            data: {
+                settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
+                production: { date: '', shift: '1', items: [] }
+            },
+
+            init() {
+                // تحميل البيانات من الذاكرة المحلية
+                const saved = localStorage.getItem('mes_core_data');
+                if (saved) {
+                    this.data = JSON.parse(saved);
+                } else {
+                    this.data.production.date = new Date().toISOString().split('T')[0];
+                }
+
+                // تعبئة حقول الإعدادات
+                document.getElementById('set-shift-start').value = this.data.settings.start;
+                document.getElementById('set-shift-end').value = this.data.settings.end;
+                document.getElementById('set-break-start').value = this.data.settings.bStart;
+                document.getElementById('set-break-end').value = this.data.settings.bEnd;
+                document.getElementById('set-line-name').value = this.data.settings.lineName;
+                document.getElementById('prod-date').value = this.data.production.date;
+                document.getElementById('prod-shift').value = this.data.production.shift;
+
+                if (this.data.production.items.length === 0) {
+                    this.generateIntervals();
+                } else {
+                    this.renderProductionList();
+                }
+            },
+
+            navigate(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const targetScreen = document.getElementById('screen-' + screenId);
+                if(targetScreen) targetScreen.classList.add('active');
+
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                const navBtn = document.querySelector(`.nav-item[data-target="${screenId}"]`);
+                if(navBtn) navBtn.classList.add('active');
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            formatAMPM(timeStr) {
+                let [hours, minutes] = timeStr.split(':');
+                hours = parseInt(hours);
+                let ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; 
+                let hoursStr = hours < 10 ? '0' + hours : hours;
+                return `${hoursStr}:${minutes} ${ampm}`;
+            },
+
+            addMinutes(timeStr, minsToAdd) {
+                let [h, m] = timeStr.split(':').map(Number);
+                let date = new Date();
+                date.setHours(h, m, 0);
+                date.setMinutes(date.getMinutes() + minsToAdd);
+                let newH = date.getHours().toString().padStart(2, '0');
+                let newM = date.getMinutes().toString().padStart(2, '0');
+                return `${newH}:${newM}`;
+            },
+
+            timeToMins(t) {
+                let [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
+            },
+
+            generateIntervals() {
+                const { start, end, bStart, bEnd } = this.data.settings;
+                let current = start;
+                let intervals = [];
+
+                let endMins = this.timeToMins(end);
+                if (endMins <= this.timeToMins(start)) endMins += 24 * 60; // وردية ليلية
+
+                while (this.timeToMins(current) < endMins) {
+                    if (current === bStart) {
+                        intervals.push({ isBreak: true, label: "فترة راحة" });
+                        current = bEnd;
+                        continue;
+                    }
+                    
+                    let nextHour = this.addMinutes(current, 60);
+                    // معالجة فترات الكسر أو دخول وقت الراحة
+                    if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) {
+                        nextHour = bStart;
+                    }
+                    if (this.timeToMins(nextHour) > endMins) {
+                        nextHour = end;
+                    }
+
+                    intervals.push({
+                        isBreak: false,
+                        label: this.formatAMPM(nextHour),
+                        rawTime: nextHour,
+                        actual: ""
+                    });
+                    
+                    current = nextHour;
+                }
+
+                this.data.production.items = intervals;
+                this.saveState();
+                this.renderProductionList();
+                this.showToast("تم توليد سجل الساعات بنجاح");
+                this.navigate('production');
+            },
+
+            applySettings() {
+                this.data.settings.start = document.getElementById('set-shift-start').value;
+                this.data.settings.end = document.getElementById('set-shift-end').value;
+                this.data.settings.bStart = document.getElementById('set-break-start').value;
+                this.data.settings.bEnd = document.getElementById('set-break-end').value;
+                this.data.settings.lineName = document.getElementById('set-line-name').value;
+                this.generateIntervals();
+            },
+
+            renderProductionList() {
+                const container = document.getElementById('production-list');
+                container.innerHTML = '';
+                let total = 0;
+
+                this.data.production.items.forEach((item, index) => {
+                    if (item.isBreak) {
+                        container.innerHTML += `<div class="prod-row break-row"><i class="fa-solid fa-mug-hot" style="margin-left: 8px;"></i> ${item.label}</div>`;
+                    } else {
+                        total += Number(item.actual) || 0;
+                        container.innerHTML += `
+                            <div class="prod-row">
+                                <span class="time-label">${item.label}</span>
+                                <input type="number" class="actual-input" pattern="\\d*" value="${item.actual}" oninput="App.updateActual(${index}, this.value)">
+                            </div>
+                        `;
+                    }
+                });
+
+                document.getElementById('prod-total-calc').innerText = total;
+                document.getElementById('home-total-prod').innerText = total;
+            },
+
+            updateActual(index, value) {
+                this.data.production.items[index].actual = value;
+                this.saveState();
+                // تحديث الإجمالي فقط دون إعادة رسم القائمة للحفاظ على التركيز (Focus)
+                let total = 0;
+                this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
+                document.getElementById('prod-total-calc').innerText = total;
+                document.getElementById('home-total-prod').innerText = total;
+            },
+
+            saveState() {
+                this.data.production.date = document.getElementById('prod-date').value;
+                this.data.production.shift = document.getElementById('prod-shift').value;
+                localStorage.setItem('mes_core_data', JSON.stringify(this.data));
+            },
+
+            showToast(msg) {
+                const toast = document.getElementById('toast');
+                toast.innerText = msg;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            },
+
+            sendWhatsAppReport() {
+                // تجميع بيانات التقرير بتنسيق يطابق الصورة المطلوبة تماماً
+                let dParts = this.data.production.date.split('-');
+                let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; // DD-MM-YYYY
+                let total = 0;
+
+                let report = `*تقرير انتاج ساعة بساعة*\n`;
+                report += `${this.data.settings.lineName}\n`;
+                report += `التاريخ: ${formattedDate}\n`;
+                report += `الوردية: ${this.data.production.shift}\n\n`;
+
+                this.data.production.items.forEach(item => {
+                    if (item.isBreak) {
+                        report += `\n*${item.label}*\n\n`;
+                    } else {
+                        let actVal = item.actual === "" ? "0" : item.actual;
+                        report += `${item.label} : ${actVal}\n`;
+                        total += Number(item.actual) || 0;
+                    }
+                });
+
+                report += `\n*إجمالي الإنتاج : ${total}*`;
+
+                const encodedText = encodeURIComponent(report);
+                window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+                this.showToast("جاري التوجيه للواتساب...");
+            }
+        };
+
+        // تشغيل التطبيق عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
 </html>
