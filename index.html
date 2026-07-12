@@ -6,12 +6,11 @@
     <title>MES | Premium Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- استدعاء مكتبة Chart.js للتحليلات البصرية -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         /* =========================================
-           Premium Dark UI - Design System
+           الهوية الأساسية (Dark Neon)
         ========================================= */
         :root {
             --bg-base: #121214;
@@ -19,11 +18,10 @@
             --surface-2: rgba(40, 40, 45, 0.5);
             --glass-border: rgba(255, 255, 255, 0.05);
             
-            --accent-orange: #FF5722;
-            --accent-orange-glow: rgba(255, 87, 34, 0.4);
-            --accent-cyan: #00E5FF;
-            --accent-cyan-glow: rgba(0, 229, 255, 0.3);
-            --accent-purple: #8A2BE2;
+            --accent-main: #FF5722;
+            --accent-glow: rgba(255, 87, 34, 0.4);
+            --accent-sec: #00E5FF;
+            --accent-sec-glow: rgba(0, 229, 255, 0.3);
             
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
@@ -35,6 +33,25 @@
             --nav-height: 85px;
         }
 
+        /* =========================================
+           هوية فحص الجودة (Beige/Dark Theme - مستوحاة من الصورة 101113)
+        ========================================= */
+        body.theme-qc {
+            --bg-base: #D9D2C5; /* لون البيج الدافئ */
+            --surface-1: #1A1C19; /* كروت رمادي داكن مطفي */
+            --surface-2: #242623;
+            --glass-border: rgba(255, 255, 255, 0.05);
+            
+            --accent-main: #E5A93D; /* لون ذهبي/أصفر للإضاءات */
+            --accent-glow: rgba(229, 169, 61, 0.4);
+            --accent-sec: #E5A93D;
+            --accent-sec-glow: rgba(229, 169, 61, 0.4);
+            
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-placeholder: #666666;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
@@ -43,50 +60,57 @@
             color: var(--text-primary); 
             overflow-x: hidden; 
             padding-bottom: calc(var(--nav-height) + 30px); 
+            background-attachment: fixed;
+            transition: background-color 0.5s ease; /* انتقال سلس بين الثيمات */
+        }
+
+        /* تفعيل الخلفية المضيئة فقط في الثيم الأساسي */
+        body:not(.theme-qc) {
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(255, 87, 34, 0.08), transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.08), transparent 40%),
                 radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.05), transparent 50%);
-            background-attachment: fixed;
         }
 
         .eng-font { font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1.5px; }
         
         .glass-card { 
             background: var(--surface-1); 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
             border: 1px solid var(--glass-border); 
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-left: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
             border-radius: var(--radius-xl);
-            padding: 25px;
-            margin-bottom: 25px;
-            position: relative;
-            overflow: hidden;
+            padding: 25px; margin-bottom: 25px;
+            position: relative; overflow: hidden;
+            transition: all 0.5s ease;
         }
 
         .app-header { 
-            position: sticky; top: 0; z-index: 100; 
-            padding: 20px 25px; 
-            background: rgba(18, 18, 20, 0.85);
-            backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 100; padding: 20px 25px; 
+            background: var(--bg-base);
             border-bottom: 1px solid var(--glass-border);
-            border-bottom-left-radius: var(--radius-xl); 
-            border-bottom-right-radius: var(--radius-xl); 
+            border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); 
             display: flex; justify-content: space-between; align-items: center; 
+            transition: background 0.5s ease;
         }
-        .dept-title { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; color: var(--text-primary); }
-        .dept-title i { color: var(--accent-orange); font-size: 1.4rem; filter: drop-shadow(0 0 8px var(--accent-orange-glow)); }
+        
+        /* تلوين العنوان بناءً على الثيم */
+        body:not(.theme-qc) .dept-title { color: #fff; }
+        body.theme-qc .dept-title { color: #1A1C19; }
+
+        .dept-title { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        .dept-title i { color: var(--accent-main); font-size: 1.4rem; filter: drop-shadow(0 0 8px var(--accent-glow)); }
         
         .icon-btn { 
             background: var(--surface-2); border: 1px solid var(--glass-border); 
-            border-radius: 50%; color: var(--text-main); font-size: 1.1rem; 
+            border-radius: 50%; color: var(--text-primary); font-size: 1.1rem; 
             cursor: pointer; width: 45px; height: 45px; display: flex; 
             justify-content: center; align-items: center; transition: 0.3s; 
         }
-        .icon-btn:active { transform: scale(0.9); background: var(--accent-orange); border-color: var(--accent-orange); color: #fff;}
+        .icon-btn:active { transform: scale(0.9); background: var(--accent-main); border-color: var(--accent-main); color: #fff;}
+
+        /* تلوين نصوص الشاشة خارج الكروت في ثيم فحص الجودة */
+        body.theme-qc .section-title { color: #1A1C19; }
 
         .content-area { padding: 20px; }
         .screen { display: none; animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -102,7 +126,7 @@
             filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
         }
 
-        .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; font-weight: 800; }
+        .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; font-weight: 800; transition: color 0.5s; }
         .grid-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .action-card { 
             background: var(--surface-2); border: 1px solid var(--glass-border); 
@@ -111,8 +135,8 @@
         }
         .action-card:active { transform: scale(0.95); background: rgba(255,255,255,0.05); }
         .action-icon { font-size: 2.2rem; margin-bottom: 5px; }
-        .action-icon.accent-o { color: var(--accent-orange); filter: drop-shadow(0 0 10px var(--accent-orange-glow)); }
-        .action-icon.accent-c { color: var(--accent-cyan); filter: drop-shadow(0 0 10px var(--accent-cyan-glow)); }
+        .action-icon.accent-o { color: #FF5722; filter: drop-shadow(0 0 10px rgba(255, 87, 34, 0.4)); }
+        .action-icon.accent-c { color: #00E5FF; filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.3)); }
         .action-card span { font-weight: 800; font-size: 0.9rem; }
 
         .input-group { margin-bottom: 18px; }
@@ -125,83 +149,69 @@
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
         }
         .glass-input::placeholder { color: var(--text-placeholder); }
-        .glass-input:focus { border-color: var(--accent-orange); background: rgba(255, 87, 34, 0.05); }
+        .glass-input:focus { border-color: var(--accent-main); background: var(--accent-glow); }
+        textarea.glass-input { resize: vertical; min-height: 80px; }
         
         .glass-btn { 
             width: 100%; 
-            background: linear-gradient(135deg, var(--accent-orange), #ff2a00); 
-            color: #fff; border: none; padding: 18px; border-radius: var(--radius-lg); 
+            background: linear-gradient(135deg, var(--accent-main), var(--accent-sec)); 
+            color: #121214; border: none; padding: 18px; border-radius: var(--radius-lg); 
             font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-top: 10px; 
             transition: 0.3s; font-family: 'Cairo'; 
-            box-shadow: 0 8px 25px var(--accent-orange-glow);
+            box-shadow: 0 8px 25px var(--accent-glow);
         }
-        .glass-btn:active { transform: scale(0.97); box-shadow: 0 4px 15px var(--accent-orange-glow); }
-        .glass-btn.secondary { background: var(--surface-2); color: var(--text-primary); box-shadow: none; border: 1px solid var(--glass-border); }
+        .glass-btn:active { transform: scale(0.97); box-shadow: 0 4px 15px var(--accent-glow); }
 
         .prod-header { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-        .prod-row-container { 
-            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); 
-            padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; 
-            transition: 0.3s;
-        }
-        .prod-row-container:focus-within { border-color: rgba(255, 255, 255, 0.15); background: rgba(255,255,255,0.02); }
+        .prod-row-container { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; transition: 0.3s; }
         .prod-row-flex { display: flex; justify-content: space-between; align-items: center; }
-        .prod-row.break-row { background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.2); justify-content: center; color: var(--accent-orange); font-weight: 800; padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; text-align: center; }
-        
+        .prod-row.break-row { background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.2); justify-content: center; color: var(--accent-main); font-weight: 800; padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; text-align: center; }
         .time-label { font-family: 'Orbitron'; color: var(--text-primary); font-weight: 700; font-size: 1.15rem; }
-        .actual-input { 
-            width: 85px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); 
-            border-radius: 10px; color: var(--accent-cyan); font-family: 'Orbitron'; 
-            font-size: 1.3rem; text-align: center; padding: 10px; outline: none; transition: 0.3s;
-        }
-        .actual-input:focus { border-color: var(--accent-cyan); background: rgba(0, 229, 255, 0.05); }
-        
-        .reason-input { 
-            width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border);
-            padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; 
-            margin-top: 12px; outline: none; transition: 0.3s;
-        }
-        .reason-input:focus { color: var(--text-primary); border-top-color: var(--accent-orange); }
-        .reason-input::placeholder { color: var(--text-placeholder); font-style: italic; }
+        .actual-input { width: 85px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--accent-sec); font-family: 'Orbitron'; font-size: 1.3rem; text-align: center; padding: 10px; outline: none; transition: 0.3s; }
+        .actual-input:focus { border-color: var(--accent-sec); background: var(--accent-sec-glow); }
+        .reason-input { width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border); padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; margin-top: 12px; outline: none; transition: 0.3s; }
+        .reason-input:focus { color: var(--text-primary); border-top-color: var(--accent-main); }
 
+        .defect-card { display: flex; gap: 15px; padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; transition: 0.3s; }
+        .defect-img { width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in; }
+        
         .bottom-nav { 
             position: fixed; bottom: 20px; left: 5%; right: 5%; width: 90%; height: var(--nav-height); 
-            background: rgba(25, 25, 30, 0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; 
+            background: var(--surface-1); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border); border-radius: 40px; 
             display: flex; justify-content: space-around; align-items: center; z-index: 1000; 
             box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 0 10px;
+            transition: background 0.5s, border-color 0.5s;
         }
-        .nav-item { 
-            display: flex; flex-direction: column; align-items: center; gap: 6px; 
-            color: var(--text-secondary); font-size: 0.7rem; font-weight: 800; 
-            transition: 0.3s; cursor: pointer; width: 60px;
-        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.7rem; font-weight: 800; transition: 0.3s; cursor: pointer; width: 60px; }
         .nav-item i { font-size: 1.3rem; transition: 0.3s; }
         .nav-item.active { color: var(--text-primary); }
-        .nav-item.active i { transform: translateY(-4px); color: var(--accent-orange); filter: drop-shadow(0 0 10px var(--accent-orange-glow)); }
+        .nav-item.active i { transform: translateY(-4px); color: var(--accent-main); filter: drop-shadow(0 0 10px var(--accent-glow)); }
         
         .special-nav .fab-btn { 
             width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); 
             border-radius: 50%; display: flex; justify-content: center; align-items: center; 
-            color: white; font-size: 2rem; margin-top: -45px; 
-            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); 
+            color: white; font-size: 2rem; margin-top: -45px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); 
             border: 5px solid var(--bg-base); cursor: pointer; transition: 0.3s; 
         }
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        #toast { 
-            position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); 
-            background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; 
-            border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; 
-            pointer-events: none; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem;
-        }
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* الكانفاس الخاص بالمخططات */
-        .chart-container {
-            position: relative; height: 220px; width: 100%;
-        }
+        .chart-container { position: relative; height: 220px; width: 100%; }
+
+        /* عارض الصور */
+        #image-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 3000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.3s ease; }
+        #image-modal.show { opacity: 1; pointer-events: all; }
+        #modal-image { max-width: 95%; max-height: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .close-modal-btn { position: absolute; top: 30px; right: 30px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 50%; color: white; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; }
+
+        /* Loader */
+        .overlay-loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 4000; display: none; justify-content: center; align-items: center; flex-direction: column; color: #fff;}
+        .overlay-loader.show { display: flex; }
+        .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--accent-main); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -209,7 +219,7 @@
     <header class="app-header">
         <div class="dept-title">
             <i class="fa-solid fa-microchip"></i>
-            <span>التجميع النهائي والتغليف</span>
+            <span>التجميع النهائي</span>
         </div>
         <button class="icon-btn" onclick="App.navigate('settings')"><i class="fa-solid fa-sliders"></i></button>
     </header>
@@ -234,11 +244,11 @@
                     <span>عيوب الرش</span>
                 </div>
                 <div class="action-card" onclick="App.syncToCloud()">
-                    <i class="fa-solid fa-cloud-arrow-up action-icon accent-o" style="color: #a0a0a5;"></i>
+                    <i class="fa-solid fa-cloud-arrow-up action-icon accent-o" style="color: #a0a0a5; filter:none;"></i>
                     <span style="color: #a0a0a5;">حفظ للسحابة</span>
                 </div>
                 <div class="action-card" onclick="App.fetchFromCloud()">
-                    <i class="fa-solid fa-cloud-arrow-down action-icon accent-c" style="color: #a0a0a5;"></i>
+                    <i class="fa-solid fa-cloud-arrow-down action-icon accent-c" style="color: #a0a0a5; filter:none;"></i>
                     <span style="color: #a0a0a5;">استرداد البيانات</span>
                 </div>
             </div>
@@ -271,14 +281,17 @@
                 <div id="production-list"></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
                     <span style="color: var(--text-secondary); font-weight: 800; font-size: 1rem;">إجمالي الإنتاج: </span>
-                    <span id="prod-total-calc" class="eng-font" style="font-size: 1.8rem; color: var(--accent-orange); filter: drop-shadow(0 0 5px var(--accent-orange-glow));">0</span>
+                    <span id="prod-total-calc" class="eng-font" style="font-size: 1.8rem; color: var(--accent-main); filter: drop-shadow(0 0 5px var(--accent-glow));">0</span>
                 </div>
             </div>
         </section>
 
-        <!-- ================= شاشة عيوب الرش ================= -->
+        <!-- ================= شاشة عيوب الرش (Theme QC) ================= -->
         <section id="screen-scratches" class="screen">
-            <h3 class="section-title">سجل عيوب الرش الظاهرية</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 class="section-title" style="margin: 0;">سجل عيوب الرش الظاهرية</h3>
+                <span class="eng-font" id="scratches-counter" style="color:var(--text-primary); font-size:1rem; background: var(--surface-1); padding: 5px 15px; border-radius: 20px; box-shadow: 0 5px 10px rgba(0,0,0,0.1);">0</span>
+            </div>
             
             <div class="glass-card" style="padding: 20px;">
                 <div class="input-group">
@@ -292,56 +305,48 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>صورة العيب</label>
-                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px; color: var(--accent-cyan);">
+                    <label>التقط صورة (تُرفع مباشرة لـ Google Drive)</label>
+                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px;">
                 </div>
                 <div class="input-group">
                     <label>ملاحظات</label>
                     <input type="text" id="scratch-notes" class="glass-input" placeholder="مثال: يمين الباب السفلي...">
                 </div>
-                <button class="glass-btn" onclick="App.addScratchDefect()">إدراج في السجل</button>
+                <button class="glass-btn" onclick="App.addScratchDefect()">رفع وإدراج في السجل</button>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding: 0 10px;">
-                <h4 style="color:var(--text-secondary); font-size: 0.9rem;">العيوب المسجلة</h4>
-                <span class="eng-font" id="scratches-counter" style="color:var(--text-primary); font-size:1.1rem; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 10px;">0</span>
-            </div>
             <div id="scratches-list"></div>
         </section>
 
-        <!-- ================= شاشة التحليلات الجديدة ================= -->
+        <!-- ================= شاشة التحليلات ================= -->
         <section id="screen-analytics" class="screen">
             <h3 class="section-title">تحليلات الأداء اللحظية</h3>
             
             <div class="grid-actions" style="margin-bottom: 25px;">
-                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: var(--accent-purple);">
+                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: #8A2BE2;">
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold; margin-bottom: 5px;">إجمالي العيوب اليوم</div>
-                    <div class="eng-font" id="analytics-total-defects" style="font-size: 2.2rem; color: var(--accent-purple); filter: drop-shadow(0 0 8px rgba(138,43,226,0.4));">0</div>
+                    <div class="eng-font" id="analytics-total-defects" style="font-size: 2.2rem; color: #8A2BE2; filter: drop-shadow(0 0 8px rgba(138,43,226,0.4));">0</div>
                 </div>
-                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: var(--accent-cyan);">
+                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: #00E5FF;">
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold; margin-bottom: 5px;">متوسط الإنتاج / ساعة</div>
-                    <div class="eng-font" id="analytics-avg-prod" style="font-size: 2.2rem; color: var(--accent-cyan); filter: drop-shadow(0 0 8px var(--accent-cyan-glow));">0</div>
+                    <div class="eng-font" id="analytics-avg-prod" style="font-size: 2.2rem; color: #00E5FF; filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.3));">0</div>
                 </div>
             </div>
 
             <div class="glass-card" style="padding: 20px;">
                 <h4 style="color:var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px; text-align: center; font-weight: 800;">مسار الإنتاج الزمني</h4>
-                <div class="chart-container">
-                    <canvas id="prodChart"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="prodChart"></canvas></div>
             </div>
 
             <div class="glass-card" style="padding: 20px;">
-                <h4 style="color:var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px; text-align: center; font-weight: 800;">توزيع أنواع العيوب (Pareto)</h4>
-                <div class="chart-container">
-                    <canvas id="defectsChart"></canvas>
-                </div>
+                <h4 style="color:var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px; text-align: center; font-weight: 800;">توزيع العيوب (Pareto)</h4>
+                <div class="chart-container"><canvas id="defectsChart"></canvas></div>
             </div>
         </section>
 
         <!-- ================= شاشة الإعدادات ================= -->
         <section id="screen-settings" class="screen">
-            <h3 class="section-title">إعدادات الوردية والخط</h3>
+            <h3 class="section-title">إعدادات الوردية</h3>
             <div class="glass-card">
                 <div class="input-group"><label>بداية الوردية</label><input type="time" id="set-shift-start" class="glass-input" value="07:30"></div>
                 <div class="input-group"><label>نهاية الوردية</label><input type="time" id="set-shift-end" class="glass-input" value="16:00"></div>
@@ -350,7 +355,6 @@
                 <div class="input-group" style="margin-top: 25px;"><label>اسم الخط</label><input type="text" id="set-line-name" class="glass-input" value="الثلاجة A | Final Assembly"></div>
                 
                 <button class="glass-btn" onclick="App.applySettings()">اعتماد الإعدادات</button>
-                <button class="glass-btn secondary" style="margin-top: 15px; color: var(--accent-orange); border-color: rgba(255, 87, 34, 0.3);" onclick="App.hardReset()">مسح الذاكرة بالكامل</button>
             </div>
         </section>
 
@@ -379,6 +383,16 @@
     </nav>
 
     <div id="toast">رسالة تنبيه</div>
+    
+    <div id="image-modal" onclick="App.closeImageModal(event)">
+        <div class="close-modal-btn"><i class="fa-solid fa-xmark"></i></div>
+        <img id="modal-image" src="" alt="Defect Full View">
+    </div>
+
+    <div id="upload-loader" class="overlay-loader">
+        <div class="spinner"></div>
+        <h3 id="loader-text" style="font-family: 'Cairo';">جاري ضغط ورفع الصورة لـ Drive...</h3>
+    </div>
 
     <script>
         const App = {
@@ -387,7 +401,7 @@
             // ==========================================
 
             syncTimer: null, 
-            charts: {}, // تخزين مؤشرات الرسوم البيانية
+            charts: {},
 
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
@@ -411,7 +425,6 @@
                         this.data.production.date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                     }
                 } catch(e) {
-                    console.error("Cache Reset", e);
                     localStorage.removeItem('mes_core_data');
                     let today = new Date();
                     this.data.production.date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
@@ -436,10 +449,29 @@
                 this.fetchFromCloud(true);
 
                 document.addEventListener("visibilitychange", () => {
-                    if (document.visibilityState === "visible") {
-                        this.fetchFromCloud(true);
-                    }
+                    if (document.visibilityState === "visible") { this.fetchFromCloud(true); }
                 });
+            },
+
+            navigate(screenId) {
+                // تبديل الهوية البصرية (Theme Switcher)
+                if (screenId === 'scratches') {
+                    document.body.classList.add('theme-qc');
+                } else {
+                    document.body.classList.remove('theme-qc');
+                }
+
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const targetScreen = document.getElementById('screen-' + screenId);
+                if(targetScreen) targetScreen.classList.add('active');
+
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                const navBtn = document.querySelector(`.nav-item[data-target="${screenId}"]`);
+                if(navBtn) navBtn.classList.add('active');
+                
+                if(screenId === 'analytics') { this.renderAnalytics(); }
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             },
 
             changeDay() {
@@ -473,23 +505,6 @@
                     localStorage.removeItem('mes_core_data');
                     location.reload();
                 }
-            },
-
-            navigate(screenId) {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                const targetScreen = document.getElementById('screen-' + screenId);
-                if(targetScreen) targetScreen.classList.add('active');
-
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                const navBtn = document.querySelector(`.nav-item[data-target="${screenId}"]`);
-                if(navBtn) navBtn.classList.add('active');
-                
-                // تشغيل الرسوم البيانية إذا كانت الشاشة المطلوبة هي التحليلات
-                if(screenId === 'analytics') {
-                    this.renderAnalytics();
-                }
-                
-                window.scrollTo({ top: 0, behavior: 'smooth' });
             },
 
             formatAMPM(timeStr) {
@@ -563,36 +578,97 @@
             },
 
             updateActual(index, value) {
-                this.data.production.items[index].actual = value; 
-                this.saveState(); 
+                this.data.production.items[index].actual = value; this.saveState(); 
                 let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
 
             updateHourlyReason(index, value) {
-                this.data.production.items[index].shortfallReason = value;
-                this.saveState();
+                this.data.production.items[index].shortfallReason = value; this.saveState();
             },
 
+            // =========================================
+            // رفع الصورة لـ Google Drive مع الضغط (WebP)
+            // =========================================
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
                 const notes = document.getElementById('scratch-notes').value;
                 const fileInput = document.getElementById('scratch-image');
                 
-                if(!fileInput.files || !fileInput.files[0]) { this.showToast("برجاء التقاط صورة العيب أولاً"); return; }
+                if(!fileInput.files || !fileInput.files[0]) { this.showToast("برجاء التقاط صورة العيب أولاً 📷"); return; }
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا') { this.showToast("يرجى إعداد رابط جوجل لرفع الصور"); return; }
 
+                // إظهار شاشة التحميل
+                const loader = document.getElementById('upload-loader');
+                const loaderText = document.getElementById('loader-text');
+                loader.classList.add('show');
+                loaderText.innerText = "جاري ضغط وتجهيز الصورة...";
+
+                const file = fileInput.files[0];
                 const reader = new FileReader();
+                
                 reader.onload = (e) => {
-                    const base64Img = e.target.result;
-                    this.data.scratches.push({
-                        id: Date.now(), type: type, notes: notes, image: base64Img, status: 'pending',
-                        time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})
-                    });
-                    this.saveState(); this.renderScratchesList();
-                    document.getElementById('scratch-notes').value = ''; fileInput.value = '';
-                    this.showToast("تم الإدراج");
+                    const img = new Image();
+                    img.onload = async () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+                        let width = img.width; let height = img.height;
+
+                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+                        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // ضغط الصورة
+                        const compressedBase64 = canvas.toDataURL('image/webp', 0.6);
+                        loaderText.innerText = "جاري الرفع السحابي (Google Drive)...";
+
+                        // إرسال الصورة لجوجل
+                        const uploadPayload = {
+                            type: "IMAGE_UPLOAD",
+                            payload: {
+                                filename: `Defect_${Date.now()}.webp`,
+                                mimeType: 'image/webp',
+                                base64: compressedBase64,
+                                date: this.data.production.date || new Date().toISOString().split('T')[0]
+                            }
+                        };
+
+                        try {
+                            let response = await fetch(this.GOOGLE_API_URL, {
+                                method: 'POST', redirect: 'follow',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify(uploadPayload)
+                            });
+                            
+                            let resultText = await response.text();
+                            let result = JSON.parse(resultText);
+                            
+                            if (result.status === 'success') {
+                                this.data.scratches.push({
+                                    id: Date.now(), type: type, notes: notes, 
+                                    image: result.url, // حفظ الرابط القادم من درايف
+                                    status: 'pending',
+                                    time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})
+                                });
+                                this.saveState(); this.renderScratchesList();
+                                document.getElementById('scratch-notes').value = ''; fileInput.value = '';
+                                this.showToast("تم رفع وحفظ العيب بنجاح ✅");
+                            } else {
+                                this.showToast("فشل رفع الصورة للسيرفر ❌");
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            this.showToast("خطأ في الاتصال أثناء الرفع ❌");
+                        } finally {
+                            loader.classList.remove('show');
+                        }
+                    };
+                    img.src = e.target.result;
                 };
-                reader.readAsDataURL(fileInput.files[0]);
+                reader.readAsDataURL(file);
             },
 
             renderScratchesList() {
@@ -607,27 +683,36 @@
                 
                 sortedScratches.forEach(defect => {
                     const isPending = defect.status === 'pending';
-                    const statusClass = isPending ? 'status-pending' : 'status-fixed';
+                    const statusClass = isPending ? 'color: var(--accent-main); border: 1px solid var(--accent-main);' : 'color: #00ff87; border: 1px solid #00ff87;';
                     const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
                     container.innerHTML += `
-                        <div class="glass-card" style="padding: 15px; margin-bottom: 12px; border-right: 4px solid ${isPending ? 'var(--accent-orange)' : 'var(--success)'}; border-radius: 12px;">
-                            <div style="display: flex; gap: 15px;">
-                                <img src="${defect.image}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border);">
-                                <div style="flex: 1;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                                        <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type}</h4>
-                                        <span class="eng-font" style="font-size: 0.7rem; color: var(--text-secondary);">${defect.time}</span>
-                                    </div>
-                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-size:0.75rem; padding: 4px 10px; border-radius: 15px; background: rgba(255,255,255,0.05); color: ${isPending ? 'var(--accent-orange)' : 'var(--success)'}; cursor:pointer;" onclick="App.toggleScratchStatus(${defect.id})">${statusText}</span>
-                                        <i class="fa-solid fa-trash-can" style="color: #ff4b2b; cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
-                                    </div>
+                        <div class="glass-card defect-card" style="border-right: 4px solid ${isPending ? 'var(--accent-main)' : '#00ff87'};">
+                            <img src="${defect.image}" class="defect-img" onclick="App.openImage('${defect.image}')">
+                            <div class="defect-info">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                                    <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type}</h4>
+                                    <span class="eng-font" style="font-size: 0.7rem; color: var(--text-secondary);">${defect.time}</span>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.75rem; padding: 4px 10px; border-radius: 15px; background: transparent; ${statusClass} cursor:pointer;" onclick="App.toggleScratchStatus(${defect.id})">${statusText}</span>
+                                    <i class="fa-solid fa-trash-can" style="color: #ff4b2b; cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
                                 </div>
                             </div>
                         </div>
                     `;
                 });
+            },
+
+            openImage(src) {
+                document.getElementById('modal-image').src = src;
+                document.getElementById('image-modal').classList.add('show');
+            },
+
+            closeImageModal(e) {
+                if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) {
+                    document.getElementById('image-modal').classList.remove('show');
+                }
             },
 
             toggleScratchStatus(id) {
@@ -644,22 +729,14 @@
                 }
             },
 
-            // =========================================
-            // مولد شاشة التحليلات (Chart.js Integration)
-            // =========================================
             renderAnalytics() {
-                let totalProd = 0;
-                let activeHours = 0;
-                let hourlyLabels = [];
-                let hourlyData = [];
+                let totalProd = 0; let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
                 
-                // حساب إنتاج الساعات
                 this.data.production.items.forEach(item => {
                     if (!item.isBreak) {
                         let val = Number(item.actual) || 0;
-                        totalProd += val;
-                        activeHours++;
-                        hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); // تبسيط الإسم للرسم
+                        totalProd += val; activeHours++;
+                        hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); 
                         hourlyData.push(val);
                     }
                 });
@@ -668,46 +745,28 @@
                 document.getElementById('analytics-avg-prod').innerText = avgProd;
                 document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
 
-                // إعدادات التصميم للرسم البياني لتناسب الـ Dark Theme
                 Chart.defaults.color = '#8e8e93';
                 Chart.defaults.font.family = 'Cairo';
 
-                // رسم مخطط الإنتاج الزمني (Bar Chart)
                 const ctxProd = document.getElementById('prodChart').getContext('2d');
-                if(this.charts.prod) this.charts.prod.destroy(); // تدمير القديم لمنع التداخل
+                if(this.charts.prod) this.charts.prod.destroy(); 
                 this.charts.prod = new Chart(ctxProd, {
                     type: 'bar',
                     data: {
                         labels: hourlyLabels,
                         datasets: [{
-                            label: 'وحدة',
-                            data: hourlyData,
-                            backgroundColor: 'rgba(0, 229, 255, 0.15)',
-                            borderColor: '#00E5FF',
-                            borderWidth: 2,
-                            borderRadius: 6
+                            label: 'وحدة', data: hourlyData,
+                            backgroundColor: 'rgba(0, 229, 255, 0.15)', borderColor: '#00E5FF', borderWidth: 2, borderRadius: 6
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { 
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                            x: { grid: { display: false } }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
                 });
 
-                // تجميع بيانات العيوب (Pareto)
                 let defectCounts = {};
-                this.data.scratches.forEach(d => {
-                    defectCounts[d.type] = (defectCounts[d.type] || 0) + 1;
-                });
+                this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
                 let defectLabels = Object.keys(defectCounts);
                 let defectData = Object.values(defectCounts);
 
-                // رسم مخطط العيوب (Doughnut Chart)
                 const ctxDefects = document.getElementById('defectsChart').getContext('2d');
                 if(this.charts.defects) this.charts.defects.destroy();
                 this.charts.defects = new Chart(ctxDefects, {
@@ -716,21 +775,11 @@
                         labels: defectLabels.length ? defectLabels : ['سجل نظيف'],
                         datasets: [{
                             data: defectData.length ? defectData : [1],
-                            backgroundColor: defectData.length ? 
-                                ['#FF5722', '#00E5FF', '#8A2BE2', '#ff0844', '#00ff87'] : 
-                                ['rgba(255,255,255,0.05)'],
-                            borderWidth: 0,
-                            hoverOffset: 5
+                            backgroundColor: defectData.length ? ['#FF5722', '#00E5FF', '#8A2BE2', '#ff0844', '#00ff87'] : ['rgba(255,255,255,0.05)'],
+                            borderWidth: 0, hoverOffset: 5
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '75%',
-                        plugins: {
-                            legend: { position: 'right', labels: { padding: 15, color: '#fff' } }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { padding: 15, color: '#fff' } } } }
                 });
             },
 
@@ -822,12 +871,8 @@
                         this.updateProductionUI();
                         this.renderScratchesList();
                         
-                        // إعادة رسم المخططات إن كانت شاشة التحليلات مفتوحة
                         const activeScreen = document.querySelector('.screen.active');
-                        if (activeScreen && activeScreen.id === 'screen-analytics') {
-                            this.renderAnalytics();
-                        }
-                        
+                        if (activeScreen && activeScreen.id === 'screen-analytics') { this.renderAnalytics(); }
                         if (!isSilent) this.showToast("تم تحديث البيانات 🚀");
                     }
                 };
