@@ -6,31 +6,29 @@
     <title>MES | Premium Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- استدعاء مكتبة Chart.js للتحليلات البصرية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         /* =========================================
            Premium Dark UI - Design System
         ========================================= */
         :root {
-            /* الألوان الأساسية مستوحاة من الصور */
             --bg-base: #121214;
             --surface-1: rgba(28, 28, 32, 0.6);
             --surface-2: rgba(40, 40, 45, 0.5);
             --glass-border: rgba(255, 255, 255, 0.05);
             
-            /* ألوان النيون المضيئة */
             --accent-orange: #FF5722;
             --accent-orange-glow: rgba(255, 87, 34, 0.4);
             --accent-cyan: #00E5FF;
             --accent-cyan-glow: rgba(0, 229, 255, 0.3);
             --accent-purple: #8A2BE2;
             
-            /* النصوص */
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
             --text-placeholder: #5c5c62;
             
-            /* الأبعاد والزوايا (Curves) */
             --radius-xl: 32px;
             --radius-lg: 20px;
             --radius-md: 14px;
@@ -45,7 +43,6 @@
             color: var(--text-primary); 
             overflow-x: hidden; 
             padding-bottom: calc(var(--nav-height) + 30px); 
-            /* إضاءة محيطية (Ambient Glow) كالتي في الصور */
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(255, 87, 34, 0.08), transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.08), transparent 40%),
@@ -55,7 +52,6 @@
 
         .eng-font { font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1.5px; }
         
-        /* تأثير الزجاج الفخم */
         .glass-card { 
             background: var(--surface-1); 
             backdrop-filter: blur(20px); 
@@ -71,7 +67,6 @@
             overflow: hidden;
         }
 
-        /* رأس التطبيق */
         .app-header { 
             position: sticky; top: 0; z-index: 100; 
             padding: 20px 25px; 
@@ -98,7 +93,6 @@
         .screen.active { display: block; }
         @keyframes scaleUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-        /* البطاقة الرئيسية (Hero) */
         .hero-card h2 { font-size: 0.95rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         .hero-number { 
             font-size: 4.5rem; 
@@ -108,7 +102,6 @@
             filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
         }
 
-        /* شبكة الأزرار */
         .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; font-weight: 800; }
         .grid-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .action-card { 
@@ -122,7 +115,6 @@
         .action-icon.accent-c { color: var(--accent-cyan); filter: drop-shadow(0 0 10px var(--accent-cyan-glow)); }
         .action-card span { font-weight: 800; font-size: 0.9rem; }
 
-        /* المدخلات والنماذج */
         .input-group { margin-bottom: 18px; }
         .input-group label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; padding-right: 5px;}
         .glass-input { 
@@ -146,7 +138,6 @@
         .glass-btn:active { transform: scale(0.97); box-shadow: 0 4px 15px var(--accent-orange-glow); }
         .glass-btn.secondary { background: var(--surface-2); color: var(--text-primary); box-shadow: none; border: 1px solid var(--glass-border); }
 
-        /* قائمة الإنتاج - تصميم دقيق */
         .prod-header { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
         .prod-row-container { 
             background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); 
@@ -165,7 +156,6 @@
         }
         .actual-input:focus { border-color: var(--accent-cyan); background: rgba(0, 229, 255, 0.05); }
         
-        /* حقل العجز مدمج بشكل أنيق ومخفي قليلاً (Neumorphic inset) */
         .reason-input { 
             width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border);
             padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; 
@@ -174,7 +164,6 @@
         .reason-input:focus { color: var(--text-primary); border-top-color: var(--accent-orange); }
         .reason-input::placeholder { color: var(--text-placeholder); font-style: italic; }
 
-        /* شريط التنقل العائم (Floating Nav) */
         .bottom-nav { 
             position: fixed; bottom: 20px; left: 5%; right: 5%; width: 90%; height: var(--nav-height); 
             background: rgba(25, 25, 30, 0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
@@ -191,7 +180,6 @@
         .nav-item.active { color: var(--text-primary); }
         .nav-item.active i { transform: translateY(-4px); color: var(--accent-orange); filter: drop-shadow(0 0 10px var(--accent-orange-glow)); }
         
-        /* زر الواتساب المركزي */
         .special-nav .fab-btn { 
             width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); 
             border-radius: 50%; display: flex; justify-content: center; align-items: center; 
@@ -201,7 +189,6 @@
         }
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        /* Toast */
         #toast { 
             position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); 
             background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; 
@@ -210,6 +197,11 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem;
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* الكانفاس الخاص بالمخططات */
+        .chart-container {
+            position: relative; height: 220px; width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -317,6 +309,36 @@
             <div id="scratches-list"></div>
         </section>
 
+        <!-- ================= شاشة التحليلات الجديدة ================= -->
+        <section id="screen-analytics" class="screen">
+            <h3 class="section-title">تحليلات الأداء اللحظية</h3>
+            
+            <div class="grid-actions" style="margin-bottom: 25px;">
+                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: var(--accent-purple);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold; margin-bottom: 5px;">إجمالي العيوب اليوم</div>
+                    <div class="eng-font" id="analytics-total-defects" style="font-size: 2.2rem; color: var(--accent-purple); filter: drop-shadow(0 0 8px rgba(138,43,226,0.4));">0</div>
+                </div>
+                <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: var(--accent-cyan);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold; margin-bottom: 5px;">متوسط الإنتاج / ساعة</div>
+                    <div class="eng-font" id="analytics-avg-prod" style="font-size: 2.2rem; color: var(--accent-cyan); filter: drop-shadow(0 0 8px var(--accent-cyan-glow));">0</div>
+                </div>
+            </div>
+
+            <div class="glass-card" style="padding: 20px;">
+                <h4 style="color:var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px; text-align: center; font-weight: 800;">مسار الإنتاج الزمني</h4>
+                <div class="chart-container">
+                    <canvas id="prodChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card" style="padding: 20px;">
+                <h4 style="color:var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px; text-align: center; font-weight: 800;">توزيع أنواع العيوب (Pareto)</h4>
+                <div class="chart-container">
+                    <canvas id="defectsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
         <!-- ================= شاشة الإعدادات ================= -->
         <section id="screen-settings" class="screen">
             <h3 class="section-title">إعدادات الوردية والخط</h3>
@@ -365,6 +387,7 @@
             // ==========================================
 
             syncTimer: null, 
+            charts: {}, // تخزين مؤشرات الرسوم البيانية
 
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
@@ -453,7 +476,6 @@
             },
 
             navigate(screenId) {
-                if(screenId === 'analytics') { this.showToast("شاشة التحليلات قريباً"); return; }
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 const targetScreen = document.getElementById('screen-' + screenId);
                 if(targetScreen) targetScreen.classList.add('active');
@@ -461,6 +483,11 @@
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 const navBtn = document.querySelector(`.nav-item[data-target="${screenId}"]`);
                 if(navBtn) navBtn.classList.add('active');
+                
+                // تشغيل الرسوم البيانية إذا كانت الشاشة المطلوبة هي التحليلات
+                if(screenId === 'analytics') {
+                    this.renderAnalytics();
+                }
                 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
@@ -582,7 +609,6 @@
                     const isPending = defect.status === 'pending';
                     const statusClass = isPending ? 'status-pending' : 'status-fixed';
                     const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
-                    // استايل جديد يتوافق مع الدارك مود
                     container.innerHTML += `
                         <div class="glass-card" style="padding: 15px; margin-bottom: 12px; border-right: 4px solid ${isPending ? 'var(--accent-orange)' : 'var(--success)'}; border-radius: 12px;">
                             <div style="display: flex; gap: 15px;">
@@ -618,6 +644,96 @@
                 }
             },
 
+            // =========================================
+            // مولد شاشة التحليلات (Chart.js Integration)
+            // =========================================
+            renderAnalytics() {
+                let totalProd = 0;
+                let activeHours = 0;
+                let hourlyLabels = [];
+                let hourlyData = [];
+                
+                // حساب إنتاج الساعات
+                this.data.production.items.forEach(item => {
+                    if (!item.isBreak) {
+                        let val = Number(item.actual) || 0;
+                        totalProd += val;
+                        activeHours++;
+                        hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); // تبسيط الإسم للرسم
+                        hourlyData.push(val);
+                    }
+                });
+                
+                let avgProd = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0;
+                document.getElementById('analytics-avg-prod').innerText = avgProd;
+                document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
+
+                // إعدادات التصميم للرسم البياني لتناسب الـ Dark Theme
+                Chart.defaults.color = '#8e8e93';
+                Chart.defaults.font.family = 'Cairo';
+
+                // رسم مخطط الإنتاج الزمني (Bar Chart)
+                const ctxProd = document.getElementById('prodChart').getContext('2d');
+                if(this.charts.prod) this.charts.prod.destroy(); // تدمير القديم لمنع التداخل
+                this.charts.prod = new Chart(ctxProd, {
+                    type: 'bar',
+                    data: {
+                        labels: hourlyLabels,
+                        datasets: [{
+                            label: 'وحدة',
+                            data: hourlyData,
+                            backgroundColor: 'rgba(0, 229, 255, 0.15)',
+                            borderColor: '#00E5FF',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+                // تجميع بيانات العيوب (Pareto)
+                let defectCounts = {};
+                this.data.scratches.forEach(d => {
+                    defectCounts[d.type] = (defectCounts[d.type] || 0) + 1;
+                });
+                let defectLabels = Object.keys(defectCounts);
+                let defectData = Object.values(defectCounts);
+
+                // رسم مخطط العيوب (Doughnut Chart)
+                const ctxDefects = document.getElementById('defectsChart').getContext('2d');
+                if(this.charts.defects) this.charts.defects.destroy();
+                this.charts.defects = new Chart(ctxDefects, {
+                    type: 'doughnut',
+                    data: {
+                        labels: defectLabels.length ? defectLabels : ['سجل نظيف'],
+                        datasets: [{
+                            data: defectData.length ? defectData : [1],
+                            backgroundColor: defectData.length ? 
+                                ['#FF5722', '#00E5FF', '#8A2BE2', '#ff0844', '#00ff87'] : 
+                                ['rgba(255,255,255,0.05)'],
+                            borderWidth: 0,
+                            hoverOffset: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: { position: 'right', labels: { padding: 15, color: '#fff' } }
+                        }
+                    }
+                });
+            },
+
             saveState(skipAutoSave = false) {
                 this.data.production.date = document.getElementById('prod-date').value;
                 this.data.production.shift = document.getElementById('prod-shift').value;
@@ -640,27 +756,23 @@
                 toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000);
             },
 
-            // =========================================
-            // مولد تقرير الواتساب (تنسيق مطابق 100% للصورة)
-            // =========================================
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); 
-                let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; // DD-MM-YYYY
+                let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
                 let total = 0; 
                 
                 let report = `*تقرير انتاج ساعة بساعة*\n`;
                 report += `${this.data.settings.lineName}\n`;
                 report += `التاريخ: ${formattedDate}\n`;
-                report += `الوردية : ${this.data.production.shift}\n\n`; // مسافة مزدوجة هنا
+                report += `الوردية : ${this.data.production.shift}\n\n`; 
                 
                 this.data.production.items.forEach(item => {
                     if (item.isBreak) {
-                        report += `\n*فترة راحة*\n\n`; // مسافة قبل وبعد الراحة
+                        report += `\n*فترة راحة*\n\n`; 
                     } else { 
                         let actVal = item.actual === "" ? "0" : item.actual; 
                         report += `${item.label} : ${actVal}\n`; 
                         
-                        // إضافة العجز أسفل الساعة مباشرة بدون تنسيق إضافي (كما في الصورة)
                         if (item.shortfallReason && item.shortfallReason.trim() !== '') {
                             report += `${item.shortfallReason.trim()}\n`;
                         }
@@ -669,7 +781,6 @@
                 });
                 
                 report += `\n*إجمالي الإنتاج : ${total}*`;
-                
                 const encodedText = encodeURIComponent(report); 
                 window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
@@ -677,7 +788,6 @@
             async syncToCloud(isSilent = false) {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري المزامنة...");
-                
                 const payload = { type: "FULL_BACKUP", payload: this.data };
                 try {
                     let response = await fetch(this.GOOGLE_API_URL, {
@@ -686,9 +796,7 @@
                     let textResult = await response.text();
                     try {
                         let result = JSON.parse(textResult);
-                        if(result.status === 'success') {
-                            if (!isSilent) this.showToast("تم الحفظ ✅");
-                        }
+                        if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ ✅");
                     } catch(e) {}
                 } catch(err) { if (!isSilent) this.showToast("خطأ شبكة ❌"); }
             },
@@ -713,6 +821,12 @@
                         
                         this.updateProductionUI();
                         this.renderScratchesList();
+                        
+                        // إعادة رسم المخططات إن كانت شاشة التحليلات مفتوحة
+                        const activeScreen = document.querySelector('.screen.active');
+                        if (activeScreen && activeScreen.id === 'screen-analytics') {
+                            this.renderAnalytics();
+                        }
                         
                         if (!isSilent) this.showToast("تم تحديث البيانات 🚀");
                     }
