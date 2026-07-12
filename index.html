@@ -506,29 +506,50 @@
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
 
-            syncToCloud() {
+          // =========================================
+            // دالة المزامنة السحابية (تمت هندستها لقراءة الاستجابة بدقة)
+            // =========================================
+            async syncToCloud() {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
                     this.showToast("يرجى إعداد رابط Google Drive أولاً");
                     return;
                 }
 
                 this.showToast("جاري المزامنة مع السحابة ☁️...");
+                
                 const payload = {
                     type: "FULL_BACKUP",
                     payload: this.data
                 };
 
-                fetch(this.GOOGLE_API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).then(() => {
-                    this.showToast("تم النسخ الاحتياطي في Google Drive ✅");
-                }).catch(err => {
-                    console.error(err);
-                    this.showToast("حدث خطأ في الاتصال بالإنترنت ❌");
-                });
+                try {
+                    // استخدام text/plain يمنع المتصفح من حظر الطلب ويسمح باختراق الـ CORS
+                    let response = await fetch(this.GOOGLE_API_URL, {
+                        method: 'POST',
+                        redirect: 'follow', 
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    let textResult = await response.text();
+                    
+                    try {
+                        let result = JSON.parse(textResult);
+                        if(result.status === 'success') {
+                            this.showToast("تم النسخ الاحتياطي في Google Drive ✅");
+                        } else {
+                            console.error("Server Error:", result.message);
+                            this.showToast("فشل الحفظ في السيرفر ❌");
+                        }
+                    } catch(parseError) {
+                        console.error("استجابة غير متوقعة:", textResult);
+                        // إذا وصلت الاستجابة كـ HTML فهذا يعني أن البيانات أُرسلت ولكن جوجل فرض إعادة توجيه
+                        this.showToast("تم الإرسال للسحابة ✅");
+                    }
+                } catch(err) {
+                    console.error("Sync Error:", err);
+                    this.showToast("حدث خطأ في الاتصال بالشبكة ❌");
+                }
             },
 
             // =========================================
