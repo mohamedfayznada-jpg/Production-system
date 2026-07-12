@@ -269,10 +269,12 @@
     <div id="toast">تم الحفظ بنجاح</div>
 
     <script>
-        const App = {
+  const App = {
             // ==========================================
             GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec', 
             // ==========================================
+
+            syncTimer: null, // المؤقت الزمني لخاصية الـ Auto-Save
 
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
@@ -285,7 +287,6 @@
                     const saved = localStorage.getItem('mes_core_data');
                     if (saved) {
                         const parsedData = JSON.parse(saved);
-                        // دمج آمن للبيانات لمنع توقف التطبيق
                         if (parsedData.settings) this.data.settings = { ...this.data.settings, ...parsedData.settings };
                         if (parsedData.production) this.data.production = { ...this.data.production, ...parsedData.production };
                         if (!this.data.production.items) this.data.production.items = [];
@@ -314,9 +315,22 @@
                 }
 
                 this.renderScratchesList();
+
+                // =====================================
+                // تفعيل الأتمتة (الاسترداد التلقائي)
+                // =====================================
+                
+                // 1. استرداد صامت عند تشغيل التطبيق أول مرة
+                this.fetchFromCloud(true);
+
+                // 2. استرداد صامت كلما عاد الفني لفتح التطبيق من الخلفية
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") {
+                        this.fetchFromCloud(true);
+                    }
+                });
             },
 
-            // إضافة زر تنظيف الكاش للطوارئ
             hardReset() {
                 if(confirm("تحذير: سيتم مسح جميع بيانات التطبيق والعودة لضبط المصنع. هل أنت متأكد؟")) {
                     localStorage.removeItem('mes_core_data');
@@ -397,7 +411,8 @@
             },
 
             updateActual(index, value) {
-                this.data.production.items[index].actual = value; this.saveState();
+                this.data.production.items[index].actual = value; 
+                this.saveState(); // ستقوم هذه الدالة الآن بتشغيل الحفظ التلقائي للسحابة
                 let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
@@ -427,7 +442,7 @@
                     
                     document.getElementById('scratch-notes').value = '';
                     fileInput.value = '';
-                    this.showToast("تم إدراج العيب محلياً");
+                    this.showToast("تم إدراج العيب");
                 };
                 reader.readAsDataURL(fileInput.files[0]);
             },
@@ -484,10 +499,21 @@
                 }
             },
 
-            saveState() {
+            // =========================================
+            // تم تدريع دالة الحفظ لدعم الأتمتة (Auto-Save)
+            // =========================================
+            saveState(skipAutoSave = false) {
                 this.data.production.date = document.getElementById('prod-date').value;
                 this.data.production.shift = document.getElementById('prod-shift').value;
                 localStorage.setItem('mes_core_data', JSON.stringify(this.data));
+
+                // إذا لم يتم طلب تجاوز الحفظ التلقائي، قم بتشغيل المؤقت (Debounce)
+                if (!skipAutoSave) {
+                    clearTimeout(this.syncTimer);
+                    this.syncTimer = setTimeout(() => {
+                        this.syncToCloud(true); // يتم الإرسال بصمت بعد 3 ثوانٍ من التوقف عن الكتابة
+                    }, 3000);
+                }
             },
 
             showToast(msg) {
@@ -506,16 +532,11 @@
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
 
-          // =========================================
-            // دالة المزامنة السحابية (تمت هندستها لقراءة الاستجابة بدقة)
-            // =========================================
-            async syncToCloud() {
-                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
-                    this.showToast("يرجى إعداد رابط Google Drive أولاً");
-                    return;
-                }
+            // إضافة مُعامل isSilent لجعل المزامنة صامتة
+            async syncToCloud(isSilent = false) {
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
 
-                this.showToast("جاري المزامنة مع السحابة ☁️...");
+                if (!isSilent) this.showToast("جاري المزامنة مع السحابة ☁️...");
                 
                 const payload = {
                     type: "FULL_BACKUP",
@@ -523,7 +544,6 @@
                 };
 
                 try {
-                    // استخدام text/plain يمنع المتصفح من حظر الطلب ويسمح باختراق الـ CORS
                     let response = await fetch(this.GOOGLE_API_URL, {
                         method: 'POST',
                         redirect: 'follow', 
@@ -532,48 +552,39 @@
                     });
                     
                     let textResult = await response.text();
-                    
                     try {
                         let result = JSON.parse(textResult);
                         if(result.status === 'success') {
-                            this.showToast("تم النسخ الاحتياطي في Google Drive ✅");
+                            if (!isSilent) this.showToast("تم النسخ الاحتياطي سحابياً ✅");
+                            console.log("Auto-Save Success");
                         } else {
                             console.error("Server Error:", result.message);
-                            this.showToast("فشل الحفظ في السيرفر ❌");
                         }
                     } catch(parseError) {
-                        console.error("استجابة غير متوقعة:", textResult);
-                        // إذا وصلت الاستجابة كـ HTML فهذا يعني أن البيانات أُرسلت ولكن جوجل فرض إعادة توجيه
-                        this.showToast("تم الإرسال للسحابة ✅");
+                        console.log("Auto-Save Pushed (HTML Response)");
                     }
                 } catch(err) {
                     console.error("Sync Error:", err);
-                    this.showToast("حدث خطأ في الاتصال بالشبكة ❌");
+                    if (!isSilent) this.showToast("حدث خطأ في الاتصال بالشبكة ❌");
                 }
             },
 
-            // =========================================
-            // دالة استرداد البيانات (باستخدام تقنية JSONP لاختراق حظر المتصفحات)
-            // =========================================
-            fetchFromCloud() {
-                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
-                    this.showToast("يرجى إعداد رابط Google Drive أولاً");
-                    return;
-                }
+            // إضافة مُعامل isSilent للاسترداد الصامت
+            fetchFromCloud(isSilent = false) {
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
 
-                this.showToast("جاري الاسترداد، يرجى الانتظار ⏳...");
+                if (!isSilent) this.showToast("جاري الاسترداد، يرجى الانتظار ⏳...");
 
-                // 1. إنشاء دالة عالمية (Global) لاستقبال الرد من خوادم جوجل
                 window.googleCloudCallback = (result) => {
-                    // تنظيف الـ DOM من السكريبت بعد أداء مهمته
                     const oldScript = document.getElementById('mes-sync-script');
                     if(oldScript) oldScript.remove();
 
                     if(result.status === 'success' && result.data) {
                         this.data = result.data;
-                        this.saveState();
                         
-                        // تحديث الحقول في الواجهة
+                        // تمرير 'true' لكي نتجنب الحلقة اللانهائية من الحفظ التلقائي
+                        this.saveState(true); 
+                        
                         document.getElementById('set-shift-start').value = this.data.settings.start;
                         document.getElementById('set-shift-end').value = this.data.settings.end;
                         document.getElementById('set-break-start').value = this.data.settings.bStart;
@@ -582,26 +593,24 @@
                         document.getElementById('prod-date').value = this.data.production.date;
                         document.getElementById('prod-shift').value = this.data.production.shift;
                         
-                        // إعادة رسم القوائم
                         this.renderProductionList();
                         this.renderScratchesList();
                         
-                        this.showToast("تم تحديث البيانات بنجاح 🚀");
+                        if (!isSilent) this.showToast("تم تحديث البيانات بنجاح 🚀");
+                        console.log("Auto-Fetch Success");
                     } else if (result.status === 'empty') {
-                        this.showToast("لا توجد بيانات مسجلة في السحابة بعد");
+                        if (!isSilent) this.showToast("لا توجد بيانات مسجلة في السحابة بعد");
                     } else {
                         console.error(result.message);
-                        this.showToast("حدث خطأ في الخادم ❌");
                     }
                 };
 
-                // 2. حقن السكريبت وتخطي حظر الـ CORS
                 const script = document.createElement('script');
                 script.id = 'mes-sync-script';
                 script.src = `${this.GOOGLE_API_URL}?callback=googleCloudCallback&t=${Date.now()}`;
                 
                 script.onerror = () => {
-                    this.showToast("انقطع الاتصال بالإنترنت ❌");
+                    if (!isSilent) this.showToast("انقطع الاتصال بالإنترنت ❌");
                     script.remove();
                 };
 
