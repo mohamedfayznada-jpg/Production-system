@@ -62,6 +62,7 @@
         .input-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: bold; }
         .glass-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px 15px; border-radius: var(--radius-lg); color: var(--text-main); font-family: 'Cairo'; font-size: 1rem; outline: none; transition: 0.3s; }
         .glass-input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        textarea.glass-input { resize: vertical; min-height: 80px; }
         .glass-btn { width: 100%; background: linear-gradient(135deg, var(--primary), var(--info)); color: #000; border: none; padding: 15px; border-radius: var(--radius-lg); font-weight: 900; font-size: 1.1rem; cursor: pointer; margin-top: 10px; transition: 0.2s; font-family: 'Cairo'; }
         .glass-btn:active { transform: scale(0.98); opacity: 0.8; }
         .glass-btn.danger { background: linear-gradient(135deg, var(--danger), #ff4b2b); color: white; margin-top: 25px; }
@@ -147,16 +148,20 @@
             
             <div class="prod-header">
                 <div class="input-group">
-                    <label>تاريخ اليوم</label>
-                    <input type="date" id="prod-date" class="glass-input" onchange="App.saveState()">
+                    <label>التقويم (تاريخ الإنتاج)</label>
+                    <input type="date" id="prod-date" class="glass-input" onchange="App.changeDay()">
                 </div>
                 <div class="input-group">
                     <label>الوردية</label>
-                    <select id="prod-shift" class="glass-input" onchange="App.saveState()">
+                    <select id="prod-shift" class="glass-input" onchange="App.changeDay()">
                         <option value="1">الوردية الأولى (1)</option>
                         <option value="2">الوردية الثانية (2)</option>
                         <option value="3">الوردية الثالثة (3)</option>
                     </select>
+                </div>
+                <div class="input-group" style="grid-column: 1 / -1;">
+                    <label>المستهدف اليومي</label>
+                    <input type="number" id="prod-target" class="glass-input eng-font" placeholder="أدخل المستهدف للوردية..." oninput="App.saveState()">
                 </div>
             </div>
 
@@ -167,13 +172,17 @@
                     <span id="prod-total-calc" class="eng-font" style="font-size: 1.5rem; color: var(--primary);">0</span>
                 </div>
             </div>
+
+            <div class="input-group" style="margin-bottom: 25px;">
+                <label>أسباب عجز الإنتاج (إن وجد)</label>
+                <textarea id="prod-shortfall" class="glass-input" rows="2" placeholder="اكتب أسباب العطل أو العجز هنا للرجوع إليها..." oninput="App.saveState()"></textarea>
+            </div>
         </section>
 
         <!-- ================= شاشة عيوب الرش ================= -->
         <section id="screen-scratches" class="screen">
             <h3 class="section-title"><i class="fa-solid fa-spray-can text-gradient"></i> سجل عيوب الرش الظاهرية</h3>
             
-            <!-- نموذج إضافة عيب -->
             <div class="blur-glass" style="border-radius: var(--radius-xl); padding: 20px; margin-bottom: 25px;">
                 <div class="input-group">
                     <label>نوع العيب</label>
@@ -198,7 +207,6 @@
                 </button>
             </div>
 
-            <!-- قائمة العيوب -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h4 style="color:var(--text-muted);"><i class="fa-solid fa-list-check"></i> العيوب المسجلة اليوم</h4>
                 <span class="eng-font" id="scratches-counter" style="color:var(--warning); font-size:1.2rem;">0</span>
@@ -235,7 +243,6 @@
                     <i class="fa-solid fa-check-double"></i> اعتماد وتوليد الساعات
                 </button>
 
-                <!-- زر تفريغ الذاكرة (Reset Button) للضرورة -->
                 <button class="glass-btn danger" onclick="App.hardReset()">
                     <i class="fa-solid fa-trash-can"></i> مسح الذاكرة المحلية
                 </button>
@@ -269,16 +276,17 @@
     <div id="toast">تم الحفظ بنجاح</div>
 
     <script>
-  const App = {
+        const App = {
             // ==========================================
             GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec', 
             // ==========================================
 
-            syncTimer: null, // المؤقت الزمني لخاصية الـ Auto-Save
+            syncTimer: null, 
 
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
-                production: { date: '', shift: '1', items: [] },
+                production: { date: '', shift: '1', target: '', shortfallReason: '', items: [] },
+                history: {}, // الأرشيف التاريخي لتسجيل أيام الإنتاج السابقة
                 scratches: []
             },
 
@@ -290,6 +298,7 @@
                         if (parsedData.settings) this.data.settings = { ...this.data.settings, ...parsedData.settings };
                         if (parsedData.production) this.data.production = { ...this.data.production, ...parsedData.production };
                         if (!this.data.production.items) this.data.production.items = [];
+                        if (parsedData.history) this.data.history = parsedData.history;
                         if (parsedData.scratches) this.data.scratches = parsedData.scratches;
                     } else {
                         this.data.production.date = new Date().toISOString().split('T')[0];
@@ -300,35 +309,74 @@
                     this.data.production.date = new Date().toISOString().split('T')[0];
                 }
 
+                // هيكلة الحماية للمتغيرات الجديدة
+                if (!this.data.history) this.data.history = {};
+                if (this.data.production.target === undefined) this.data.production.target = '';
+                if (this.data.production.shortfallReason === undefined) this.data.production.shortfallReason = '';
+
                 document.getElementById('set-shift-start').value = this.data.settings.start;
                 document.getElementById('set-shift-end').value = this.data.settings.end;
                 document.getElementById('set-break-start').value = this.data.settings.bStart;
                 document.getElementById('set-break-end').value = this.data.settings.bEnd;
                 document.getElementById('set-line-name').value = this.data.settings.lineName;
-                document.getElementById('prod-date').value = this.data.production.date;
-                document.getElementById('prod-shift').value = this.data.production.shift;
+                
+                this.updateProductionUI();
 
                 if (this.data.production.items.length === 0) {
                     this.generateIntervals();
-                } else {
-                    this.renderProductionList();
                 }
 
                 this.renderScratchesList();
 
-                // =====================================
-                // تفعيل الأتمتة (الاسترداد التلقائي)
-                // =====================================
-                
-                // 1. استرداد صامت عند تشغيل التطبيق أول مرة
                 this.fetchFromCloud(true);
 
-                // 2. استرداد صامت كلما عاد الفني لفتح التطبيق من الخلفية
                 document.addEventListener("visibilitychange", () => {
                     if (document.visibilityState === "visible") {
                         this.fetchFromCloud(true);
                     }
                 });
+            },
+
+            // =========================================
+            // دالة التنقل عبر التاريخ (التقويم - Calendar)
+            // =========================================
+            changeDay() {
+                // 1. حفظ الحالة الحالية في الأرشيف قبل الانتقال
+                const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
+                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
+
+                // 2. قراءة التاريخ والوردية الجديدة من الواجهة
+                const newDate = document.getElementById('prod-date').value;
+                const newShift = document.getElementById('prod-shift').value;
+                const newKey = `${newDate}_${newShift}`;
+
+                // 3. البحث في الأرشيف
+                if (this.data.history[newKey]) {
+                    // استدعاء بيانات اليوم السابق
+                    this.data.production = JSON.parse(JSON.stringify(this.data.history[newKey]));
+                    this.updateProductionUI();
+                    this.showToast("تم استدعاء بيانات السجل بنجاح 📅");
+                    this.saveState(true); 
+                } else {
+                    // إنشاء سجل يوم جديد فارغ
+                    this.data.production = {
+                        date: newDate,
+                        shift: newShift,
+                        target: '',
+                        shortfallReason: '',
+                        items: []
+                    };
+                    this.generateIntervals(); 
+                }
+            },
+
+            // دالة مساعدة لتحديث جميع حقول الإنتاج دفعة واحدة
+            updateProductionUI() {
+                document.getElementById('prod-date').value = this.data.production.date;
+                document.getElementById('prod-shift').value = this.data.production.shift;
+                document.getElementById('prod-target').value = this.data.production.target || '';
+                document.getElementById('prod-shortfall').value = this.data.production.shortfallReason || '';
+                this.renderProductionList();
             },
 
             hardReset() {
@@ -385,8 +433,8 @@
                 }
 
                 this.data.production.items = intervals;
-                this.saveState(); this.renderProductionList();
-                this.showToast("تم توليد سجل الساعات بنجاح"); this.navigate('production');
+                this.saveState(); 
+                this.updateProductionUI();
             },
 
             applySettings() {
@@ -412,7 +460,7 @@
 
             updateActual(index, value) {
                 this.data.production.items[index].actual = value; 
-                this.saveState(); // ستقوم هذه الدالة الآن بتشغيل الحفظ التلقائي للسحابة
+                this.saveState(); 
                 let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
@@ -499,19 +547,23 @@
                 }
             },
 
-            // =========================================
-            // تم تدريع دالة الحفظ لدعم الأتمتة (Auto-Save)
-            // =========================================
             saveState(skipAutoSave = false) {
                 this.data.production.date = document.getElementById('prod-date').value;
                 this.data.production.shift = document.getElementById('prod-shift').value;
+                this.data.production.target = document.getElementById('prod-target').value;
+                this.data.production.shortfallReason = document.getElementById('prod-shortfall').value;
+
+                // تحديث الأرشيف المحلي تلقائياً عند أي عملية حفظ
+                if (!this.data.history) this.data.history = {};
+                const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
+                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
+
                 localStorage.setItem('mes_core_data', JSON.stringify(this.data));
 
-                // إذا لم يتم طلب تجاوز الحفظ التلقائي، قم بتشغيل المؤقت (Debounce)
                 if (!skipAutoSave) {
                     clearTimeout(this.syncTimer);
                     this.syncTimer = setTimeout(() => {
-                        this.syncToCloud(true); // يتم الإرسال بصمت بعد 3 ثوانٍ من التوقف عن الكتابة
+                        this.syncToCloud(true); 
                     }, 3000);
                 }
             },
@@ -523,16 +575,33 @@
 
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
-                let total = 0; let report = `*تقرير انتاج ساعة بساعة*\n${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${this.data.production.shift}\n\n`;
+                let total = 0; 
+                
+                let report = `*تقرير انتاج ساعة بساعة*\n`;
+                report += `${this.data.settings.lineName}\n`;
+                report += `التاريخ: ${formattedDate}\n`;
+                report += `الوردية: ${this.data.production.shift}\n`;
+                
+                if (this.data.production.target && this.data.production.target.toString().trim() !== '') {
+                    report += `المستهدف اليومي: ${this.data.production.target}\n`;
+                }
+                report += `\n`;
+                
                 this.data.production.items.forEach(item => {
                     if (item.isBreak) report += `\n*${item.label}*\n\n`;
                     else { let actVal = item.actual === "" ? "0" : item.actual; report += `${item.label} : ${actVal}\n`; total += Number(item.actual) || 0; }
                 });
+                
                 report += `\n*إجمالي الإنتاج : ${total}*`;
+                
+                // إضافة العجز فقط إن وجد 
+                if (this.data.production.shortfallReason && this.data.production.shortfallReason.trim() !== '') {
+                    report += `\n\n*أسباب عجز الإنتاج:*\n${this.data.production.shortfallReason.trim()}`;
+                }
+                
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
 
-            // إضافة مُعامل isSilent لجعل المزامنة صامتة
             async syncToCloud(isSilent = false) {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
 
@@ -569,7 +638,6 @@
                 }
             },
 
-            // إضافة مُعامل isSilent للاسترداد الصامت
             fetchFromCloud(isSilent = false) {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
 
@@ -581,8 +649,8 @@
 
                     if(result.status === 'success' && result.data) {
                         this.data = result.data;
+                        if (!this.data.history) this.data.history = {};
                         
-                        // تمرير 'true' لكي نتجنب الحلقة اللانهائية من الحفظ التلقائي
                         this.saveState(true); 
                         
                         document.getElementById('set-shift-start').value = this.data.settings.start;
@@ -590,10 +658,8 @@
                         document.getElementById('set-break-start').value = this.data.settings.bStart;
                         document.getElementById('set-break-end').value = this.data.settings.bEnd;
                         document.getElementById('set-line-name').value = this.data.settings.lineName;
-                        document.getElementById('prod-date').value = this.data.production.date;
-                        document.getElementById('prod-shift').value = this.data.production.shift;
                         
-                        this.renderProductionList();
+                        this.updateProductionUI();
                         this.renderScratchesList();
                         
                         if (!isSilent) this.showToast("تم تحديث البيانات بنجاح 🚀");
