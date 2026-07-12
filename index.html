@@ -33,23 +33,17 @@
             --nav-height: 85px;
         }
 
-        /* =========================================
-           هوية فحص الجودة (Beige/Dark Theme - مستوحاة من الصورة 101113)
-        ========================================= */
+        /* هوية فحص الجودة */
         body.theme-qc {
-            --bg-base: #D9D2C5; /* لون البيج الدافئ */
-            --surface-1: #1A1C19; /* كروت رمادي داكن مطفي */
+            --bg-base: #D9D2C5; 
+            --surface-1: #1A1C19; 
             --surface-2: #242623;
-            --glass-border: rgba(255, 255, 255, 0.05);
-            
-            --accent-main: #E5A93D; /* لون ذهبي/أصفر للإضاءات */
+            --accent-main: #E5A93D; 
             --accent-glow: rgba(229, 169, 61, 0.4);
             --accent-sec: #E5A93D;
             --accent-sec-glow: rgba(229, 169, 61, 0.4);
-            
             --text-primary: #ffffff;
             --text-secondary: #a0a0a0;
-            --text-placeholder: #666666;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -61,10 +55,9 @@
             overflow-x: hidden; 
             padding-bottom: calc(var(--nav-height) + 30px); 
             background-attachment: fixed;
-            transition: background-color 0.5s ease; /* انتقال سلس بين الثيمات */
+            transition: background-color 0.5s ease;
         }
 
-        /* تفعيل الخلفية المضيئة فقط في الثيم الأساسي */
         body:not(.theme-qc) {
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(255, 87, 34, 0.08), transparent 40%),
@@ -86,7 +79,7 @@
         }
 
         .app-header { 
-            position: sticky; top: 0; z-index: 100; padding: 20px 25px; 
+            position: sticky; top: 0; z-index: 100; padding: 15px 25px; 
             background: var(--bg-base);
             border-bottom: 1px solid var(--glass-border);
             border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); 
@@ -94,29 +87,48 @@
             transition: background 0.5s ease;
         }
         
-        /* تلوين العنوان بناءً على الثيم */
         body:not(.theme-qc) .dept-title { color: #fff; }
         body.theme-qc .dept-title { color: #1A1C19; }
 
-        .dept-title { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
-        .dept-title i { color: var(--accent-main); font-size: 1.4rem; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+        .dept-title { font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
+        .dept-title i { color: var(--accent-main); font-size: 1.2rem; filter: drop-shadow(0 0 8px var(--accent-glow)); }
         
         .icon-btn { 
             background: var(--surface-2); border: 1px solid var(--glass-border); 
-            border-radius: 50%; color: var(--text-primary); font-size: 1.1rem; 
-            cursor: pointer; width: 45px; height: 45px; display: flex; 
+            border-radius: 50%; color: var(--text-primary); font-size: 1rem; 
+            cursor: pointer; width: 40px; height: 40px; display: flex; 
             justify-content: center; align-items: center; transition: 0.3s; 
         }
         .icon-btn:active { transform: scale(0.9); background: var(--accent-main); border-color: var(--accent-main); color: #fff;}
-
-        /* تلوين نصوص الشاشة خارج الكروت في ثيم فحص الجودة */
-        body.theme-qc .section-title { color: #1A1C19; }
 
         .content-area { padding: 20px; }
         .screen { display: none; animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .screen.active { display: block; }
         @keyframes scaleUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+        /* =========================================
+           تنسيق العناوين (Banners) للصور ثلاثية الأبعاد
+        ========================================= */
+        .section-banner {
+            width: 100%;
+            height: 140px;
+            border-radius: var(--radius-xl);
+            margin-bottom: 25px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            background: var(--bg-dark);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .section-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        .section-banner img:hover { transform: scale(1.05); }
+
+        .hero-card { margin-top: 0; }
         .hero-card h2 { font-size: 0.95rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         .hero-number { 
             font-size: 4.5rem; 
@@ -127,6 +139,8 @@
         }
 
         .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; font-weight: 800; transition: color 0.5s; }
+        body.theme-qc .section-title { color: #1A1C19; }
+        
         .grid-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .action-card { 
             background: var(--surface-2); border: 1px solid var(--glass-border); 
@@ -142,23 +156,16 @@
         .input-group { margin-bottom: 18px; }
         .input-group label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; padding-right: 5px;}
         .glass-input { 
-            width: 100%; background: rgba(0,0,0,0.4); 
-            border: 1px solid var(--glass-border); padding: 16px 18px; 
-            border-radius: var(--radius-md); color: var(--text-primary); 
-            font-family: 'Cairo'; font-size: 1rem; outline: none; transition: 0.3s; 
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); padding: 16px 18px; 
+            border-radius: var(--radius-md); color: var(--text-primary); font-family: 'Cairo'; font-size: 1rem; outline: none; transition: 0.3s; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
         }
         .glass-input::placeholder { color: var(--text-placeholder); }
         .glass-input:focus { border-color: var(--accent-main); background: var(--accent-glow); }
-        textarea.glass-input { resize: vertical; min-height: 80px; }
         
         .glass-btn { 
-            width: 100%; 
-            background: linear-gradient(135deg, var(--accent-main), var(--accent-sec)); 
+            width: 100%; background: linear-gradient(135deg, var(--accent-main), var(--accent-sec)); 
             color: #121214; border: none; padding: 18px; border-radius: var(--radius-lg); 
-            font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-top: 10px; 
-            transition: 0.3s; font-family: 'Cairo'; 
-            box-shadow: 0 8px 25px var(--accent-glow);
+            font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-top: 10px; transition: 0.3s; font-family: 'Cairo'; box-shadow: 0 8px 25px var(--accent-glow);
         }
         .glass-btn:active { transform: scale(0.97); box-shadow: 0 4px 15px var(--accent-glow); }
 
@@ -172,42 +179,28 @@
         .reason-input { width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border); padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; margin-top: 12px; outline: none; transition: 0.3s; }
         .reason-input:focus { color: var(--text-primary); border-top-color: var(--accent-main); }
 
-        .defect-card { display: flex; gap: 15px; padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; transition: 0.3s; }
-        .defect-img { width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in; }
-        
         .bottom-nav { 
             position: fixed; bottom: 20px; left: 5%; right: 5%; width: 90%; height: var(--nav-height); 
             background: var(--surface-1); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--glass-border); border-radius: 40px; 
-            display: flex; justify-content: space-around; align-items: center; z-index: 1000; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 0 10px;
-            transition: background 0.5s, border-color 0.5s;
+            border: 1px solid var(--glass-border); border-radius: 40px; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 0 10px; transition: background 0.5s, border-color 0.5s;
         }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.7rem; font-weight: 800; transition: 0.3s; cursor: pointer; width: 60px; }
         .nav-item i { font-size: 1.3rem; transition: 0.3s; }
         .nav-item.active { color: var(--text-primary); }
         .nav-item.active i { transform: translateY(-4px); color: var(--accent-main); filter: drop-shadow(0 0 10px var(--accent-glow)); }
         
-        .special-nav .fab-btn { 
-            width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); 
-            border-radius: 50%; display: flex; justify-content: center; align-items: center; 
-            color: white; font-size: 2rem; margin-top: -45px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); 
-            border: 5px solid var(--bg-base); cursor: pointer; transition: 0.3s; 
-        }
+        .special-nav .fab-btn { width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 2rem; margin-top: -45px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); border: 5px solid var(--bg-base); cursor: pointer; transition: 0.3s; }
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
         .chart-container { position: relative; height: 220px; width: 100%; }
 
-        /* عارض الصور */
+        /* عارض الصور & اللودر */
         #image-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 3000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.3s ease; }
         #image-modal.show { opacity: 1; pointer-events: all; }
         #modal-image { max-width: 95%; max-height: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         .close-modal-btn { position: absolute; top: 30px; right: 30px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 50%; color: white; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; }
-
-        /* Loader */
         .overlay-loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 4000; display: none; justify-content: center; align-items: center; flex-direction: column; color: #fff;}
         .overlay-loader.show { display: flex; }
         .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--accent-main); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px;}
@@ -219,7 +212,7 @@
     <header class="app-header">
         <div class="dept-title">
             <i class="fa-solid fa-microchip"></i>
-            <span>التجميع النهائي</span>
+            <span>الرئيسية</span>
         </div>
         <button class="icon-btn" onclick="App.navigate('settings')"><i class="fa-solid fa-sliders"></i></button>
     </header>
@@ -228,6 +221,11 @@
         
         <!-- ================= الشاشة الرئيسية ================= -->
         <section id="screen-home" class="screen active">
+            <!-- استخدام صورتك المرفقة كعنوان للقسم الرئيسي -->
+            <div class="section-banner">
+                <img src="101124.png" alt="التجميع النهائي">
+            </div>
+
             <div class="glass-card hero-card">
                 <h2>إجمالي إنتاج اليوم</h2>
                 <div class="hero-number eng-font" id="home-total-prod">0</div>
@@ -256,8 +254,11 @@
 
         <!-- ================= شاشة الإنتاج ================= -->
         <section id="screen-production" class="screen">
-            <h3 class="section-title">سجل الإنتاج اللحظي</h3>
-            
+            <!-- مساحة صورة عنوان الإنتاج (استبدل src فور توليدها من البرومبت) -->
+            <div class="section-banner">
+                <img src="production_banner.png" alt="الإنتاج" onerror="this.style.display='none'">
+            </div>
+
             <div class="prod-header">
                 <div class="input-group" style="margin-bottom: 0;">
                     <label>التقويم</label>
@@ -286,8 +287,13 @@
             </div>
         </section>
 
-        <!-- ================= شاشة عيوب الرش (Theme QC) ================= -->
+        <!-- ================= شاشة عيوب الرش ================= -->
         <section id="screen-scratches" class="screen">
+            <!-- مساحة صورة عنوان الجودة (استبدل src فور توليدها من البرومبت) -->
+            <div class="section-banner">
+                <img src="quality_banner.png" alt="الجودة" onerror="this.style.display='none'">
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 class="section-title" style="margin: 0;">سجل عيوب الرش الظاهرية</h3>
                 <span class="eng-font" id="scratches-counter" style="color:var(--text-primary); font-size:1rem; background: var(--surface-1); padding: 5px 15px; border-radius: 20px; box-shadow: 0 5px 10px rgba(0,0,0,0.1);">0</span>
@@ -305,8 +311,8 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>التقط صورة (تُرفع مباشرة لـ Google Drive)</label>
-                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px;">
+                    <label>التقط صورة (تُرفع لـ Drive)</label>
+                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px; color: var(--accent-sec);">
                 </div>
                 <div class="input-group">
                     <label>ملاحظات</label>
@@ -320,6 +326,11 @@
 
         <!-- ================= شاشة التحليلات ================= -->
         <section id="screen-analytics" class="screen">
+            <!-- مساحة صورة عنوان التحليلات (استبدل src فور توليدها من البرومبت) -->
+            <div class="section-banner">
+                <img src="analytics_banner.png" alt="التحليلات" onerror="this.style.display='none'">
+            </div>
+
             <h3 class="section-title">تحليلات الأداء اللحظية</h3>
             
             <div class="grid-actions" style="margin-bottom: 25px;">
@@ -454,7 +465,6 @@
             },
 
             navigate(screenId) {
-                // تبديل الهوية البصرية (Theme Switcher)
                 if (screenId === 'scratches') {
                     document.body.classList.add('theme-qc');
                 } else {
@@ -587,9 +597,6 @@
                 this.data.production.items[index].shortfallReason = value; this.saveState();
             },
 
-            // =========================================
-            // رفع الصورة لـ Google Drive مع الضغط (WebP)
-            // =========================================
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
                 const notes = document.getElementById('scratch-notes').value;
@@ -598,7 +605,6 @@
                 if(!fileInput.files || !fileInput.files[0]) { this.showToast("برجاء التقاط صورة العيب أولاً 📷"); return; }
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا') { this.showToast("يرجى إعداد رابط جوجل لرفع الصور"); return; }
 
-                // إظهار شاشة التحميل
                 const loader = document.getElementById('upload-loader');
                 const loaderText = document.getElementById('loader-text');
                 loader.classList.add('show');
@@ -621,11 +627,9 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // ضغط الصورة
                         const compressedBase64 = canvas.toDataURL('image/webp', 0.6);
                         loaderText.innerText = "جاري الرفع السحابي (Google Drive)...";
 
-                        // إرسال الصورة لجوجل
                         const uploadPayload = {
                             type: "IMAGE_UPLOAD",
                             payload: {
@@ -649,7 +653,7 @@
                             if (result.status === 'success') {
                                 this.data.scratches.push({
                                     id: Date.now(), type: type, notes: notes, 
-                                    image: result.url, // حفظ الرابط القادم من درايف
+                                    image: result.url, 
                                     status: 'pending',
                                     time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})
                                 });
