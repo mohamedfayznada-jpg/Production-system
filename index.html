@@ -507,69 +507,65 @@
                 });
             },
 
-        // =========================================
-            // دالة استرداد البيانات (تمت إعادة هندستها للحماية من الأخطاء)
+       // =========================================
+            // دالة استرداد البيانات (باستخدام تقنية JSONP لاختراق حظر المتصفحات)
             // =========================================
-            async fetchFromCloud() {
+            fetchFromCloud() {
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') {
                     this.showToast("يرجى إعداد رابط Google Drive أولاً");
                     return;
                 }
 
-                this.showToast("جاري الاسترداد من السحابة ⏳...");
+                this.showToast("جاري الاسترداد، يرجى الانتظار ⏳...");
 
-                try {
-                    // إضافة redirect: 'follow' لتتبع مسار جوجل الآمن
-                    let response = await fetch(this.GOOGLE_API_URL, {
-                        method: 'GET',
-                        redirect: 'follow'
-                    });
-                    
-                    // نقرأ الاستجابة كنص خام أولاً لتجنب انهيار التطبيق
-                    let textResult = await response.text(); 
-                    
-                    try {
-                        // نحاول تحويل النص إلى كائن JSON
-                        let result = JSON.parse(textResult); 
+                // 1. إنشاء دالة عالمية (Global) لاستقبال الرد من خوادم جوجل
+                window.googleCloudCallback = (result) => {
+                    // تنظيف الـ DOM من السكريبت بعد أداء مهمته
+                    const oldScript = document.getElementById('mes-sync-script');
+                    if(oldScript) oldScript.remove();
 
-                        if(result.status === 'success' && result.data) {
-                            this.data = result.data;
-                            this.saveState();
-                            
-                            // تحديث الحقول
-                            document.getElementById('set-shift-start').value = this.data.settings.start;
-                            document.getElementById('set-shift-end').value = this.data.settings.end;
-                            document.getElementById('set-break-start').value = this.data.settings.bStart;
-                            document.getElementById('set-break-end').value = this.data.settings.bEnd;
-                            document.getElementById('set-line-name').value = this.data.settings.lineName;
-                            document.getElementById('prod-date').value = this.data.production.date;
-                            document.getElementById('prod-shift').value = this.data.production.shift;
-                            
-                            // إعادة رسم الشاشات
-                            this.renderProductionList();
-                            this.renderScratchesList();
-                            
-                            this.showToast("تم تحديث البيانات من السحابة ✅");
-                        } else if (result.status === 'empty') {
-                            this.showToast("لا توجد بيانات مسجلة في السحابة بعد");
-                        } else {
-                            console.error("Server Error:", result.message);
-                            this.showToast("خطأ من السيرفر ❌");
-                        }
-                    } catch(parseError) {
-                        // إذا فشل التحويل (جوجل أرسل HTML)، نطبع السبب بدقة في الكونسول
-                        console.error("استجابة غير متوقعة من جوجل (ليست JSON):", textResult);
-                        this.showToast("خطأ: لم تقم بحفظ إصدار جديد في جوجل ❌");
+                    if(result.status === 'success' && result.data) {
+                        this.data = result.data;
+                        this.saveState();
+                        
+                        // تحديث الحقول في الواجهة
+                        document.getElementById('set-shift-start').value = this.data.settings.start;
+                        document.getElementById('set-shift-end').value = this.data.settings.end;
+                        document.getElementById('set-break-start').value = this.data.settings.bStart;
+                        document.getElementById('set-break-end').value = this.data.settings.bEnd;
+                        document.getElementById('set-line-name').value = this.data.settings.lineName;
+                        document.getElementById('prod-date').value = this.data.production.date;
+                        document.getElementById('prod-shift').value = this.data.production.shift;
+                        
+                        // إعادة رسم القوائم
+                        this.renderProductionList();
+                        this.renderScratchesList();
+                        
+                        this.showToast("تم تحديث البيانات بنجاح 🚀");
+                    } else if (result.status === 'empty') {
+                        this.showToast("لا توجد بيانات مسجلة في السحابة بعد");
+                    } else {
+                        console.error(result.message);
+                        this.showToast("حدث خطأ في الخادم ❌");
                     }
+                };
 
-                } catch(err) {
-                    console.error("خطأ في الاتصال بالشبكة:", err);
-                    this.showToast("حدث خطأ في الاتصال بالإنترنت ❌");
-                }
+                // 2. حقن السكريبت وتخطي حظر الـ CORS
+                const script = document.createElement('script');
+                script.id = 'mes-sync-script';
+                
+                // إضافة ?callback ليعرف جوجل اسم الدالة، وإضافة &t= كاسر للكاش (Cache Buster)
+                script.src = `${this.GOOGLE_API_URL}?callback=googleCloudCallback&t=${Date.now()}`;
+                
+                // معالجة خطأ الشبكة الفعلي (انقطاع الإنترنت)
+                script.onerror = () => {
+                    this.showToast("انقطع الاتصال بالإنترنت ❌");
+                    script.remove();
+                };
+
+                // تنفيذ الطلب
+                document.body.appendChild(script);
             }
-        };
-
-        document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
 </html>
