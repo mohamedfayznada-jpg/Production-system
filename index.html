@@ -64,6 +64,7 @@
         .glass-input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
         .glass-btn { width: 100%; background: linear-gradient(135deg, var(--primary), var(--info)); color: #000; border: none; padding: 15px; border-radius: var(--radius-lg); font-weight: 900; font-size: 1.1rem; cursor: pointer; margin-top: 10px; transition: 0.2s; font-family: 'Cairo'; }
         .glass-btn:active { transform: scale(0.98); opacity: 0.8; }
+        .glass-btn.danger { background: linear-gradient(135deg, var(--danger), #ff4b2b); color: white; margin-top: 25px; }
 
         /* Production List */
         .prod-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
@@ -233,6 +234,11 @@
                 <button class="glass-btn" onclick="App.applySettings()">
                     <i class="fa-solid fa-check-double"></i> اعتماد وتوليد الساعات
                 </button>
+
+                <!-- زر تفريغ الذاكرة (Reset Button) للضرورة -->
+                <button class="glass-btn danger" onclick="App.hardReset()">
+                    <i class="fa-solid fa-trash-can"></i> مسح الذاكرة المحلية
+                </button>
             </div>
         </section>
 
@@ -275,11 +281,21 @@
             },
 
             init() {
-                const saved = localStorage.getItem('mes_core_data');
-                if (saved) {
-                    this.data = { ...this.data, ...JSON.parse(saved) };
-                    if(!this.data.scratches) this.data.scratches = [];
-                } else {
+                try {
+                    const saved = localStorage.getItem('mes_core_data');
+                    if (saved) {
+                        const parsedData = JSON.parse(saved);
+                        // دمج آمن للبيانات لمنع توقف التطبيق
+                        if (parsedData.settings) this.data.settings = { ...this.data.settings, ...parsedData.settings };
+                        if (parsedData.production) this.data.production = { ...this.data.production, ...parsedData.production };
+                        if (!this.data.production.items) this.data.production.items = [];
+                        if (parsedData.scratches) this.data.scratches = parsedData.scratches;
+                    } else {
+                        this.data.production.date = new Date().toISOString().split('T')[0];
+                    }
+                } catch(e) {
+                    console.error("Cache Reset", e);
+                    localStorage.removeItem('mes_core_data');
                     this.data.production.date = new Date().toISOString().split('T')[0];
                 }
 
@@ -298,6 +314,14 @@
                 }
 
                 this.renderScratchesList();
+            },
+
+            // إضافة زر تنظيف الكاش للطوارئ
+            hardReset() {
+                if(confirm("تحذير: سيتم مسح جميع بيانات التطبيق والعودة لضبط المصنع. هل أنت متأكد؟")) {
+                    localStorage.removeItem('mes_core_data');
+                    location.reload();
+                }
             },
 
             navigate(screenId) {
@@ -507,7 +531,7 @@
                 });
             },
 
-       // =========================================
+            // =========================================
             // دالة استرداد البيانات (باستخدام تقنية JSONP لاختراق حظر المتصفحات)
             // =========================================
             fetchFromCloud() {
@@ -553,19 +577,18 @@
                 // 2. حقن السكريبت وتخطي حظر الـ CORS
                 const script = document.createElement('script');
                 script.id = 'mes-sync-script';
-                
-                // إضافة ?callback ليعرف جوجل اسم الدالة، وإضافة &t= كاسر للكاش (Cache Buster)
                 script.src = `${this.GOOGLE_API_URL}?callback=googleCloudCallback&t=${Date.now()}`;
                 
-                // معالجة خطأ الشبكة الفعلي (انقطاع الإنترنت)
                 script.onerror = () => {
                     this.showToast("انقطع الاتصال بالإنترنت ❌");
                     script.remove();
                 };
 
-                // تنفيذ الطلب
                 document.body.appendChild(script);
             }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
 </html>
