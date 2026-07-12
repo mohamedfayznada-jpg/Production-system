@@ -67,10 +67,16 @@
         .glass-btn:active { transform: scale(0.98); opacity: 0.8; }
         .glass-btn.danger { background: linear-gradient(135deg, var(--danger), #ff4b2b); color: white; margin-top: 25px; }
 
-        /* Production List */
+        /* Production List New Structure */
         .prod-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .prod-row { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: var(--radius-lg); margin-bottom: 10px; }
         .prod-row.break-row { background: rgba(255, 179, 153, 0.05); border-color: rgba(255, 179, 153, 0.2); justify-content: center; color: var(--warning); font-weight: bold; }
+        
+        .prod-row-container { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: var(--radius-lg); margin-bottom: 10px; }
+        .prod-row-flex { display: flex; justify-content: space-between; align-items: center; }
+        .reason-input { width: 100%; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 8px; color: var(--text-main); font-family: 'Cairo'; font-size: 0.85rem; margin-top: 8px; outline: none; transition: 0.3s; }
+        .reason-input:focus { border-color: var(--warning); background: rgba(255, 177, 153, 0.05); }
+
         .time-label { font-family: 'Orbitron'; color: var(--primary); font-weight: 700; font-size: 1.1rem; }
         .actual-input { width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: 'Orbitron'; font-size: 1.2rem; text-align: center; padding: 8px; outline: none; }
         .actual-input:focus { border-color: var(--success); }
@@ -174,8 +180,8 @@
             </div>
 
             <div class="input-group" style="margin-bottom: 25px;">
-                <label>أسباب عجز الإنتاج (إن وجد)</label>
-                <textarea id="prod-shortfall" class="glass-input" rows="2" placeholder="اكتب أسباب العطل أو العجز هنا للرجوع إليها..." oninput="App.saveState()"></textarea>
+                <label>سجل أسباب العجز المُجمَّع (آلي)</label>
+                <textarea id="prod-shortfall" class="glass-input" rows="3" readonly placeholder="سيتم تجميع أسباب العجز المكتوبة في الساعات هنا تلقائياً..." style="background: rgba(0,0,0,0.4); color: var(--warning); border-color: rgba(255, 177, 153, 0.2);"></textarea>
             </div>
         </section>
 
@@ -286,7 +292,7 @@
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly' },
                 production: { date: '', shift: '1', target: '', shortfallReason: '', items: [] },
-                history: {}, // الأرشيف التاريخي لتسجيل أيام الإنتاج السابقة
+                history: {}, 
                 scratches: []
             },
 
@@ -309,7 +315,6 @@
                     this.data.production.date = new Date().toISOString().split('T')[0];
                 }
 
-                // هيكلة الحماية للمتغيرات الجديدة
                 if (!this.data.history) this.data.history = {};
                 if (this.data.production.target === undefined) this.data.production.target = '';
                 if (this.data.production.shortfallReason === undefined) this.data.production.shortfallReason = '';
@@ -337,28 +342,20 @@
                 });
             },
 
-            // =========================================
-            // دالة التنقل عبر التاريخ (التقويم - Calendar)
-            // =========================================
             changeDay() {
-                // 1. حفظ الحالة الحالية في الأرشيف قبل الانتقال
                 const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
                 this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
 
-                // 2. قراءة التاريخ والوردية الجديدة من الواجهة
                 const newDate = document.getElementById('prod-date').value;
                 const newShift = document.getElementById('prod-shift').value;
                 const newKey = `${newDate}_${newShift}`;
 
-                // 3. البحث في الأرشيف
                 if (this.data.history[newKey]) {
-                    // استدعاء بيانات اليوم السابق
                     this.data.production = JSON.parse(JSON.stringify(this.data.history[newKey]));
                     this.updateProductionUI();
                     this.showToast("تم استدعاء بيانات السجل بنجاح 📅");
                     this.saveState(true); 
                 } else {
-                    // إنشاء سجل يوم جديد فارغ
                     this.data.production = {
                         date: newDate,
                         shift: newShift,
@@ -370,12 +367,13 @@
                 }
             },
 
-            // دالة مساعدة لتحديث جميع حقول الإنتاج دفعة واحدة
             updateProductionUI() {
                 document.getElementById('prod-date').value = this.data.production.date;
                 document.getElementById('prod-shift').value = this.data.production.shift;
                 document.getElementById('prod-target').value = this.data.production.target || '';
-                document.getElementById('prod-shortfall').value = this.data.production.shortfallReason || '';
+                
+                // تحديث الـ Textarea وإجراء عملية التجميع لضمان دقة البيانات
+                this.aggregateReasons();
                 this.renderProductionList();
             },
 
@@ -428,7 +426,9 @@
                     let nextHour = this.addMinutes(current, 60);
                     if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
                     if (this.timeToMins(nextHour) > endMins) nextHour = end;
-                    intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour, actual: "" });
+                    
+                    // إضافة حقل shortfallReason لكل فترة
+                    intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour, actual: "", shortfallReason: "" });
                     current = nextHour;
                 }
 
@@ -449,10 +449,21 @@
             renderProductionList() {
                 const container = document.getElementById('production-list'); container.innerHTML = ''; let total = 0;
                 this.data.production.items.forEach((item, index) => {
-                    if (item.isBreak) { container.innerHTML += `<div class="prod-row break-row"><i class="fa-solid fa-mug-hot" style="margin-left: 8px;"></i> ${item.label}</div>`; } 
+                    if (item.isBreak) { 
+                        container.innerHTML += `<div class="prod-row break-row"><i class="fa-solid fa-mug-hot" style="margin-left: 8px;"></i> ${item.label}</div>`; 
+                    } 
                     else {
                         total += Number(item.actual) || 0;
-                        container.innerHTML += `<div class="prod-row"><span class="time-label">${item.label}</span><input type="number" class="actual-input" pattern="\\d*" value="${item.actual}" oninput="App.updateActual(${index}, this.value)"></div>`;
+                        // تصميم جديد يستوعب حقل الإدخال لسبب العجز
+                        container.innerHTML += `
+                            <div class="prod-row-container">
+                                <div class="prod-row-flex">
+                                    <span class="time-label">${item.label}</span>
+                                    <input type="number" class="actual-input" pattern="\\d*" value="${item.actual}" oninput="App.updateActual(${index}, this.value)">
+                                </div>
+                                <input type="text" class="reason-input" placeholder="سبب عجز الإنتاج (إن وجد)..." value="${item.shortfallReason || ''}" oninput="App.updateHourlyReason(${index}, this.value)">
+                            </div>
+                        `;
                     }
                 });
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
@@ -464,6 +475,27 @@
                 let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; });
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
+
+            // =========================================
+            // الدوال المسؤولة عن معالجة أسباب العجز
+            // =========================================
+            updateHourlyReason(index, value) {
+                this.data.production.items[index].shortfallReason = value;
+                this.aggregateReasons();
+                this.saveState();
+            },
+
+            aggregateReasons() {
+                let reasonsArray = [];
+                this.data.production.items.forEach(item => {
+                    if (!item.isBreak && item.shortfallReason && item.shortfallReason.trim() !== '') {
+                        reasonsArray.push(`- ${item.label}: ${item.shortfallReason.trim()}`);
+                    }
+                });
+                this.data.production.shortfallReason = reasonsArray.join('\n');
+                document.getElementById('prod-shortfall').value = this.data.production.shortfallReason;
+            },
+            // =========================================
 
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
@@ -551,9 +583,7 @@
                 this.data.production.date = document.getElementById('prod-date').value;
                 this.data.production.shift = document.getElementById('prod-shift').value;
                 this.data.production.target = document.getElementById('prod-target').value;
-                this.data.production.shortfallReason = document.getElementById('prod-shortfall').value;
-
-                // تحديث الأرشيف المحلي تلقائياً عند أي عملية حفظ
+                
                 if (!this.data.history) this.data.history = {};
                 const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
                 this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
@@ -594,7 +624,7 @@
                 
                 report += `\n*إجمالي الإنتاج : ${total}*`;
                 
-                // إضافة العجز فقط إن وجد 
+                // المربع النصي تم دمج أسباب العجز فيه، نقوم بإرساله إذا كان يحتوي على داتا
                 if (this.data.production.shortfallReason && this.data.production.shortfallReason.trim() !== '') {
                     report += `\n\n*أسباب عجز الإنتاج:*\n${this.data.production.shortfallReason.trim()}`;
                 }
