@@ -454,7 +454,7 @@
                 const fileInput = document.getElementById('scratch-image');
                 
                 if(!fileInput.files || !fileInput.files[0]) { this.showToast("التقط صورة العيب أولاً 📷"); return; }
-                if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r') { this.showToast("أدخل الرابط السحابي أولاً"); return; }
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا') { this.showToast("أدخل الرابط السحابي أولاً"); return; }
 
                 const loader = document.getElementById('upload-loader'); const loaderText = document.getElementById('loader-text');
                 loader.classList.add('show'); loaderText.innerText = "جاري التجهيز...";
@@ -588,7 +588,7 @@
             },
 
             async syncToCloud(isSilent = false) {
-                if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r' || this.GOOGLE_API_URL === '') return;
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري المزامنة...");
                 const payload = { type: "FULL_BACKUP", payload: this.data };
                 const formData = new URLSearchParams(); formData.append("payload", JSON.stringify(payload));
@@ -600,7 +600,7 @@
             },
 
             fetchFromCloud(isSilent = false) {
-                if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r' || this.GOOGLE_API_URL === '') return;
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري الاسترداد...");
                 window.googleCloudCallback = (result) => {
                     const oldScript = document.getElementById('mes-sync-script'); if(oldScript) oldScript.remove();
