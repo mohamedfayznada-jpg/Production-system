@@ -49,8 +49,8 @@
         .loader-line::after { content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%; background: var(--accent-main); animation: loadSweep 2s infinite ease-in-out; }
         @keyframes loadSweep { 0% { left: -50%; } 100% { left: 100%; } }
 
-        /* Global Header */
-        .app-header { position: sticky; top: 0; z-index: 100; padding: 15px 20px; background: var(--bg-base); border-bottom: 1px solid var(--glass-border); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); transition: background 0.5s ease; }
+        /* Global Header (Sticky Calendar) */
+        .app-header { position: sticky; top: 0; z-index: 100; padding: 15px 20px; background: var(--bg-base); border-bottom: 1px solid var(--glass-border); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); transition: background 0.5s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         body:not(.theme-qc) .dept-title { color: #fff; } body.theme-qc .dept-title { color: #1A1C19; }
         .dept-title { font-weight: 900; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; font-family: 'Orbitron', 'Cairo', sans-serif;}
@@ -96,11 +96,12 @@
         .actual-input { width: 85px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--accent-sec); font-family: 'Orbitron'; font-size: 1.3rem; text-align: center; padding: 10px; outline: none; transition: 0.3s; }
         .reason-input { width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border); padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; margin-top: 12px; outline: none; }
 
-        /* QC Counters */
+        /* QC Counters (العدادات الذكية) */
         .qc-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .qc-box { background: var(--surface-2); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 15px 5px; text-align: center; }
-        .qc-box .qc-val { font-family: 'Orbitron'; font-size: 1.8rem; font-weight: 900; margin-bottom: 5px; }
-        .qc-box .qc-lbl { font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); }
+        .qc-box { background: var(--surface-2); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 15px 5px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .qc-box .qc-val { font-family: 'Orbitron'; font-size: 1.8rem; font-weight: 900; margin-bottom: 5px; line-height: 1; }
+        .qc-box .qc-lbl { font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); line-height: 1.2; }
+        .qc-box.highlight { border-color: var(--accent-main); background: rgba(229, 169, 61, 0.1); }
 
         .defect-badge-setting { background: rgba(255, 87, 34, 0.1); border: 1px solid var(--accent-main); color: var(--text-primary); padding: 8px 15px; border-radius: 20px; display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; margin-bottom: 10px; margin-left: 5px;}
         .defect-badge-setting i { color: var(--danger); cursor: pointer; }
@@ -114,7 +115,7 @@
         .special-nav .fab-btn { width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 2rem; margin-top: -45px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); border: 5px solid var(--bg-base); cursor: pointer; transition: 0.3s;}
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        #toast { position: fixed; top: 120px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
+        #toast { position: fixed; top: 130px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         .chart-container { position: relative; height: 220px; width: 100%; }
 
@@ -157,7 +158,7 @@
         
         <section id="screen-home" class="screen active">
             <div class="section-banner"><img src="101124.png" alt="التجميع النهائي" onerror="this.style.display='none'"></div>
-            <div class="glass-card hero-card"><h2 style="margin-bottom: 10px;">إجمالي إنتاج الوردية</h2><div class="hero-number eng-font" id="home-total-prod">0</div></div>
+            <div class="glass-card hero-card"><h2 style="margin-bottom: 10px;">إجمالي إنتاج الوردية المحددة</h2><div class="hero-number eng-font" id="home-total-prod">0</div></div>
             <h3 class="section-title">العمليات السريعة</h3>
             <div class="grid-actions">
                 <div class="action-card" onclick="App.navigate('production')"><i class="fa-solid fa-stopwatch action-icon accent-o"></i><span>سجل الساعات</span></div>
@@ -169,7 +170,7 @@
 
         <section id="screen-production" class="screen">
             <div class="section-banner"><img src="production_banner.png" alt="الإنتاج" onerror="this.style.display='none'"></div>
-            <div class="input-group"><label>المستهدف اليومي</label><input type="number" id="prod-target" class="glass-input eng-font" placeholder="أدخل المستهدف..." oninput="App.saveLocalInstant()"></div>
+            <div class="input-group"><label>المستهدف اليومي للوردية</label><input type="number" id="prod-target" class="glass-input eng-font" placeholder="أدخل المستهدف..." oninput="App.saveLocalInstant(); App.triggerCloudSyncDebounced();"></div>
             <div class="glass-card">
                 <div id="production-list"></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
@@ -191,17 +192,16 @@
         <section id="screen-scratches" class="screen">
             <div class="section-banner"><img src="scratches_banner.png" alt="الرش" onerror="this.style.display='none'"></div>
             
-            <!-- عدادات الجودة الذكية (تتضمن النواقص) -->
             <div class="qc-counters">
-                <div class="qc-box"><div class="qc-val" id="qc-count-today" style="color: #fff;">0</div><div class="qc-lbl">إجمالي اليوم</div></div>
+                <div class="qc-box"><div class="qc-val" id="qc-count-today" style="color: #fff;">0</div><div class="qc-lbl">سُجل اليوم</div></div>
                 <div class="qc-box"><div class="qc-val" id="qc-count-fixed" style="color: #00ff87;">0</div><div class="qc-lbl">تم الإصلاح</div></div>
-                <div class="qc-box" style="border-color: var(--accent-main);"><div class="qc-val" id="qc-count-pending" style="color: var(--accent-main); filter: drop-shadow(0 0 5px var(--accent-glow));">0</div><div class="qc-lbl">تحت الإصلاح (نواقص)</div></div>
+                <div class="qc-box highlight"><div class="qc-val" id="qc-count-pending" style="color: var(--accent-main); filter: drop-shadow(0 0 5px var(--accent-glow));">0</div><div class="qc-lbl">تحت الإصلاح (تراكمي)</div></div>
             </div>
             
             <div class="glass-card">
                 <div class="input-group"><label>نوع العيب</label><select id="scratch-type" class="glass-input"></select></div>
-                <div class="input-group"><label>التقط صورة (تُرفع لـ Drive)</label><input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px; color: var(--accent-sec);"></div>
-                <div class="input-group"><label>ملاحظات</label><input type="text" id="scratch-notes" class="glass-input" placeholder="مثال: يمين الباب السفلي..."></div>
+                <div class="input-group"><label>صورة العيب (تُرفع لـ Drive)</label><input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px; color: var(--text-primary);"></div>
+                <div class="input-group"><label>ملاحظات (اختياري)</label><input type="text" id="scratch-notes" class="glass-input" placeholder="مثال: الباب السفلي..."></div>
                 <button class="glass-btn" onclick="App.addScratchDefect()">رفع وإدراج في السجل</button>
             </div>
             <div id="scratches-list"></div>
@@ -209,7 +209,7 @@
 
         <section id="screen-analytics" class="screen">
             <div class="section-banner"><img src="analytics_banner.png" alt="التحليلات" onerror="this.style.display='none'"></div>
-            <h3 class="section-title">تحليلات الأداء اللحظية</h3>
+            <h3 class="section-title">تحليلات الأداء</h3>
             <div class="grid-actions" style="margin-bottom: 25px;">
                 <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: #8A2BE2;"><div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold;">إجمالي عيوب اليوم</div><div class="eng-font" id="analytics-total-defects" style="font-size: 2.2rem; color: #8A2BE2;">0</div></div>
                 <div class="glass-card" style="margin-bottom: 0; padding: 20px; text-align: center; border-top-color: #00E5FF;"><div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold;">متوسط الإنتاج / ساعة</div><div class="eng-font" id="analytics-avg-prod" style="font-size: 2.2rem; color: #00E5FF;">0</div></div>
@@ -218,7 +218,7 @@
             <div class="glass-card"><h4 style="text-align: center; font-size: 0.9rem;">توزيع العيوب (Pareto)</h4><div class="chart-container"><canvas id="defectsChart"></canvas></div></div>
         </section>
 
-        <!-- ================= شاشة الإعدادات السياقية ================= -->
+        <!-- ================= شاشة الإعدادات ================= -->
         <section id="screen-settings" class="screen">
             <h3 class="section-title" id="settings-title">الإعدادات</h3>
             <div id="settings-panel-home" class="settings-panel"><div class="glass-card"><div style="text-align:center; color: var(--text-secondary); margin-bottom: 20px;">إعدادات النظام العامة</div><button class="glass-btn danger" onclick="App.hardReset()">مسح الذاكرة وعمل ضبط مصنع</button></div></div>
@@ -247,53 +247,101 @@
             GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec', 
             // ==========================================
 
-            syncTimer: null, 
-            charts: {},
-            currentScreen: 'home',
+            syncTimer: null, charts: {}, currentScreen: 'home',
 
             data: {
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly', defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] },
                 production: { date: '', shift: '1', target: '', items: [] },
-                history: {}, 
-                scratches: []
+                history: {}, scratches: []
             },
 
             init() {
                 setTimeout(() => { const splash = document.getElementById('cinematic-splash'); splash.style.opacity = '0'; splash.style.transform = 'scale(1.1)'; setTimeout(() => splash.remove(), 1000); }, 3500);
 
+                let actualToday = new Date().toISOString().split('T')[0];
+                let defaultShift = "1";
+
                 try {
                     const saved = localStorage.getItem('mes_core_data');
                     if (saved) {
                         const parsedData = JSON.parse(saved);
-                        if (parsedData.settings) this.data.settings = { ...this.data.settings, ...parsedData.settings };
-                        if (parsedData.production) this.data.production = { ...this.data.production, ...parsedData.production };
-                        if (!this.data.production.items) this.data.production.items = [];
-                        if (parsedData.history) this.data.history = parsedData.history;
-                        if (parsedData.scratches) this.data.scratches = parsedData.scratches;
-                    } else { this.data.production.date = new Date().toISOString().split('T')[0]; }
-                } catch(e) { localStorage.removeItem('mes_core_data'); this.data.production.date = new Date().toISOString().split('T')[0]; }
+                        this.data.history = parsedData.history || {};
+                        this.data.settings = parsedData.settings || this.data.settings;
+                        this.data.scratches = parsedData.scratches || [];
+                    }
+                } catch(e) { console.error("Cache Reset", e); }
 
-                if (!this.data.history) this.data.history = {};
-                if (!this.data.settings.defectTypes) this.data.settings.defectTypes = ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'];
-
-                document.getElementById('global-date').value = this.data.production.date;
-                document.getElementById('global-shift').value = this.data.production.shift;
+                // فرض تاريخ اليوم الفعلي عند الفتح لضمان عدم التداخل
+                document.getElementById('global-date').value = actualToday;
+                document.getElementById('global-shift').value = defaultShift;
+                
                 document.getElementById('set-shift-start').value = this.data.settings.start;
                 document.getElementById('set-shift-end').value = this.data.settings.end;
                 document.getElementById('set-break-start').value = this.data.settings.bStart;
                 document.getElementById('set-break-end').value = this.data.settings.bEnd;
                 document.getElementById('set-line-name').value = this.data.settings.lineName;
-                
-                this.updateProductionUI();
-                if (this.data.production.items.length === 0) this.generateIntervals();
-                
+
+                this.loadDayData(actualToday, defaultShift);
                 this.renderDefectTypesSettings();
-                this.renderScratchesList();
                 this.fetchFromCloud(true);
 
                 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") this.fetchFromCloud(true); });
             },
 
+            loadDayData(dateStr, shiftStr) {
+                let key = `${dateStr}_${shiftStr}`;
+                if (this.data.history[key]) {
+                    this.data.production = JSON.parse(JSON.stringify(this.data.history[key]));
+                } else {
+                    this.data.production = { date: dateStr, shift: shiftStr, target: '', items: [] };
+                    this.generateIntervals(); 
+                }
+                this.updateProductionUI();
+            },
+
+            changeDay() {
+                this.saveLocalInstant(); // حفظ اللحظة قبل الانتقال
+                let newDate = document.getElementById('global-date').value;
+                let newShift = document.getElementById('global-shift').value;
+                this.loadDayData(newDate, newShift);
+                this.triggerCloudSyncDebounced();
+            },
+
+            updateProductionUI() {
+                const targetEl = document.getElementById('prod-target');
+                if(targetEl) targetEl.value = this.data.production.target || '';
+                this.renderProductionList();
+                this.renderScratchesList();
+                if(this.currentScreen === 'analytics') this.renderAnalytics();
+            },
+
+            // ===================================
+            // أنظمة الحفظ الصارمة (Local & Cloud)
+            // ===================================
+            saveLocalInstant() {
+                let dateStr = document.getElementById('global-date').value;
+                let shiftStr = document.getElementById('global-shift').value;
+                this.data.production.date = dateStr;
+                this.data.production.shift = shiftStr;
+                const targetEl = document.getElementById('prod-target'); if(targetEl) this.data.production.target = targetEl.value;
+                
+                let currentKey = `${dateStr}_${shiftStr}`;
+                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
+                localStorage.setItem('mes_core_data', JSON.stringify(this.data));
+            },
+
+            triggerCloudSyncDebounced() {
+                clearTimeout(this.syncTimer);
+                this.syncTimer = setTimeout(() => { this.syncToCloud(true); }, 2500);
+            },
+
+            forceCloudSync() {
+                clearTimeout(this.syncTimer); this.saveLocalInstant(); this.syncToCloud(false);
+            },
+
+            // ===================================
+            // التنقل والإعدادات
+            // ===================================
             navigate(screenId) {
                 if (screenId === 'settings') return; 
                 this.currentScreen = screenId;
@@ -319,9 +367,9 @@
                 document.getElementById('settings-title').innerText = `إعدادات: ${names[this.currentScreen] || 'عام'}`;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
-
             closeSettings() { this.navigate(this.currentScreen); },
 
+            // مهندس العيوب
             renderDefectTypesSettings() {
                 const container = document.getElementById('defect-types-list'); const selectMenu = document.getElementById('scratch-type');
                 if(!container || !selectMenu) return;
@@ -343,37 +391,9 @@
                 }
             },
 
-            changeDay() {
-                // حفظ فوري محلي قبل الانتقال
-                this.saveLocalInstant(); 
-                
-                const newDate = document.getElementById('global-date').value;
-                const newShift = document.getElementById('global-shift').value;
-                const newKey = `${newDate}_${newShift}`;
-
-                if (this.data.history[newKey]) {
-                    this.data.production = JSON.parse(JSON.stringify(this.data.history[newKey]));
-                    this.updateProductionUI();
-                    this.showToast("تم استدعاء السجل 📅");
-                } else {
-                    this.data.production = { date: newDate, shift: newShift, target: '', items: [] };
-                    this.generateIntervals(); 
-                }
-                // المزامنة للسحابة باليوم الجديد
-                this.triggerCloudSyncDebounced();
-            },
-
-            updateProductionUI() {
-                document.getElementById('global-date').value = this.data.production.date;
-                document.getElementById('global-shift').value = this.data.production.shift;
-                const targetEl = document.getElementById('prod-target');
-                if(targetEl) targetEl.value = this.data.production.target || '';
-                this.renderProductionList();
-                this.renderScratchesList(); 
-                if (this.currentScreen === 'analytics') this.renderAnalytics();
-            },
-
-            hardReset() { if(confirm("مسح جميع بيانات التطبيق والعودة لضبط المصنع؟")) { localStorage.removeItem('mes_core_data'); location.reload(); } },
+            // ===================================
+            // الإنتاج
+            // ===================================
             formatAMPM(timeStr) { let [hours, minutes] = timeStr.split(':'); hours = parseInt(hours); let ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12; hours = hours ? hours : 12; let hoursStr = hours < 10 ? '0' + hours : hours; return `${hoursStr}:${minutes} ${ampm}`; },
             addMinutes(timeStr, minsToAdd) { let [h, m] = timeStr.split(':').map(Number); let date = new Date(); date.setHours(h, m, 0); date.setMinutes(date.getMinutes() + minsToAdd); return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; },
             timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
@@ -399,9 +419,7 @@
                 this.data.settings.bStart = document.getElementById('set-break-start').value;
                 this.data.settings.bEnd = document.getElementById('set-break-end').value;
                 this.data.settings.lineName = document.getElementById('set-line-name').value;
-                this.generateIntervals();
-                this.triggerCloudSyncDebounced();
-                this.showToast("تم اعتماد الأوقات ✅");
+                this.generateIntervals(); this.triggerCloudSyncDebounced(); this.showToast("تم اعتماد الأوقات ✅");
             },
 
             renderProductionList() {
@@ -424,26 +442,19 @@
                 document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total;
             },
 
-            updateActual(index, value) { 
-                this.data.production.items[index].actual = value; 
-                this.saveLocalInstant(); // حفظ محلي فوري لمنع الضياع
-                this.triggerCloudSyncDebounced(); // جدولة حفظ سحابي
-                let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; }); 
-                document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total; 
-            },
-            updateHourlyReason(index, value) { 
-                this.data.production.items[index].shortfallReason = value; 
-                this.saveLocalInstant();
-                this.triggerCloudSyncDebounced();
-            },
+            updateActual(index, value) { this.data.production.items[index].actual = value; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; }); document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total; },
+            updateHourlyReason(index, value) { this.data.production.items[index].shortfallReason = value; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); },
 
+            // ===================================
+            // العيوب ورفع الصور (URL Encoded)
+            // ===================================
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
                 const notes = document.getElementById('scratch-notes').value;
                 const fileInput = document.getElementById('scratch-image');
                 
-                if(!fileInput.files || !fileInput.files[0]) { this.showToast("برجاء التقاط صورة العيب أولاً 📷"); return; }
-                if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r') { this.showToast("يرجى إعداد رابط جوجل لرفع الصور"); return; }
+                if(!fileInput.files || !fileInput.files[0]) { this.showToast("التقط صورة العيب أولاً 📷"); return; }
+                if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r') { this.showToast("أدخل الرابط السحابي أولاً"); return; }
 
                 const loader = document.getElementById('upload-loader'); const loaderText = document.getElementById('loader-text');
                 loader.classList.add('show'); loaderText.innerText = "جاري التجهيز...";
@@ -454,28 +465,27 @@
                     img.onload = async () => {
                         const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
                         let width = img.width; let height = img.height;
-                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
-                        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
                         canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
                         const compressedBase64 = canvas.toDataURL('image/webp', 0.6);
-                        loaderText.innerText = "جاري الرفع السحابي...";
+                        loaderText.innerText = "جاري الرفع لـ Drive...";
 
-                        const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: this.data.production.date } };
+                        const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: document.getElementById('global-date').value } };
+                        
+                        // استخدام URLSearchParams لتخطي حظر المتصفحات (CORS) بنسبة 100%
+                        const formData = new URLSearchParams();
+                        formData.append("payload", JSON.stringify(uploadPayload));
+
                         try {
-                            // تم استخدام text/plain لضمان عدم تعارض الـ CORS مع جوجل سكريبت
-                            let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(uploadPayload) });
+                            let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData.toString() });
                             let resultText = await response.text();
                             let result = JSON.parse(resultText);
                             if (result.status === 'success') {
-                                this.data.scratches.push({ 
-                                    id: Date.now(), type: type, notes: notes, image: result.url, status: 'pending', 
-                                    time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}),
-                                    date: this.data.production.date // حفظ تاريخ العيب لترحيله
-                                });
+                                this.data.scratches.push({ id: Date.now(), type: type, notes: notes, image: result.url, status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: document.getElementById('global-date').value });
                                 this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList();
                                 document.getElementById('scratch-notes').value = ''; fileInput.value = ''; this.showToast("تم الرفع بنجاح ✅");
-                            } else { this.showToast("فشل الرفع ❌ - تأكد من الـ Deploy"); console.error(result.message); }
-                        } catch (err) { this.showToast("خطأ شبكة ❌ - تأكد من الرابط"); console.error(err); } finally { loader.classList.remove('show'); }
+                            } else { this.showToast("فشل الرفع ❌ تأكد من الرابط أو الصلاحيات"); }
+                        } catch (err) { this.showToast("خطأ شبكة ❌ تأكد من الاتصال"); } finally { loader.classList.remove('show'); }
                     };
                     img.src = e.target.result;
                 };
@@ -484,18 +494,17 @@
 
             renderScratchesList() {
                 const container = document.getElementById('scratches-list'); container.innerHTML = '';
-                const currentDate = this.data.production.date;
+                const selectedDate = document.getElementById('global-date').value;
                 
-                // جلب عيوب اليوم + العيوب المعلقة من الأيام السابقة
-                const displayScratches = this.data.scratches.filter(d => d.date === currentDate || d.status === 'pending');
-                const sortedScratches = [...displayScratches].reverse(); // الأحدث أولاً
+                // جلب العيوب الخاصة باليوم المختار + جميع العيوب المعلقة (التراكمي)
+                const displayScratches = this.data.scratches.filter(d => d.date === selectedDate || d.status === 'pending');
+                const sortedScratches = [...displayScratches].reverse();
                 
-                // تحديث العدادات الذكية
                 let countToday = 0; let countFixed = 0; let countPending = 0;
                 displayScratches.forEach(d => {
-                    if (d.date === currentDate) countToday++;
+                    if (d.date === selectedDate) countToday++;
                     if (d.status === 'pending') countPending++;
-                    if (d.status === 'fixed' && d.date === currentDate) countFixed++; // تم إصلاحه اليوم
+                    if (d.status === 'fixed' && d.date === selectedDate) countFixed++; 
                 });
 
                 document.getElementById('qc-count-today').innerText = countToday;
@@ -506,24 +515,25 @@
                 
                 sortedScratches.forEach(defect => {
                     const isPending = defect.status === 'pending';
-                    const isOld = defect.date !== currentDate;
+                    const isOld = defect.date !== selectedDate;
                     const statusClass = isPending ? 'color: var(--accent-main); border: 1px solid var(--accent-main);' : 'color: #00ff87; border: 1px solid #00ff87;';
                     const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
-                    
                     let dateBadge = isOld ? `<span style="font-size: 0.65rem; background: rgba(255, 87, 34, 0.2); padding: 2px 6px; border-radius: 4px; color: var(--accent-main); margin-left: 5px;">مُرحّل (${defect.date})</span>` : '';
 
                     container.innerHTML += `
-                        <div class="glass-card defect-card" style="border-right: 4px solid ${isPending ? 'var(--accent-main)' : '#00ff87'};">
-                            <img src="${defect.image}" class="defect-img" onclick="App.openImage('${defect.image}')">
-                            <div class="defect-info">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                                    <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type} ${dateBadge}</h4>
-                                    <span class="eng-font" style="font-size: 0.7rem; color: var(--text-secondary);">${defect.time}</span>
-                                </div>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-size:0.75rem; padding: 4px 10px; border-radius: 15px; background: transparent; ${statusClass} cursor:pointer;" onclick="App.toggleScratchStatus(${defect.id})">${statusText}</span>
-                                    <i class="fa-solid fa-trash-can" style="color: #ff4b2b; cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
+                        <div class="glass-card defect-card" style="border-right: 4px solid ${isPending ? 'var(--accent-main)' : '#00ff87'}; padding: 15px; margin-bottom: 12px;">
+                            <div style="display: flex; gap: 15px;">
+                                <img src="${defect.image}" onclick="App.openImage('${defect.image}')" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in;">
+                                <div style="flex: 1;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                                        <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type} ${dateBadge}</h4>
+                                        <span class="eng-font" style="font-size: 0.7rem; color: var(--text-secondary);">${defect.time}</span>
+                                    </div>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size:0.75rem; padding: 4px 10px; border-radius: 15px; background: transparent; ${statusClass} cursor:pointer;" onclick="App.toggleScratchStatus(${defect.id})">${statusText}</span>
+                                        <i class="fa-solid fa-trash-can" style="color: #ff4b2b; cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -532,18 +542,20 @@
             },
 
             openImage(src) { document.getElementById('modal-image').src = src; document.getElementById('image-modal').classList.add('show'); },
-            closeImageModal(e) { if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) { document.getElementById('image-modal').classList.remove('show'); } },
+            closeImageModal(e) { if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) document.getElementById('image-modal').classList.remove('show'); },
             toggleScratchStatus(id) { const index = this.data.scratches.findIndex(d => d.id === id); if(index > -1) { this.data.scratches[index].status = this.data.scratches[index].status === 'pending' ? 'fixed' : 'pending'; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList(); } },
             deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) { this.data.scratches = this.data.scratches.filter(d => d.id !== id); this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList(); } },
 
+            // ===================================
+            // المزامنة والتقارير
+            // ===================================
             renderAnalytics() {
                 let totalProd = 0; let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
                 this.data.production.items.forEach(item => { if (!item.isBreak) { let val = Number(item.actual) || 0; totalProd += val; activeHours++; hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); hourlyData.push(val); } });
-                let avgProd = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0;
-                document.getElementById('analytics-avg-prod').innerText = avgProd; 
+                document.getElementById('analytics-avg-prod').innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
                 
-                // جلب إحصائيات اليوم الحالي فقط للتحليلات
-                const todayScratches = this.data.scratches.filter(d => d.date === this.data.production.date);
+                const selectedDate = document.getElementById('global-date').value;
+                const todayScratches = this.data.scratches.filter(d => d.date === selectedDate);
                 document.getElementById('analytics-total-defects').innerText = todayScratches.length;
 
                 Chart.defaults.color = '#8e8e93'; Chart.defaults.font.family = 'Cairo';
@@ -558,46 +570,8 @@
                 this.charts.defects = new Chart(ctxDefects, { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#FF5722', '#00E5FF', '#8A2BE2', '#ff0844', '#00ff87'] : ['rgba(255,255,255,0.05)'], borderWidth: 0, hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { padding: 15, color: '#fff' } } } } });
             },
 
-            // =========================================
-            // نظام الحفظ المزدوج (المحلي اللحظي + السحابي المجدول)
-            // =========================================
-            saveState(isFromCloud = false) {
-                this.data.production.date = document.getElementById('global-date').value;
-                this.data.production.shift = document.getElementById('global-shift').value;
-                const targetEl = document.getElementById('prod-target'); if(targetEl) this.data.production.target = targetEl.value;
-                
-                if (!this.data.history) this.data.history = {};
-                const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
-                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
-
-                localStorage.setItem('mes_core_data', JSON.stringify(this.data));
-                
-                if(!isFromCloud) this.triggerCloudSyncDebounced();
-            },
-
-            saveLocalInstant() {
-                // حفظ فوري لا يضيع أبداً
-                this.data.production.date = document.getElementById('global-date').value;
-                this.data.production.shift = document.getElementById('global-shift').value;
-                const targetEl = document.getElementById('prod-target'); if(targetEl) this.data.production.target = targetEl.value;
-                
-                const currentKey = `${this.data.production.date}_${this.data.production.shift}`;
-                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
-                localStorage.setItem('mes_core_data', JSON.stringify(this.data));
-            },
-
-            triggerCloudSyncDebounced() {
-                clearTimeout(this.syncTimer);
-                this.syncTimer = setTimeout(() => { this.syncToCloud(true); }, 2500);
-            },
-
-            forceCloudSync() {
-                clearTimeout(this.syncTimer);
-                this.saveLocalInstant();
-                this.syncToCloud(false);
-            },
-
             showToast(msg) { const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); },
+            hardReset() { if(confirm("مسح جميع بيانات التطبيق والعودة لضبط المصنع؟")) { localStorage.removeItem('mes_core_data'); location.reload(); } },
 
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; let total = 0; 
@@ -617,10 +591,11 @@
                 if(this.GOOGLE_API_URL === '1wonGF-gxZCNpFPrTkvo1OR366kQOEQ_r' || this.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري المزامنة...");
                 const payload = { type: "FULL_BACKUP", payload: this.data };
+                const formData = new URLSearchParams(); formData.append("payload", JSON.stringify(payload));
                 try {
-                    let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-                    let textResult = await response.text();
-                    try { let result = JSON.parse(textResult); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ ✅"); } catch(e) {}
+                    let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData.toString() });
+                    let resultText = await response.text();
+                    try { let result = JSON.parse(resultText); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ ✅"); } catch(e) {}
                 } catch(err) { if (!isSilent) this.showToast("خطأ شبكة ❌"); }
             },
 
@@ -630,21 +605,18 @@
                 window.googleCloudCallback = (result) => {
                     const oldScript = document.getElementById('mes-sync-script'); if(oldScript) oldScript.remove();
                     if(result.status === 'success' && result.data) {
-                        this.data = result.data;
-                        if (!this.data.history) this.data.history = {};
-                        if (!this.data.settings.defectTypes) this.data.settings.defectTypes = ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'];
                         
-                        this.saveState(true); 
+                        // دمج آمن للبيانات دون المساس باليوم المفتوح حالياً على الشاشة
+                        this.data.history = result.data.history || {};
+                        this.data.settings = result.data.settings || this.data.settings;
+                        this.data.scratches = result.data.scratches || [];
                         
-                        document.getElementById('set-shift-start').value = this.data.settings.start;
-                        document.getElementById('set-shift-end').value = this.data.settings.end;
-                        document.getElementById('set-break-start').value = this.data.settings.bStart;
-                        document.getElementById('set-break-end').value = this.data.settings.bEnd;
-                        document.getElementById('set-line-name').value = this.data.settings.lineName;
+                        // إعادة تحميل الواجهة بناءً على اليوم المفتوح حالياً في الـ Header
+                        let currentDate = document.getElementById('global-date').value;
+                        let currentShift = document.getElementById('global-shift').value;
+                        this.loadDayData(currentDate, currentShift);
                         
-                        this.updateProductionUI();
                         this.renderDefectTypesSettings();
-                        
                         if (!isSilent) this.showToast("تم تحديث البيانات 🚀");
                     }
                 };
