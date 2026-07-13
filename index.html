@@ -9,9 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* =========================================
-           الهوية الأساسية (Dark Neon)
-        ========================================= */
         :root {
             --bg-base: #121214; --surface-1: rgba(28, 28, 32, 0.6); --surface-2: rgba(40, 40, 45, 0.5); --glass-border: rgba(255, 255, 255, 0.05);
             --accent-main: #FF5722; --accent-glow: rgba(255, 87, 34, 0.4); --accent-sec: #00E5FF; --accent-sec-glow: rgba(0, 229, 255, 0.3);
@@ -30,7 +27,6 @@
         body:not(.theme-qc) { background-image: radial-gradient(circle at 10% 20%, rgba(255, 87, 34, 0.08), transparent 40%), radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.08), transparent 40%), radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.05), transparent 50%); }
         .eng-font { font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1.5px; }
 
-        /* Splash Screen */
         #cinematic-splash { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s ease, transform 1s ease; }
         .slide-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; animation: kenBurns 12s infinite; }
         .slide-bg:nth-child(1) { background-image: url('101124.png'); animation-delay: 0s; }
@@ -49,7 +45,6 @@
         .loader-line::after { content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%; background: var(--accent-main); animation: loadSweep 2s infinite ease-in-out; }
         @keyframes loadSweep { 0% { left: -50%; } 100% { left: 100%; } }
 
-        /* Global Header (Sticky Calendar) */
         .app-header { position: sticky; top: 0; z-index: 100; padding: 15px 20px; background: var(--bg-base); border-bottom: 1px solid var(--glass-border); border-bottom-left-radius: var(--radius-xl); border-bottom-right-radius: var(--radius-xl); transition: background 0.5s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         body:not(.theme-qc) .dept-title { color: #fff; } body.theme-qc .dept-title { color: #1A1C19; }
@@ -62,7 +57,6 @@
         .icon-btn { background: var(--surface-2); border: 1px solid var(--glass-border); border-radius: 50%; color: var(--text-primary); font-size: 1rem; cursor: pointer; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; transition: 0.3s; }
         .icon-btn:active { transform: scale(0.9); background: var(--accent-main); border-color: var(--accent-main); color: #fff;}
 
-        /* General UI */
         .glass-card { background: var(--surface-1); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3); border-radius: var(--radius-xl); padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden; transition: all 0.5s ease; }
         .content-area { padding: 20px; }
         .screen { display: none; animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -88,7 +82,6 @@
         .glass-btn { width: 100%; background: linear-gradient(135deg, var(--accent-main), var(--accent-sec)); color: #121214; border: none; padding: 18px; border-radius: var(--radius-lg); font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-top: 10px; font-family: 'Cairo'; box-shadow: 0 8px 25px var(--accent-glow); }
         .glass-btn.danger { background: linear-gradient(135deg, #ff0844, #ff4b2b); color: white; margin-top: 25px; box-shadow: 0 8px 25px rgba(255, 8, 68, 0.4);}
 
-        /* Production List */
         .prod-row-container { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; }
         .prod-row-flex { display: flex; justify-content: space-between; align-items: center; }
         .prod-row.break-row { background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.2); justify-content: center; color: var(--accent-main); font-weight: 800; padding: 15px; border-radius: var(--radius-lg); margin-bottom: 12px; text-align: center; }
@@ -96,7 +89,6 @@
         .actual-input { width: 85px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--accent-sec); font-family: 'Orbitron'; font-size: 1.3rem; text-align: center; padding: 10px; outline: none; transition: 0.3s; }
         .reason-input { width: 100%; background: transparent; border: none; border-top: 1px dashed var(--glass-border); padding: 12px 5px 0 5px; color: var(--text-muted); font-family: 'Cairo'; font-size: 0.85rem; margin-top: 12px; outline: none; }
 
-        /* QC Counters (العدادات الذكية) */
         .qc-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
         .qc-box { background: var(--surface-2); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 15px 5px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .qc-box .qc-val { font-family: 'Orbitron'; font-size: 1.8rem; font-weight: 900; margin-bottom: 5px; line-height: 1; }
@@ -106,7 +98,6 @@
         .defect-badge-setting { background: rgba(255, 87, 34, 0.1); border: 1px solid var(--accent-main); color: var(--text-primary); padding: 8px 15px; border-radius: 20px; display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; margin-bottom: 10px; margin-left: 5px;}
         .defect-badge-setting i { color: var(--danger); cursor: pointer; }
 
-        /* Navigation */
         .bottom-nav { position: fixed; bottom: 20px; left: 5%; right: 5%; width: 90%; height: var(--nav-height); background: var(--surface-1); backdrop-filter: blur(25px); border: 1px solid var(--glass-border); border-radius: 40px; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 0 10px; transition: background 0.5s, border-color 0.5s; }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.7rem; font-weight: 800; cursor: pointer; width: 60px; }
         .nav-item i { font-size: 1.3rem; transition: 0.3s; }
@@ -115,11 +106,10 @@
         .special-nav .fab-btn { width: 65px; height: 65px; background: linear-gradient(135deg, #25D366, #128C7E); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 2rem; margin-top: -45px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); border: 5px solid var(--bg-base); cursor: pointer; transition: 0.3s;}
         .special-nav .fab-btn:active { transform: scale(0.9); }
 
-        #toast { position: fixed; top: 130px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
+        #toast { position: fixed; top: 130px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: 800; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; text-align: center; min-width: 250px;}
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         .chart-container { position: relative; height: 220px; width: 100%; }
 
-        /* Modals */
         #image-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 3000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.3s ease; }
         #image-modal.show { opacity: 1; pointer-events: all; }
         #modal-image { max-width: 95%; max-height: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
@@ -142,7 +132,6 @@
         <div class="splash-seal"><div class="seal-name">Eng. M. Fayez</div><div class="seal-title">Final Assembly Dept.</div></div>
     </div>
 
-    <!-- الرأس والتقويم الموحد -->
     <header class="app-header">
         <div class="header-top">
             <div class="dept-title"><i class="fa-solid fa-microchip"></i> <span>MES CORE</span></div>
@@ -244,12 +233,14 @@
     <script>
         const App = {
             // ==========================================
-            GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbwHY23p34VnHGXVzbfqe6KgMkHWyZouu3VIoLtbkbtetnFYGpI7QRoGRmI0sJ3DNQND/exec', 
+            // ⚠️ استبدل هذا الرابط برابط Google Apps Script الخاص بك
+            GOOGLE_API_URL: 'ضع_الرابط_هنا', 
             // ==========================================
 
             syncTimer: null, charts: {}, currentScreen: 'home',
 
             data: {
+                lastUpdated: 0, // درع حماية البيانات لمعرفة أحدث نسخة
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly', defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] },
                 production: { date: '', shift: '1', target: '', items: [] },
                 history: {}, scratches: []
@@ -258,20 +249,22 @@
             init() {
                 setTimeout(() => { const splash = document.getElementById('cinematic-splash'); splash.style.opacity = '0'; splash.style.transform = 'scale(1.1)'; setTimeout(() => splash.remove(), 1000); }, 3500);
 
-                let actualToday = new Date().toISOString().split('T')[0];
+                // حل توقيت جرينتش: جلب التاريخ المحلي الصحيح
+                let today = new Date();
+                let actualToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 let defaultShift = "1";
 
                 try {
                     const saved = localStorage.getItem('mes_core_data');
                     if (saved) {
                         const parsedData = JSON.parse(saved);
+                        this.data.lastUpdated = parsedData.lastUpdated || 0;
                         this.data.history = parsedData.history || {};
                         this.data.settings = parsedData.settings || this.data.settings;
                         this.data.scratches = parsedData.scratches || [];
                     }
                 } catch(e) { console.error("Cache Reset", e); }
 
-                // فرض تاريخ اليوم الفعلي عند الفتح لضمان عدم التداخل
                 document.getElementById('global-date').value = actualToday;
                 document.getElementById('global-shift').value = defaultShift;
                 
@@ -300,7 +293,7 @@
             },
 
             changeDay() {
-                this.saveLocalInstant(); // حفظ اللحظة قبل الانتقال
+                this.saveLocalInstant();
                 let newDate = document.getElementById('global-date').value;
                 let newShift = document.getElementById('global-shift').value;
                 this.loadDayData(newDate, newShift);
@@ -315,9 +308,6 @@
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             },
 
-            // ===================================
-            // أنظمة الحفظ الصارمة (Local & Cloud)
-            // ===================================
             saveLocalInstant() {
                 let dateStr = document.getElementById('global-date').value;
                 let shiftStr = document.getElementById('global-shift').value;
@@ -327,6 +317,7 @@
                 
                 let currentKey = `${dateStr}_${shiftStr}`;
                 this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
+                this.data.lastUpdated = Date.now(); // تحديث الدرع الزمني
                 localStorage.setItem('mes_core_data', JSON.stringify(this.data));
             },
 
@@ -339,9 +330,6 @@
                 clearTimeout(this.syncTimer); this.saveLocalInstant(); this.syncToCloud(false);
             },
 
-            // ===================================
-            // التنقل والإعدادات
-            // ===================================
             navigate(screenId) {
                 if (screenId === 'settings') return; 
                 this.currentScreen = screenId;
@@ -369,7 +357,6 @@
             },
             closeSettings() { this.navigate(this.currentScreen); },
 
-            // مهندس العيوب
             renderDefectTypesSettings() {
                 const container = document.getElementById('defect-types-list'); const selectMenu = document.getElementById('scratch-type');
                 if(!container || !selectMenu) return;
@@ -391,9 +378,6 @@
                 }
             },
 
-            // ===================================
-            // الإنتاج
-            // ===================================
             formatAMPM(timeStr) { let [hours, minutes] = timeStr.split(':'); hours = parseInt(hours); let ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12; hours = hours ? hours : 12; let hoursStr = hours < 10 ? '0' + hours : hours; return `${hoursStr}:${minutes} ${ampm}`; },
             addMinutes(timeStr, minsToAdd) { let [h, m] = timeStr.split(':').map(Number); let date = new Date(); date.setHours(h, m, 0); date.setMinutes(date.getMinutes() + minsToAdd); return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; },
             timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
@@ -445,16 +429,13 @@
             updateActual(index, value) { this.data.production.items[index].actual = value; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); let total = 0; this.data.production.items.forEach(item => { if(!item.isBreak) total += Number(item.actual) || 0; }); document.getElementById('prod-total-calc').innerText = total; document.getElementById('home-total-prod').innerText = total; },
             updateHourlyReason(index, value) { this.data.production.items[index].shortfallReason = value; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); },
 
-            // ===================================
-            // العيوب ورفع الصور (URL Encoded)
-            // ===================================
             addScratchDefect() {
                 const type = document.getElementById('scratch-type').value;
                 const notes = document.getElementById('scratch-notes').value;
                 const fileInput = document.getElementById('scratch-image');
                 
                 if(!fileInput.files || !fileInput.files[0]) { this.showToast("التقط صورة العيب أولاً 📷"); return; }
-                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا') { this.showToast("أدخل الرابط السحابي أولاً"); return; }
+                if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') { this.showToast("أدخل الرابط السحابي في كود التطبيق أولاً"); return; }
 
                 const loader = document.getElementById('upload-loader'); const loaderText = document.getElementById('loader-text');
                 loader.classList.add('show'); loaderText.innerText = "جاري التجهيز...";
@@ -472,20 +453,25 @@
 
                         const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: document.getElementById('global-date').value } };
                         
-                        // استخدام URLSearchParams لتخطي حظر المتصفحات (CORS) بنسبة 100%
-                        const formData = new URLSearchParams();
-                        formData.append("payload", JSON.stringify(uploadPayload));
-
                         try {
-                            let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData.toString() });
+                            // الاستعانة بـ text/plain لمنع حظر المتصفحات كلياً
+                            let response = await fetch(this.GOOGLE_API_URL, { 
+                                method: 'POST', 
+                                redirect: 'follow', 
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                                body: JSON.stringify(uploadPayload) 
+                            });
                             let resultText = await response.text();
                             let result = JSON.parse(resultText);
                             if (result.status === 'success') {
                                 this.data.scratches.push({ id: Date.now(), type: type, notes: notes, image: result.url, status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: document.getElementById('global-date').value });
                                 this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList();
                                 document.getElementById('scratch-notes').value = ''; fileInput.value = ''; this.showToast("تم الرفع بنجاح ✅");
-                            } else { this.showToast("فشل الرفع ❌ تأكد من الرابط أو الصلاحيات"); }
-                        } catch (err) { this.showToast("خطأ شبكة ❌ تأكد من الاتصال"); } finally { loader.classList.remove('show'); }
+                            } else { 
+                                this.showToast("فشل الرفع ❌: " + (result.message || "خطأ غير معروف")); 
+                                console.error(result.message);
+                            }
+                        } catch (err) { this.showToast("خطأ شبكة ❌ تأكد من الاتصال"); console.error(err); } finally { loader.classList.remove('show'); }
                     };
                     img.src = e.target.result;
                 };
@@ -496,7 +482,6 @@
                 const container = document.getElementById('scratches-list'); container.innerHTML = '';
                 const selectedDate = document.getElementById('global-date').value;
                 
-                // جلب العيوب الخاصة باليوم المختار + جميع العيوب المعلقة (التراكمي)
                 const displayScratches = this.data.scratches.filter(d => d.date === selectedDate || d.status === 'pending');
                 const sortedScratches = [...displayScratches].reverse();
                 
@@ -546,9 +531,6 @@
             toggleScratchStatus(id) { const index = this.data.scratches.findIndex(d => d.id === id); if(index > -1) { this.data.scratches[index].status = this.data.scratches[index].status === 'pending' ? 'fixed' : 'pending'; this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList(); } },
             deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) { this.data.scratches = this.data.scratches.filter(d => d.id !== id); this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList(); } },
 
-            // ===================================
-            // المزامنة والتقارير
-            // ===================================
             renderAnalytics() {
                 let totalProd = 0; let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
                 this.data.production.items.forEach(item => { if (!item.isBreak) { let val = Number(item.actual) || 0; totalProd += val; activeHours++; hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); hourlyData.push(val); } });
@@ -591,12 +573,13 @@
                 if(this.GOOGLE_API_URL === 'ضع_الرابط_هنا' || this.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري المزامنة...");
                 const payload = { type: "FULL_BACKUP", payload: this.data };
-                const formData = new URLSearchParams(); formData.append("payload", JSON.stringify(payload));
                 try {
-                    let response = await fetch(this.GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData.toString() });
+                    let response = await fetch(this.GOOGLE_API_URL, { 
+                        method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) 
+                    });
                     let resultText = await response.text();
-                    try { let result = JSON.parse(resultText); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ ✅"); } catch(e) {}
-                } catch(err) { if (!isSilent) this.showToast("خطأ شبكة ❌"); }
+                    try { let result = JSON.parse(resultText); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ السحابي ✅"); } catch(e) {}
+                } catch(err) { if (!isSilent) this.showToast("خطأ اتصال بالسحابة ❌"); }
             },
 
             fetchFromCloud(isSilent = false) {
@@ -606,18 +589,23 @@
                     const oldScript = document.getElementById('mes-sync-script'); if(oldScript) oldScript.remove();
                     if(result.status === 'success' && result.data) {
                         
-                        // دمج آمن للبيانات دون المساس باليوم المفتوح حالياً على الشاشة
+                        // درع الحماية الزمني: إذا كانت بيانات الجهاز أحدث من السحابة، احتفظ ببيانات الجهاز
+                        if (this.data.lastUpdated && result.data.lastUpdated && this.data.lastUpdated > result.data.lastUpdated) {
+                            if (!isSilent) this.showToast("بيانات الجهاز أحدث، تم التجاهل");
+                            return;
+                        }
+
                         this.data.history = result.data.history || {};
                         this.data.settings = result.data.settings || this.data.settings;
                         this.data.scratches = result.data.scratches || [];
+                        this.data.lastUpdated = result.data.lastUpdated || 0;
                         
-                        // إعادة تحميل الواجهة بناءً على اليوم المفتوح حالياً في الـ Header
                         let currentDate = document.getElementById('global-date').value;
                         let currentShift = document.getElementById('global-shift').value;
                         this.loadDayData(currentDate, currentShift);
                         
                         this.renderDefectTypesSettings();
-                        if (!isSilent) this.showToast("تم تحديث البيانات 🚀");
+                        if (!isSilent) this.showToast("تم تحديث البيانات من السحابة 🚀");
                     }
                 };
                 const script = document.createElement('script'); script.id = 'mes-sync-script';
