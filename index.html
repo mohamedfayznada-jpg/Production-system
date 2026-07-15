@@ -240,7 +240,7 @@
             syncTimer: null, charts: {}, currentScreen: 'home',
 
             data: {
-                lastUpdated: 0, // درع حماية البيانات لمعرفة أحدث نسخة
+                lastUpdated: 0, 
                 settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '14:30', lineName: 'الثلاجة A | Final Assembly', defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] },
                 production: { date: '', shift: '1', target: '', items: [] },
                 history: {}, scratches: []
@@ -249,7 +249,6 @@
             init() {
                 setTimeout(() => { const splash = document.getElementById('cinematic-splash'); splash.style.opacity = '0'; splash.style.transform = 'scale(1.1)'; setTimeout(() => splash.remove(), 1000); }, 3500);
 
-                // حل توقيت جرينتش: جلب التاريخ المحلي الصحيح
                 let today = new Date();
                 let actualToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 let defaultShift = "1";
@@ -293,9 +292,12 @@
             },
 
             changeDay() {
+                // حفظ البيانات الحالية قبل تغيير التاريخ
                 this.saveLocalInstant();
+                
                 let newDate = document.getElementById('global-date').value;
                 let newShift = document.getElementById('global-shift').value;
+                
                 this.loadDayData(newDate, newShift);
                 this.triggerCloudSyncDebounced();
             },
@@ -309,15 +311,16 @@
             },
 
             saveLocalInstant() {
-                let dateStr = document.getElementById('global-date').value;
-                let shiftStr = document.getElementById('global-shift').value;
-                this.data.production.date = dateStr;
-                this.data.production.shift = shiftStr;
-                const targetEl = document.getElementById('prod-target'); if(targetEl) this.data.production.target = targetEl.value;
+                // الاعتماد على التاريخ المسجل مسبقاً في الذاكرة لمنع ترحيل البيانات بالخطأ
+                let dateStr = this.data.production.date;
+                let shiftStr = this.data.production.shift;
+                
+                const targetEl = document.getElementById('prod-target'); 
+                if(targetEl) this.data.production.target = targetEl.value;
                 
                 let currentKey = `${dateStr}_${shiftStr}`;
                 this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
-                this.data.lastUpdated = Date.now(); // تحديث الدرع الزمني
+                this.data.lastUpdated = Date.now();
                 localStorage.setItem('mes_core_data', JSON.stringify(this.data));
             },
 
@@ -454,7 +457,6 @@
                         const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: document.getElementById('global-date').value } };
                         
                         try {
-                            // الاستعانة بـ text/plain لمنع حظر المتصفحات كلياً
                             let response = await fetch(this.GOOGLE_API_URL, { 
                                 method: 'POST', 
                                 redirect: 'follow', 
@@ -553,7 +555,6 @@
             },
 
             showToast(msg) { const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); },
-            hardReset() { if(confirm("مسح جميع بيانات التطبيق والعودة لضبط المصنع؟")) { localStorage.removeItem('mes_core_data'); location.reload(); } },
 
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; let total = 0; 
@@ -577,8 +578,8 @@
                     let response = await fetch(this.GOOGLE_API_URL, { 
                         method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) 
                     });
-                    let resultText = await response.text();
-                    try { let result = JSON.parse(resultText); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ السحابي ✅"); } catch(e) {}
+                    let textResult = await response.text();
+                    try { let result = JSON.parse(textResult); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ السحابي ✅"); } catch(e) {}
                 } catch(err) { if (!isSilent) this.showToast("خطأ اتصال بالسحابة ❌"); }
             },
 
@@ -589,7 +590,6 @@
                     const oldScript = document.getElementById('mes-sync-script'); if(oldScript) oldScript.remove();
                     if(result.status === 'success' && result.data) {
                         
-                        // درع الحماية الزمني: إذا كانت بيانات الجهاز أحدث من السحابة، احتفظ ببيانات الجهاز
                         if (this.data.lastUpdated && result.data.lastUpdated && this.data.lastUpdated > result.data.lastUpdated) {
                             if (!isSilent) this.showToast("بيانات الجهاز أحدث، تم التجاهل");
                             return;
