@@ -9,9 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* =========================================
-           الهوية الأساسية (Dark Neon)
-        ========================================= */
         :root {
             --bg-base: #121214; --surface-1: rgba(28, 28, 32, 0.6); --surface-2: rgba(40, 40, 45, 0.5); --glass-border: rgba(255, 255, 255, 0.05);
             --accent-main: #FF5722; --accent-glow: rgba(255, 87, 34, 0.4); --accent-sec: #00E5FF; --accent-sec-glow: rgba(0, 229, 255, 0.3);
@@ -191,7 +188,7 @@
             </div>
             
             <div class="glass-card">
-                <div class="input-group"><label>نوع العيب (ديناميكي)</label><select id="scratch-type" class="glass-input"></select></div>
+                <div class="input-group"><label>نوع العيب</label><select id="scratch-type" class="glass-input"></select></div>
                 <div class="input-group"><label>صورة العيب (تُرفع لـ Drive)</label><input type="file" id="scratch-image" accept="image/*" capture="environment" class="glass-input" style="padding: 12px; color: var(--text-primary);"></div>
                 <div class="input-group"><label>ملاحظات (اختياري)</label><input type="text" id="scratch-notes" class="glass-input" placeholder="مثال: الباب السفلي..."></div>
                 <button class="glass-btn" onclick="App.addScratchDefect()">رفع وإدراج في السجل</button>
@@ -230,14 +227,14 @@
     </nav>
 
     <div id="toast">رسالة تنبيه</div>
-    <div id="image-modal" onclick="App.closeImageModal(event)"><div class="close-modal-btn"><i class="fa-solid fa-xmark"></i></div><img id="modal-image" src="" alt="Defect" referrerpolicy="no-referrer"></div>
+    <div id="image-modal" onclick="App.closeImageModal(event)"><div class="close-modal-btn"><i class="fa-solid fa-xmark"></i></div><img id="modal-image" src="" alt="Defect"></div>
     <div id="upload-loader" class="overlay-loader"><div class="spinner"></div><h3 id="loader-text" style="font-family: 'Cairo';">جاري التجهيز...</h3></div>
 
     <script>
         const App = {
             // ==========================================
             // ⚠️ استبدل هذا الرابط برابط Google Apps Script الخاص بك
-            GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbybKK6nIPzxR3yQQcTRD74YHNn3IyaJzXOsmPhAgej3bC1-uPZNDs6L2eeyGeacOapa/exec', 
+            GOOGLE_API_URL: 'https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec', 
             // ==========================================
 
             syncTimer: null, charts: {}, currentScreen: 'home',
@@ -285,20 +282,22 @@
 
             loadDayData(dateStr, shiftStr) {
                 let key = `${dateStr}_${shiftStr}`;
-                // درع حماية: التحقق من وجود الساعات داخل التاريخ، وإلا نعيد توليدها
-                if (this.data.history[key] && this.data.history[key].items && this.data.history[key].items.length > 0) {
+                if (this.data.history[key]) {
                     this.data.production = JSON.parse(JSON.stringify(this.data.history[key]));
                 } else {
-                    this.data.production = { date: dateStr, shift: shiftStr, target: (this.data.history[key] ? this.data.history[key].target : ''), items: [] };
+                    this.data.production = { date: dateStr, shift: shiftStr, target: '', items: [] };
                     this.generateIntervals(); 
                 }
                 this.updateProductionUI();
             },
 
             changeDay() {
+                // حفظ البيانات الحالية قبل تغيير التاريخ
                 this.saveLocalInstant();
+                
                 let newDate = document.getElementById('global-date').value;
                 let newShift = document.getElementById('global-shift').value;
+                
                 this.loadDayData(newDate, newShift);
                 this.triggerCloudSyncDebounced();
             },
@@ -312,6 +311,7 @@
             },
 
             saveLocalInstant() {
+                // الاعتماد على التاريخ المسجل مسبقاً في الذاكرة لمنع ترحيل البيانات بالخطأ
                 let dateStr = this.data.production.date;
                 let shiftStr = this.data.production.shift;
                 
@@ -386,11 +386,7 @@
             timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
 
             generateIntervals() {
-                const start = this.data.settings.start || '07:30'; 
-                const end = this.data.settings.end || '16:00';
-                const bStart = this.data.settings.bStart || '12:30';
-                const bEnd = this.data.settings.bEnd || '14:30';
-                
+                const { start, end, bStart, bEnd } = this.data.settings;
                 let current = start; let intervals = []; let endMins = this.timeToMins(end);
                 if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
                 while (this.timeToMins(current) < endMins) {
@@ -415,12 +411,6 @@
 
             renderProductionList() {
                 const container = document.getElementById('production-list'); container.innerHTML = ''; let total = 0;
-                
-                // درع حماية إضافي
-                if (!this.data.production.items || this.data.production.items.length === 0) {
-                    return; 
-                }
-
                 this.data.production.items.forEach((item, index) => {
                     if (item.isBreak) { container.innerHTML += `<div class="prod-row break-row"><span>${item.label}</span></div>`; } 
                     else {
@@ -510,7 +500,6 @@
 
                 if(sortedScratches.length === 0) { container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 20px;">الخط خالي من العيوب 🚀</div>`; return; }
                 
-                // إضافة referrerpolicy="no-referrer" لحل مشكلة الحظر من جوجل درايف
                 sortedScratches.forEach(defect => {
                     const isPending = defect.status === 'pending';
                     const isOld = defect.date !== selectedDate;
@@ -521,7 +510,7 @@
                     container.innerHTML += `
                         <div class="glass-card defect-card" style="border-right: 4px solid ${isPending ? 'var(--accent-main)' : '#00ff87'}; padding: 15px; margin-bottom: 12px;">
                             <div style="display: flex; gap: 15px;">
-                                <img src="${defect.image}" referrerpolicy="no-referrer" onclick="App.openImage('${defect.image}')" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in;">
+                                <img src="${defect.image}" onclick="App.openImage('${defect.image}')" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in;">
                                 <div style="flex: 1;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                                         <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type} ${dateBadge}</h4>
@@ -546,11 +535,7 @@
 
             renderAnalytics() {
                 let totalProd = 0; let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
-                
-                if (this.data.production.items && this.data.production.items.length > 0) {
-                    this.data.production.items.forEach(item => { if (!item.isBreak) { let val = Number(item.actual) || 0; totalProd += val; activeHours++; hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); hourlyData.push(val); } });
-                }
-                
+                this.data.production.items.forEach(item => { if (!item.isBreak) { let val = Number(item.actual) || 0; totalProd += val; activeHours++; hourlyLabels.push(item.label.replace(' AM', '').replace(' PM', '')); hourlyData.push(val); } });
                 document.getElementById('analytics-avg-prod').innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
                 
                 const selectedDate = document.getElementById('global-date').value;
@@ -574,17 +559,13 @@
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; let total = 0; 
                 let report = `*تقرير انتاج ساعة بساعة*\n${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية : ${this.data.production.shift}\n\n`; 
-                
-                if (this.data.production.items && this.data.production.items.length > 0) {
-                    this.data.production.items.forEach(item => {
-                        if (item.isBreak) { report += `\n*فترة راحة*\n\n`; } else { 
-                            let actVal = item.actual === "" ? "0" : item.actual; report += `${item.label} : ${actVal}\n`; 
-                            if (item.shortfallReason && item.shortfallReason.trim() !== '') { report += `${item.shortfallReason.trim()}\n`; }
-                            total += Number(item.actual) || 0; 
-                        }
-                    });
-                }
-                
+                this.data.production.items.forEach(item => {
+                    if (item.isBreak) { report += `\n*فترة راحة*\n\n`; } else { 
+                        let actVal = item.actual === "" ? "0" : item.actual; report += `${item.label} : ${actVal}\n`; 
+                        if (item.shortfallReason && item.shortfallReason.trim() !== '') { report += `${item.shortfallReason.trim()}\n`; }
+                        total += Number(item.actual) || 0; 
+                    }
+                });
                 report += `\n*إجمالي الإنتاج : ${total}*`;
                 const encodedText = encodeURIComponent(report); window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             },
