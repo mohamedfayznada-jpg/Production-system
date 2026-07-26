@@ -13,7 +13,31 @@ import {
 export const API = {
 
     production: {
+async saveTest() {
 
+    return await this.save({
+
+        recordId: crypto.randomUUID(),
+
+        date: "2026-07-26",
+
+        shift: 1,
+
+        hour: "08:30",
+
+        model: "TEST",
+
+        plan: 10,
+
+        actual: 10,
+
+        user: "Mohamed",
+
+        device: navigator.userAgent
+
+    });
+
+}
         async save(record) {
 
             return await addDoc(
