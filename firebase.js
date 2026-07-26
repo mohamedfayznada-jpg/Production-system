@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import {
-    getFirestore
+    getFirestore,
+    enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
 const firebaseConfig = {
     apiKey: "AIzaSyDwiSlMnznYKza8WTRX2CkRHvZZV_CE64A",
     authDomain: "mes-core-v27.firebaseapp.com",
@@ -14,4 +14,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+enableIndexedDbPersistence(db)
+.catch((err) => {
+    console.warn("Offline:", err.code);
+});
+
+export { db };
