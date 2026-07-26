@@ -265,16 +265,23 @@ const App = {
                 let actualToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 let defaultShift = "1";
 
-                try {
-                    const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-                    if (saved) {
-                        const parsedData = JSON.parse(saved);
-                        this.data.lastUpdated = parsedData.lastUpdated || 0;
-                        this.data.history = parsedData.history || {};
-                        this.data.settings = parsedData.settings || this.data.settings;
-                        this.data.scratches = parsedData.scratches || [];
-                    }
-                } catch(e) { console.error("Cache Reset", e); }
+            try {
+
+    const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+
+    if (saved) {
+
+        const parsedData = JSON.parse(saved);
+
+        this.data.lastUpdated = parsedData.lastUpdated || 0;
+
+    }
+
+} catch (e) {
+
+    console.error("Cache Reset", e);
+
+}
 
                 document.getElementById('global-date').value = actualToday;
                 document.getElementById('global-shift').value = defaultShift;
