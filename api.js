@@ -12,30 +12,63 @@ import {
 
 export const API = {
 
-    production: {
-async saveTest() {
+  production: {
 
-    return await this.save({
+    async save(record) {
 
-        recordId: crypto.randomUUID(),
+        return await addDoc(
+            collection(db, "production_records"),
+            {
+                ...record,
+                createdAt: serverTimestamp()
+            }
+        );
 
-        date: "2026-07-26",
+    },
 
-        shift: 1,
+    async get(date, shift) {
 
-        hour: "08:30",
+        const q = query(
+            collection(db, "production_records"),
+            where("date", "==", date),
+            where("shift", "==", shift),
+            orderBy("hour")
+        );
 
-        model: "TEST",
+        const snap = await getDocs(q);
 
-        plan: 10,
+        return snap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-        actual: 10,
+    },
 
-        user: "Mohamed",
+    async saveTest() {
 
-        device: navigator.userAgent
+        return await this.save({
 
-    });
+            recordId: crypto.randomUUID(),
+
+            date: "2026-07-26",
+
+            shift: 1,
+
+            hour: "08:30",
+
+            model: "TEST",
+
+            plan: 10,
+
+            actual: 10,
+
+            user: "Mohamed",
+
+            device: navigator.userAgent
+
+        });
+
+    }
 
 }
         async save(record) {
