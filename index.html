@@ -522,7 +522,8 @@ const App = {
                     container.innerHTML += `
                         <div class="glass-card defect-card" style="border-right: 4px solid ${isPending ? 'var(--accent-main)' : '#00ff87'}; padding: 15px; margin-bottom: 12px;">
                             <div style="display: flex; gap: 15px;">
-                                <img src="${defect.image}" onclick="App.openImage('${defect.image}')" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in;">
+                              <img src="${App.getImageUrl(defect.image)}"
+     onclick="App.openImage(App.getImageUrl(defect.image))" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glass-border); cursor: zoom-in;">
                                 <div style="flex: 1;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                                         <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type} ${dateBadge}</h4>
@@ -566,7 +567,25 @@ const App = {
                 this.charts.defects = new Chart(ctxDefects, { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#FF5722', '#00E5FF', '#8A2BE2', '#ff0844', '#00ff87'] : ['rgba(255,255,255,0.05)'], borderWidth: 0, hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { padding: 15, color: '#fff' } } } } });
             },
 
-            showToast(msg) { const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); },
+           getImageUrl(url) {
+
+    if (!url) return "";
+
+    if (url.includes("drive.google.com")) {
+
+        const match = url.match(/id=([^&]+)/);
+
+        if (match) {
+            return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        }
+
+    }
+
+    return url;
+
+},
+
+showToast(msg) {const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); },
 
             sendWhatsAppReport() {
                 let dParts = this.data.production.date.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; let total = 0; 
