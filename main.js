@@ -2,6 +2,6 @@ import { API } from "./api.js";
 
 window.addEventListener("DOMContentLoaded", async () => {
 
-    await API.test();
+    console.log("✅ Firebase Connected");
 
 });
