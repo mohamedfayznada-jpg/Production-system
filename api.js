@@ -47,3 +47,4 @@ export const API = {
     }
 
 };
+window.API = API;
