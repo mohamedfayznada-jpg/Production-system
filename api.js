@@ -3,22 +3,46 @@ import { db } from "./firebase.js";
 import {
     collection,
     addDoc,
+    getDocs,
+    query,
+    where,
+    orderBy,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export const API = {
 
-    async test() {
+    production: {
 
-        await addDoc(collection(db, "system_test"), {
+        async save(record) {
 
-            status: "OK",
+            return await addDoc(
+                collection(db, "production_records"),
+                {
+                    ...record,
+                    createdAt: serverTimestamp()
+                }
+            );
 
-            createdAt: serverTimestamp()
+        },
 
-        });
+        async get(date, shift) {
 
-        console.log("✅ Firestore Write Success");
+            const q = query(
+                collection(db, "production_records"),
+                where("date", "==", date),
+                where("shift", "==", shift),
+                orderBy("hour")
+            );
+
+            const snap = await getDocs(q);
+
+            return snap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+        }
 
     }
 
