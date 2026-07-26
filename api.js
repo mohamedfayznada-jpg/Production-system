@@ -71,7 +71,7 @@ export const API = {
     }
 
 }
-        async save(record) {
+     
 
             return await addDoc(
                 collection(db, "production_records"),
