@@ -624,28 +624,29 @@ showToast(msg) {const toast = document.getElementById('toast'); toast.innerText 
             fetchFromCloud(isSilent = false) {
                 if(CONFIG.GOOGLE_API_URL === 'ضع_الرابط_هنا' || CONFIG.GOOGLE_API_URL === '') return;
                 if (!isSilent) this.showToast("جاري الاسترداد...");
-                window.googleCloudCallback = (result) => {
-                    const oldScript = document.getElementById('mes-sync-script'); if(oldScript) oldScript.remove();
-                    if(result.status === 'success' && result.data) {
-                        
-                        if (this.data.lastUpdated && result.data.lastUpdated && this.data.lastUpdated > result.data.lastUpdated) {
-                            if (!isSilent) this.showToast("بيانات الجهاز أحدث، تم التجاهل");
-                            return;
-                        }
+            window.googleCloudCallback = (result) => {
 
-                        this.data.history = result.data.history || {};
-                        this.data.settings = result.data.settings || this.data.settings;
-                        this.data.scratches = result.data.scratches || [];
-                        this.data.lastUpdated = result.data.lastUpdated || 0;
-                        
-                        let currentDate = document.getElementById('global-date').value;
-                        let currentShift = document.getElementById('global-shift').value;
-                        this.loadDayData(currentDate, currentShift);
-                        
-                        this.renderDefectTypesSettings();
-                        if (!isSilent) this.showToast("تم تحديث البيانات من السحابة 🚀");
-                    }
-                };
+    const oldScript = document.getElementById("mes-sync-script");
+
+    if (oldScript) oldScript.remove();
+
+    if (result.status !== "success") return;
+
+    if (!result.data) return;
+
+    this.data = structuredClone(result.data);
+
+    let currentDate = document.getElementById("global-date").value;
+
+    let currentShift = document.getElementById("global-shift").value;
+
+    this.loadDayData(currentDate, currentShift);
+
+    this.renderDefectTypesSettings();
+
+    if (!isSilent) this.showToast("تم تحديث البيانات من السحابة ✅");
+
+};
                 const script = document.createElement('script'); script.id = 'mes-sync-script';
                 script.src = `${CONFIG.GOOGLE_API_URL}?callback=googleCloudCallback&t=${Date.now()}`;
                 script.onerror = () => { if (!isSilent) this.showToast("انقطع الاتصال ❌"); script.remove(); };
