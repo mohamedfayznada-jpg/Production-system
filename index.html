@@ -364,11 +364,11 @@ const App = {
 
         hour: item.rawTime,
 
-        model: this.data.production.model,
+        model: this.data.production.model || "",
 
-        plan: Number(item.plan || 0),
+        plan: Number(item.plan ?? this.data.production.target ?? 0),
 
-        actual: Number(item.actual || 0),
+        actual: Number(item.actual ?? 0),
 
         isBreak: item.isBreak,
 
