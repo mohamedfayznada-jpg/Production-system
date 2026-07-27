@@ -355,6 +355,7 @@ const App = {
     try {
 
       for (const item of this.data.production.items) {
+          if (item.isBreak || !item.rawTime) continue;
           console.log(item);
 
     await API.production.saveHour({
