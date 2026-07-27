@@ -4,8 +4,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     console.log("Firebase Ready");
 
-    await API.production.saveTest();
+ import { API } from "./api.js";
 
-    console.log("Production Saved");
+window.addEventListener("DOMContentLoaded", async () => {
+
+    console.log("Firebase Ready");
+
+});;
 
 });
