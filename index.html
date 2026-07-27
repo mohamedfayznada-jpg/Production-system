@@ -329,20 +329,56 @@ const App = {
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             },
 
-            saveLocalInstant() {
-                // الاعتماد على التاريخ المسجل مسبقاً في الذاكرة لمنع ترحيل البيانات بالخطأ
-                let dateStr = this.data.production.date;
-                let shiftStr = this.data.production.shift;
-                
-                const targetEl = document.getElementById('prod-target'); 
-                if(targetEl) this.data.production.target = targetEl.value;
-                
-                let currentKey = `${dateStr}_${shiftStr}`;
-                this.data.history[currentKey] = JSON.parse(JSON.stringify(this.data.production));
-                this.data.lastUpdated = Date.now();
-                localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(this.data));
-            },
+        async saveLocalInstant() {
 
+    const targetEl = document.getElementById("prod-target");
+
+    if (targetEl) {
+        this.data.production.target = targetEl.value;
+    }
+
+    const dateStr = this.data.production.date;
+    const shiftStr = this.data.production.shift;
+
+    const currentKey = `${dateStr}_${shiftStr}`;
+
+    this.data.history[currentKey] =
+        structuredClone(this.data.production);
+
+    this.data.lastUpdated = Date.now();
+
+    localStorage.setItem(
+        CONFIG.STORAGE_KEY,
+        JSON.stringify(this.data)
+    );
+
+    try {
+
+        await API.production.save({
+
+            recordId: currentKey,
+
+            date: dateStr,
+
+            shift: Number(shiftStr),
+
+            target: Number(this.data.production.target || 0),
+
+            items: structuredClone(this.data.production.items),
+
+            updatedAt: new Date().toISOString()
+
+        });
+
+        console.log("Firestore Sync ✔");
+
+    } catch (err) {
+
+        console.error("Firestore Error", err);
+
+    }
+
+},
             triggerCloudSyncDebounced() {
                 clearTimeout(this.syncTimer);
                 this.syncTimer = setTimeout(() => { this.syncToCloud(true); }, 2500);
