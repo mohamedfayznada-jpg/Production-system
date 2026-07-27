@@ -354,21 +354,33 @@ const App = {
 
     try {
 
-        await API.production.save({
+      for (const item of this.data.production.items) {
 
-            recordId: currentKey,
+    await API.production.saveHour({
 
-            date: dateStr,
+        date: dateStr,
 
-            shift: Number(shiftStr),
+        shift: Number(shiftStr),
 
-            target: Number(this.data.production.target || 0),
+        hour: item.rawTime,
 
-            items: structuredClone(this.data.production.items),
+        model: this.data.production.model,
 
-            updatedAt: new Date().toISOString()
+        plan: Number(item.plan || 0),
 
-        });
+        actual: Number(item.actual || 0),
+
+        isBreak: item.isBreak,
+
+        shortfallReason: item.shortfallReason || "",
+
+        target: Number(this.data.production.target || 0)
+
+    });
+
+}
+
+console.log("Production Synced");
 
         console.log("Firestore Sync ✔");
 
