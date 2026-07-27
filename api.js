@@ -14,17 +14,27 @@ export const API = {
 
     production: {
 
-        async save(record) {
+      async saveHour(record) {
 
-            return await addDoc(
-                collection(db, "production_records"),
-                {
-                    ...record,
-                    createdAt: serverTimestamp()
-                }
-            );
+    return await addDoc(
+        collection(db, "production_records"),
+        {
+            recordId: `${record.date}_${record.shift}_${record.hour}`,
+            date: record.date,
+            shift: record.shift,
+            hour: record.hour,
+            model: record.model,
+            plan: record.plan,
+            actual: record.actual,
+            isBreak: record.isBreak,
+            shortfallReason: record.shortfallReason,
+            target: record.target,
+            device: navigator.userAgent,
+            updatedAt: serverTimestamp()
+        }
+    );
 
-        },
+},
 
         async get(date, shift) {
 
