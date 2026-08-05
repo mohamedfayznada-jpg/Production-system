@@ -10,10 +10,14 @@
 </head>
 <body>
 
-    <!-- الشريط العلوي -->
     <header class="app-header">
         <div class="header-top">
-            <div class="dept-title"><i class="fa-solid fa-layer-group"></i> <span>التجميع النهائي</span></div>
+            <div class="dept-title">
+                <i class="fa-solid fa-layer-group"></i> 
+                <span>التجميع النهائي</span>
+                <!-- مؤشر الاتصال بالسيرفر -->
+                <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span>
+            </div>
         </div>
         <div class="global-filters">
             <input type="date" id="global-date">
@@ -26,9 +30,7 @@
     </header>
 
     <main class="content-area">
-        <!-- شاشة الإنتاج الأساسية -->
         <section id="screen-production" class="screen active">
-            
             <div class="card summary-card">
                 <h2>إجمالي الإنتاج (مباشر)</h2>
                 <div class="total-number" id="live-total">0</div>
@@ -37,14 +39,12 @@
             <div class="card">
                 <h3 class="card-title">سجل الساعات</h3>
                 <div id="production-list">
-                    <!-- سيتم توليد الحقول هنا بواسطة JavaScript -->
+                    <!-- سيتم التوليد بواسطة JS -->
                 </div>
             </div>
-            
         </section>
     </main>
 
-    <!-- الإشعارات -->
     <div id="toast">رسالة تنبيه</div>
 
     <script type="module" src="app.js"></script>
