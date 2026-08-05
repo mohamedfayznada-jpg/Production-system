@@ -1,10 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { 
-    getFirestore, 
-    initializeFirestore, 
-    persistentLocalCache, 
-    persistentMultipleTabManager 
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDwiSlMnznYKza8WTRX2CkRHvZZV_CE64A",
@@ -17,11 +12,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// تفعيل العمل دون اتصال بالطريقة الحديثة المتوافقة مع أحدث إصدار
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-    })
-});
+// تهيئة قاعدة البيانات بدون تخزين محلي لضمان الاتصال اللحظي وكشف الأخطاء
+const db = getFirestore(app);
 
 export { db };
