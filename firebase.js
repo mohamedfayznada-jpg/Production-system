@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { 
+    getFirestore, 
     initializeFirestore, 
     persistentLocalCache, 
     persistentMultipleTabManager 
@@ -16,7 +17,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// تفعيل العمل دون اتصال بالطريقة الحديثة المتوافقة مع الإصدار 12+
+// تفعيل العمل دون اتصال بالطريقة الحديثة المتوافقة مع أحدث إصدار
 const db = initializeFirestore(app, {
     localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
