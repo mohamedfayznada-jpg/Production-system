@@ -1,9 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-
-import {
-    getFirestore,
-    enableIndexedDbPersistence
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDwiSlMnznYKza8WTRX2CkRHvZZV_CE64A",
@@ -15,9 +11,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 
-enableIndexedDbPersistence(db).catch(() => {});
+// تفعيل العمل دون إنترنت
+enableIndexedDbPersistence(db).catch((err) => {
+    console.error("Firebase Offline Persistence Error:", err);
+});
 
 export { db };
