@@ -7,33 +7,41 @@ import {
     where,
     orderBy,
     onSnapshot,
-    serverTimestamp
+    serverTimestamp,
+    getDocs,
+    limit
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export const API = {
     production: {
-        // حفظ أو تحديث سجل ساعة معينة
-        async saveHour(record) {
+        // اختبار الاتصال الفعلي بقاعدة البيانات
+        async testConnection() {
             try {
-                // نستخدم setDoc مع merge لإنشاء السجل أو تحديثه إذا كان موجوداً
-                const docRef = doc(db, "production_records", record.recordId);
-                await setDoc(docRef, {
-                    recordId: record.recordId,
-                    date: record.date,
-                    shift: record.shift,
-                    hour: record.hour,
-                    actual: record.actual,
-                    shortfallReason: record.shortfallReason,
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
-                return true;
+                const q = query(collection(db, "production_records"), limit(1));
+                await getDocs(q);
+                return true; // متصل
             } catch (error) {
-                console.error("Error saving hour:", error);
-                throw error;
+                console.error("Firebase Connection Error:", error);
+                return false; // غير متصل أو لا توجد صلاحيات
             }
         },
 
-        // الاستماع المباشر (Real-time) لتغييرات الوردية الحالية
+        // حفظ البيانات مع إجبار السيرفر على الرد
+        async saveHour(record) {
+            const docRef = doc(db, "production_records", record.recordId);
+            // عملية الكتابة ستفشل فوراً وتظهر خطأ إذا لم يكن هناك اتصال حقيقي
+            await setDoc(docRef, {
+                recordId: record.recordId,
+                date: record.date,
+                shift: record.shift,
+                hour: record.hour,
+                actual: record.actual,
+                shortfallReason: record.shortfallReason,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        },
+
+        // الاستماع المباشر للتغييرات
         listenToShift(date, shift, callback) {
             const q = query(
                 collection(db, "production_records"),
@@ -42,12 +50,11 @@ export const API = {
                 orderBy("hour")
             );
 
-            // onSnapshot تقوم بتنفيذ الـ callback تلقائياً عند أي تغيير في الأجهزة الأخرى
             return onSnapshot(q, (snapshot) => {
                 const records = snapshot.docs.map(doc => doc.data());
                 callback(records);
             }, (error) => {
-                console.error("Real-time listener error:", error);
+                console.error("Real-time Listener Error:", error);
             });
         }
     }
