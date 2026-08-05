@@ -10,6 +10,7 @@ const firebaseConfig = {
     appId: "1:745936325795:web:09f5915cb116dbd3be0316"
 };
 
+
 const app = initializeApp(firebaseConfig);
 
 // تهيئة قاعدة البيانات بدون تخزين محلي لضمان الاتصال اللحظي وكشف الأخطاء
