@@ -20,11 +20,12 @@ const App = {
     },
 
     init() {
-        // Splash Screen
         setTimeout(() => { 
             const splash = document.getElementById('cinematic-splash'); 
-            splash.style.opacity = '0'; 
-            setTimeout(() => splash.remove(), 800); 
+            if(splash) {
+                splash.style.opacity = '0'; 
+                setTimeout(() => splash.remove(), 800); 
+            }
         }, 1500);
 
         let today = new Date();
@@ -36,7 +37,6 @@ const App = {
             if (saved) {
                 const parsedData = JSON.parse(saved);
                 this.data.lastUpdated = parsedData.lastUpdated || 0;
-                // Merge loaded data to keep settings
                 Object.assign(this.data, parsedData);
             }
         } catch (e) {
@@ -161,9 +161,42 @@ const App = {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
-    closeSettings() { this.navigate(this.currentScreen); },
+    closeSettings() { 
+        this.navigate(this.currentScreen); 
+    },
 
-    // ... (The rest of the JS functions: renderDefectTypesSettings, addDefectType, generateIntervals, renderProductionList, addScratchDefect, renderScratchesList, renderAnalytics, sendWhatsAppReport, syncToCloud remain exactly identical to the original logic provided[cite: 4] but neatly indented).
+    renderDefectTypesSettings() {
+        const container = document.getElementById('defect-types-list'); 
+        const selectMenu = document.getElementById('scratch-type');
+        if(!container || !selectMenu) return;
+        container.innerHTML = ''; selectMenu.innerHTML = '';
+        this.data.settings.defectTypes.forEach((type, index) => {
+            container.innerHTML += `<div class="defect-badge-setting"><span>${type}</span><i class="fa-solid fa-xmark" onclick="App.removeDefectType(${index})"></i></div>`;
+            selectMenu.innerHTML += `<option value="${type}">${type}</option>`;
+        });
+    },
+
+    addDefectType() {
+        const input = document.getElementById('new-defect-type'); 
+        const val = input.value.trim();
+        if(val !== '' && !this.data.settings.defectTypes.includes(val)) {
+            this.data.settings.defectTypes.push(val); 
+            input.value = ''; 
+            this.saveLocalInstant(); 
+            this.triggerCloudSyncDebounced(); 
+            this.renderDefectTypesSettings(); 
+            this.showToast("تم إضافة التصنيف");
+        }
+    },
+
+    removeDefectType(index) {
+        if(confirm("حذف هذا التصنيف من القائمة؟")) {
+            this.data.settings.defectTypes.splice(index, 1); 
+            this.saveLocalInstant(); 
+            this.triggerCloudSyncDebounced(); 
+            this.renderDefectTypesSettings();
+        }
+    },
 
     formatAMPM(timeStr) { 
         let [hours, minutes] = timeStr.split(':'); 
@@ -252,6 +285,56 @@ const App = {
         this.triggerCloudSyncDebounced(); 
     },
 
+    addScratchDefect() {
+        const type = document.getElementById('scratch-type').value;
+        const notes = document.getElementById('scratch-notes').value;
+        const fileInput = document.getElementById('scratch-image');
+        
+        if(!fileInput.files || !fileInput.files[0]) { 
+            this.data.scratches.push({ id: Date.now(), type: type, notes: notes, image: "", status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: document.getElementById('global-date').value });
+            this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList();
+            document.getElementById('scratch-notes').value = ''; this.showToast("تم الإضافة بدون صورة ✅");
+            return; 
+        }
+
+        if(CONFIG.GOOGLE_API_URL === 'ضع_الرابط_هنا' || CONFIG.GOOGLE_API_URL === '') { this.showToast("أدخل الرابط السحابي في كود التطبيق أولاً"); return; }
+
+        const loader = document.getElementById('upload-loader'); const loaderText = document.getElementById('loader-text');
+        loader.classList.add('show'); loaderText.innerText = "جاري التجهيز...";
+        
+        const file = fileInput.files[0]; const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = async () => {
+                const canvas = document.createElement('canvas'); const MAX_WIDTH = CONFIG.IMAGE_MAX_WIDTH; const MAX_HEIGHT = CONFIG.IMAGE_MAX_HEIGHT;
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                const compressedBase64 = canvas.toDataURL('image/webp', CONFIG.IMAGE_QUALITY);
+                loaderText.innerText = "جاري الرفع لـ Drive...";
+
+                const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: document.getElementById('global-date').value } };
+                
+                try {
+                    let response = await fetch(CONFIG.GOOGLE_API_URL, { 
+                        method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(uploadPayload) 
+                    });
+                    let resultText = await response.text();
+                    let result = JSON.parse(resultText);
+                    if (result.status === 'success') {
+                        this.data.scratches.push({ id: Date.now(), type: type, notes: notes, image: result.url, status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: document.getElementById('global-date').value });
+                        this.saveLocalInstant(); this.triggerCloudSyncDebounced(); this.renderScratchesList();
+                        document.getElementById('scratch-notes').value = ''; fileInput.value = ''; this.showToast("تم الرفع بنجاح ✅");
+                    } else { 
+                        this.showToast("فشل الرفع ❌"); 
+                    }
+                } catch (err) { this.showToast("خطأ شبكة ❌ تأكد من الاتصال"); } finally { loader.classList.remove('show'); }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
     renderScratchesList() {
         const container = document.getElementById('scratches-list'); container.innerHTML = '';
         const selectedDate = document.getElementById('global-date').value;
@@ -277,10 +360,12 @@ const App = {
             const isPending = defect.status === 'pending';
             const statusClass = isPending ? 'pending' : 'fixed';
             const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
+            const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
 
             container.innerHTML += `
                 <div class="modern-card defect-card" style="border-right-color: ${isPending ? 'var(--danger)' : 'var(--success)'};">
                     <div style="display: flex; gap: 15px;">
+                        ${imgHtml}
                         <div style="flex: 1;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                                 <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type}</h4>
@@ -297,6 +382,9 @@ const App = {
             `;
         });
     },
+
+    openImage(src) { document.getElementById('modal-image').src = src; document.getElementById('image-modal').classList.add('show'); },
+    closeImageModal(e) { if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) document.getElementById('image-modal').classList.remove('show'); },
 
     toggleScratchStatus(id) { 
         const index = this.data.scratches.findIndex(d => d.id === id); 
@@ -337,6 +425,21 @@ const App = {
             data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#2563eb', borderRadius: 4 }] }, 
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
         });
+
+        let defectCounts = {}; todayScratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
+        let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
+        const ctxDefects = document.getElementById('defectsChart').getContext('2d');
+        if(this.charts.defects) this.charts.defects.destroy();
+        this.charts.defects = new Chart(ctxDefects, { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#2563eb', '#8b5cf6', '#ef4444', '#10b981'] : ['#e5e7eb'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } });
+    },
+
+    getImageUrl(url) {
+        if (!url) return "";
+        if (url.includes("drive.google.com")) {
+            const match = url.match(/id=([^&]+)/);
+            if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        }
+        return url;
     },
 
     showToast(msg) {
@@ -360,6 +463,46 @@ const App = {
         });
         report += `\n*إجمالي الإنتاج: ${total}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
+    },
+
+    async syncToCloud(isSilent = false) {
+        if(CONFIG.GOOGLE_API_URL === 'ضع_الرابط_هنا' || CONFIG.GOOGLE_API_URL === '') return;
+        if (!isSilent) this.showToast("جاري المزامنة...");
+        const payload = { type: "FULL_BACKUP", payload: this.data };
+        try {
+            let response = await fetch(CONFIG.GOOGLE_API_URL, { 
+                method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) 
+            });
+            let textResult = await response.text();
+            try { let result = JSON.parse(textResult); if(result.status === 'success' && !isSilent) this.showToast("تم الحفظ السحابي ✅"); } catch(e) {}
+        } catch(err) { if (!isSilent) this.showToast("خطأ اتصال بالسحابة ❌"); }
+    },
+
+    fetchFromCloud(isSilent = false) {
+        if(CONFIG.GOOGLE_API_URL === 'ضع_الرابط_هنا' || CONFIG.GOOGLE_API_URL === '') return;
+        if (!isSilent) this.showToast("جاري الاسترداد...");
+        window.googleCloudCallback = (result) => {
+            const oldScript = document.getElementById("mes-sync-script");
+            if (oldScript) oldScript.remove();
+            if (result.status !== "success" || !result.data) return;
+            this.data = structuredClone(result.data);
+            let currentDate = document.getElementById("global-date").value;
+            let currentShift = document.getElementById("global-shift").value;
+            this.loadDayData(currentDate, currentShift);
+            this.renderDefectTypesSettings();
+            if (!isSilent) this.showToast("تم تحديث البيانات من السحابة ✅");
+        };
+        const script = document.createElement('script'); script.id = 'mes-sync-script';
+        script.src = `${CONFIG.GOOGLE_API_URL}?callback=googleCloudCallback&t=${Date.now()}`;
+        script.onerror = () => { if (!isSilent) this.showToast("انقطع الاتصال ❌"); script.remove(); };
+        document.body.appendChild(script);
+    },
+
+    hardReset() {
+        if(confirm("تحذير: سيتم مسح جميع البيانات نهائياً! هل أنت متأكد؟")) {
+            localStorage.removeItem(CONFIG.STORAGE_KEY);
+            location.reload();
+        }
     }
 };
 
