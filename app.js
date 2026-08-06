@@ -1,7 +1,6 @@
 import { API } from './api.js';
 
 const CONFIG = {
-    // رابط جوجل سكريبت لرفع الصور
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
     IMAGE_MAX_WIDTH: 800,
     IMAGE_MAX_HEIGHT: 800,
@@ -9,23 +8,20 @@ const CONFIG = {
 };
 
 const App = {
+    systemListenerUnsubscribe: null,
+    currentSettingsListener: null,
     currentProdListener: null,
     currentDefectListener: null,
-    currentSettingsListener: null,
+    
     isOnline: true,
     saveTimers: {},
     charts: {},
     currentScreen: 'home',
     
     data: {
-        settings: { 
-            start: '07:30', 
-            end: '16:00', 
-            bStart: '12:30', 
-            bEnd: '14:30', 
-            lineName: 'التجميع النهائي', 
-            defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] 
-        },
+        departments: [],
+        currentDepartment: '',
+        settings: { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: 'الخط الرئيسي', defectTypes: ['خدش خفيف'] },
         generatedHours: [],
         scratches: []
     },
@@ -45,31 +41,95 @@ const App = {
         document.getElementById('global-date').value = dateString;
         document.getElementById('global-shift').value = "1";
 
-        // الاستماع لإعدادات التطبيق من السحابة مباشرة لجميع الأجهزة
-        this.currentSettingsListener = API.settings.listenToSettings((cloudSettings) => {
-            if(cloudSettings) {
-                this.data.settings = cloudSettings;
-                this.applySettingsToFields();
-                this.renderDefectTypesSettings();
-                this.generateIntervals();
-                
-                // تحديث اسم الخط في الواجهة الرئيسية إن وجد
-                const titleText = document.querySelector('.title-text');
-                if(titleText) titleText.innerText = cloudSettings.lineName;
-            } else {
-                // إذا كانت قاعدة البيانات جديدة تماماً، قم بحفظ الإعدادات الافتراضية
-                API.settings.saveSettings(this.data.settings);
+        // الاستماع لقائمة الأقسام الكلية
+        this.systemListenerUnsubscribe = API.system.listenToDepartments((depts) => {
+            this.data.departments = depts;
+            this.renderDepartmentSelector();
+            this.renderSettingsDepartmentsList();
+            
+            if(!this.data.currentDepartment && depts.length > 0) {
+                this.data.currentDepartment = depts[0];
+                document.getElementById('global-department').value = this.data.currentDepartment;
+                this.listenToCurrentDepartmentSettings();
             }
+        });
+
+        document.getElementById('global-department').addEventListener('change', (e) => {
+            this.data.currentDepartment = e.target.value;
+            this.listenToCurrentDepartmentSettings(); // عند تغيير القسم، نجلب إعداداته وبياناته
         });
 
         document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
+    },
 
-        if(this.isOnline) {
-            this.loadDayData();
-        } else {
-            this.showToast("التطبيق يعمل بدون اتصال", true);
+    // ---------------- إدارة الأقسام ----------------
+
+    renderDepartmentSelector() {
+        const select = document.getElementById('global-department');
+        select.innerHTML = '';
+        this.data.departments.forEach(dept => {
+            select.innerHTML += `<option value="${dept}">${dept}</option>`;
+        });
+        if(this.data.currentDepartment) select.value = this.data.currentDepartment;
+    },
+
+    renderSettingsDepartmentsList() {
+        const container = document.getElementById('departments-list');
+        container.innerHTML = '';
+        this.data.departments.forEach((dept, index) => {
+            // نمنع حذف القسم إذا كان هو الوحيد المتبقي
+            const deleteBtn = this.data.departments.length > 1 ? `<i class="fa-solid fa-xmark text-red" onclick="App.removeDepartment(${index})"></i>` : '';
+            container.innerHTML += `<div class="defect-badge-setting"><span>${dept}</span>${deleteBtn}</div>`;
+        });
+    },
+
+    addDepartment() {
+        const input = document.getElementById('new-department-name');
+        const val = input.value.trim();
+        if(val !== '' && !this.data.departments.includes(val)) {
+            this.data.departments.push(val);
+            API.system.saveDepartments(this.data.departments);
+            input.value = '';
+            this.showToast("تم إضافة القسم الجديد");
         }
+    },
+
+    removeDepartment(index) {
+        if(confirm("حذف هذا القسم سيمنع الوصول لبياناته السابقة. هل أنت متأكد؟")) {
+            const removedDept = this.data.departments[index];
+            this.data.departments.splice(index, 1);
+            API.system.saveDepartments(this.data.departments);
+            
+            // إذا كان القسم المحذوف هو المحدد حالياً، انتقل للقسم الأول
+            if(this.data.currentDepartment === removedDept) {
+                this.data.currentDepartment = this.data.departments[0];
+                document.getElementById('global-department').value = this.data.currentDepartment;
+                this.listenToCurrentDepartmentSettings();
+            }
+        }
+    },
+
+    // ---------------- إدارة الإعدادات للقسم المحدد ----------------
+
+    listenToCurrentDepartmentSettings() {
+        if(this.currentSettingsListener) this.currentSettingsListener();
+        
+        this.currentSettingsListener = API.settings.listenToSettings(this.data.currentDepartment, (cloudSettings) => {
+            if(cloudSettings) {
+                this.data.settings = cloudSettings;
+            } else {
+                // إعدادات افتراضية للقسم الجديد
+                this.data.settings = { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
+                API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
+            }
+            this.applySettingsToFields();
+            this.renderDefectTypesSettings();
+            this.generateIntervals();
+            
+            // بمجرد جلب الإعدادات، نقوم بجلب سجلات الإنتاج والعيوب لهذا القسم
+            this.loadDayData();
+        });
     },
 
     updateConnectionStatus(isOnline) {
@@ -100,15 +160,23 @@ const App = {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
         document.getElementById('screen-settings').classList.add('active');
+        
+        // عرض لوحة الإعدادات المناسبة
         let targetPanel = document.getElementById(`settings-panel-${this.currentScreen}`);
         if(!targetPanel) targetPanel = document.getElementById('settings-panel-home');
-        targetPanel.style.display = 'block';
+        
+        // قسم الرئيسية يعرض إدارة الأقسام
+        if(this.currentScreen === 'home') {
+            document.getElementById('settings-panel-departments').style.display = 'block';
+            document.getElementById('settings-panel-home').style.display = 'block';
+        } else {
+            targetPanel.style.display = 'block';
+        }
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     closeSettings() { this.navigate(this.currentScreen); },
-
-    // ---------------- Settings & Time Generators ----------------
 
     applySettingsToFields() {
         document.getElementById('set-shift-start').value = this.data.settings.start;
@@ -125,9 +193,8 @@ const App = {
         this.data.settings.bEnd = document.getElementById('set-break-end').value;
         this.data.settings.lineName = document.getElementById('set-line-name').value;
         
-        // حفظ الإعدادات في السحابة بدلاً من المتصفح المحلي
-        API.settings.saveSettings(this.data.settings);
-        this.showToast("تم حفظ الإعدادات ومزامنتها لجميع الأجهزة ✅");
+        API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
+        this.showToast("تم حفظ الإعدادات للقسم الحالي ✅");
     },
 
     formatAMPM(timeStr) { 
@@ -189,15 +256,15 @@ const App = {
         if(val !== '' && !this.data.settings.defectTypes.includes(val)) {
             this.data.settings.defectTypes.push(val); 
             input.value = ''; 
-            API.settings.saveSettings(this.data.settings);
-            this.showToast("تم إضافة التصنيف ومزامنته للجميع");
+            API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
+            this.showToast("تم إضافة التصنيف");
         }
     },
 
     removeDefectType(index) {
-        if(confirm("حذف هذا التصنيف من القائمة لجميع الأجهزة؟")) {
+        if(confirm("حذف هذا التصنيف من القسم الحالي؟")) {
             this.data.settings.defectTypes.splice(index, 1); 
-            API.settings.saveSettings(this.data.settings);
+            API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
         }
     },
 
@@ -227,7 +294,7 @@ const App = {
     },
 
     loadDayData() {
-        if (!this.isOnline) return;
+        if (!this.isOnline || !this.data.currentDepartment) return;
         const date = document.getElementById('global-date').value;
         const shift = document.getElementById('global-shift').value;
 
@@ -236,8 +303,8 @@ const App = {
 
         this.clearInputs();
 
-        // استماع للإنتاج
-        this.currentProdListener = API.production.listenToShift(date, shift, (records) => {
+        // استماع للإنتاج للقسم المحدد
+        this.currentProdListener = API.production.listenToShift(this.data.currentDepartment, date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
                 if (row) {
@@ -250,8 +317,8 @@ const App = {
             this.calculateLocalTotal();
         });
 
-        // استماع للعيوب
-        this.currentDefectListener = API.quality.listenToDefects(date, (records) => {
+        // استماع للعيوب للقسم المحدد
+        this.currentDefectListener = API.quality.listenToDefects(this.data.currentDepartment, date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
             if(this.currentScreen === 'analytics') this.renderAnalytics();
@@ -285,7 +352,7 @@ const App = {
             if(!row) return;
 
             const payload = {
-                recordId: `${date}_${shift}_${safeId}`,
+                recordId: `${this.data.currentDepartment}_${date}_${shift}_${safeId}`,
                 date: date, shift: shift, hour: hourStr,
                 actual: row.querySelector('.actual-input').value,
                 shortfallReason: row.querySelector('.reason-input').value
@@ -293,7 +360,7 @@ const App = {
 
             try {
                 row.classList.add('saving');
-                await API.production.saveHour(payload);
+                await API.production.saveHour(this.data.currentDepartment, payload);
                 row.classList.remove('saving');
                 this.updateConnectionStatus(true);
             } catch (e) { 
@@ -319,7 +386,7 @@ const App = {
 
         if(!fileInput.files || !fileInput.files[0]) { 
             defectBase.image = "";
-            API.quality.saveDefect(defectBase);
+            API.quality.saveDefect(this.data.currentDepartment, defectBase);
             document.getElementById('scratch-notes').value = ''; 
             this.showToast("تم التسجيل والمزامنة بدون صورة ✅");
             return; 
@@ -350,7 +417,7 @@ const App = {
                     let result = JSON.parse(await response.text());
                     if (result.status === 'success') {
                         defectBase.image = result.url;
-                        await API.quality.saveDefect(defectBase);
+                        await API.quality.saveDefect(this.data.currentDepartment, defectBase);
                         document.getElementById('scratch-notes').value = ''; fileInput.value = ''; 
                         App.showToast("تم الرفع والتسجيل بنجاح ✅");
                     } else { App.showToast("فشل الرفع السحابي للصورة ❌", true); }
@@ -391,10 +458,10 @@ const App = {
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <h4 style="color:var(--text-primary); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
                             <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
@@ -407,7 +474,7 @@ const App = {
 
     toggleScratchStatus(id, currentStatus) { 
         const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending';
-        API.quality.saveDefect({ id: id, status: newStatus });
+        API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus });
     },
     
     deleteScratch(id) { 
@@ -445,24 +512,13 @@ const App = {
         document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
 
         Chart.defaults.font.family = 'Cairo';
-        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.color = '#a39e9c';
 
         if(this.charts.prod) this.charts.prod.destroy(); 
         this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
-            type: 'line', 
-            data: { 
-                labels: hourlyLabels, 
-                datasets: [{ 
-                    label: 'الإنتاج', 
-                    data: hourlyData, 
-                    backgroundColor: 'rgba(10, 179, 156, 0.2)', 
-                    borderColor: '#0ab39c', 
-                    borderWidth: 3, 
-                    tension: 0.4,
-                    fill: true
-                }] 
-            }, 
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
+            type: 'bar', 
+            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#c48c7e', borderRadius: 4 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
         });
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
@@ -471,7 +527,7 @@ const App = {
         if(this.charts.defects) this.charts.defects.destroy();
         this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
             type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#c4a47e', '#c48c7e', '#8c7eb5', '#b56c6c', '#7b9e89'] : ['#43454e'], borderWidth: 0 }] }, 
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
         });
     },
@@ -480,7 +536,7 @@ const App = {
         let dParts = document.getElementById('global-date').value.split('-'); 
         let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
         let total = 0; 
-        let report = `*تقرير الإنتاج*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
+        let report = `*تقرير ${this.data.currentDepartment}*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
         
         document.querySelectorAll('.hour-row').forEach(row => {
             if(row.classList.contains('break-row')) {
@@ -508,9 +564,7 @@ const App = {
     },
 
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الإعدادات للبدء من جديد! هل أنت متأكد؟")) {
-            // سنقوم بمسح المتصفح المحلي فقط ولا نمسح الداتا من السحابة لتبقى آمنة
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
+        if(confirm("تحذير: سيتم مسح الكاش. لن تحذف البيانات السحابية. متأكد؟")) {
             location.reload();
         }
     }
