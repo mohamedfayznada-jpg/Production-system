@@ -11,6 +11,7 @@ export const API = {
                 if (docSnap.exists() && docSnap.data().departments) callback(docSnap.data().departments);
                 else callback(['التجميع النهائي']);
             });
+            
         },
         async saveDepartments(departments) {
             const docRef = doc(db, "app_settings", "global_system");
