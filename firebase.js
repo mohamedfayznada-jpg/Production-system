@@ -1,7 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { 
+    initializeFirestore, 
+    persistentLocalCache, 
+    persistentMultipleTabManager 
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// مفاتيح الربط الصحيحة لمشروع production-b0b2c
 const firebaseConfig = {
     apiKey: "AIzaSyC4GyboQgeYdNxwDyxkEowpXTsAT-CMFyg",
     authDomain: "production-b0b2c.firebaseapp.com",
@@ -13,10 +16,13 @@ const firebaseConfig = {
     measurementId: "G-5KP3JMH9EZ"
 };
 
-// تهيئة التطبيق
 const app = initializeApp(firebaseConfig);
 
-// تهيئة قاعدة البيانات للاتصال المباشر
-const db = getFirestore(app);
+// إعادة تفعيل الكاش لضمان سرعة التحديثات الفورية (Optimistic UI)
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
+});
 
 export { db };
