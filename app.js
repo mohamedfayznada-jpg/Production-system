@@ -41,7 +41,6 @@ const App = {
         document.getElementById('global-date').value = dateString;
         document.getElementById('global-shift').value = "1";
 
-        // الاستماع لقائمة الأقسام الكلية
         this.systemListenerUnsubscribe = API.system.listenToDepartments((depts) => {
             this.data.departments = depts;
             this.renderDepartmentSelector();
@@ -56,11 +55,20 @@ const App = {
 
         document.getElementById('global-department').addEventListener('change', (e) => {
             this.data.currentDepartment = e.target.value;
-            this.listenToCurrentDepartmentSettings(); // عند تغيير القسم، نجلب إعداداته وبياناته
+            this.listenToCurrentDepartmentSettings(); 
         });
 
         document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
+    },
+
+    // ---------------- الإشعارات (Toast) ----------------
+    showToast(msg, isError = false) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.innerText = msg;
+        toast.className = isError ? 'show error' : 'show';
+        setTimeout(() => { toast.className = ''; }, 3000);
     },
 
     // ---------------- إدارة الأقسام ----------------
@@ -78,7 +86,6 @@ const App = {
         const container = document.getElementById('departments-list');
         container.innerHTML = '';
         this.data.departments.forEach((dept, index) => {
-            // نمنع حذف القسم إذا كان هو الوحيد المتبقي
             const deleteBtn = this.data.departments.length > 1 ? `<i class="fa-solid fa-xmark text-red" onclick="App.removeDepartment(${index})"></i>` : '';
             container.innerHTML += `<div class="defect-badge-setting"><span>${dept}</span>${deleteBtn}</div>`;
         });
@@ -101,7 +108,6 @@ const App = {
             this.data.departments.splice(index, 1);
             API.system.saveDepartments(this.data.departments);
             
-            // إذا كان القسم المحذوف هو المحدد حالياً، انتقل للقسم الأول
             if(this.data.currentDepartment === removedDept) {
                 this.data.currentDepartment = this.data.departments[0];
                 document.getElementById('global-department').value = this.data.currentDepartment;
@@ -110,7 +116,7 @@ const App = {
         }
     },
 
-    // ---------------- إدارة الإعدادات للقسم المحدد ----------------
+    // ---------------- إدارة الإعدادات ----------------
 
     listenToCurrentDepartmentSettings() {
         if(this.currentSettingsListener) this.currentSettingsListener();
@@ -119,15 +125,12 @@ const App = {
             if(cloudSettings) {
                 this.data.settings = cloudSettings;
             } else {
-                // إعدادات افتراضية للقسم الجديد
                 this.data.settings = { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
                 API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
             }
             this.applySettingsToFields();
             this.renderDefectTypesSettings();
             this.generateIntervals();
-            
-            // بمجرد جلب الإعدادات، نقوم بجلب سجلات الإنتاج والعيوب لهذا القسم
             this.loadDayData();
         });
     },
@@ -161,12 +164,10 @@ const App = {
         document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
         document.getElementById('screen-settings').classList.add('active');
         
-        // عرض لوحة الإعدادات المناسبة
         let targetPanel = document.getElementById(`settings-panel-${this.currentScreen}`);
         if(!targetPanel) targetPanel = document.getElementById('settings-panel-home');
         
-        // قسم الرئيسية يعرض إدارة الأقسام
-        if(this.currentScreen === 'home') {
+        if(this.currentScreen === 'home' || this.currentScreen === 'quality') {
             document.getElementById('settings-panel-departments').style.display = 'block';
             document.getElementById('settings-panel-home').style.display = 'block';
         } else {
@@ -303,7 +304,6 @@ const App = {
 
         this.clearInputs();
 
-        // استماع للإنتاج للقسم المحدد
         this.currentProdListener = API.production.listenToShift(this.data.currentDepartment, date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
@@ -317,7 +317,6 @@ const App = {
             this.calculateLocalTotal();
         });
 
-        // استماع للعيوب للقسم المحدد
         this.currentDefectListener = API.quality.listenToDefects(this.data.currentDepartment, date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
@@ -536,7 +535,7 @@ const App = {
         let dParts = document.getElementById('global-date').value.split('-'); 
         let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
         let total = 0; 
-        let report = `*تقرير ${this.data.currentDepartment}*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
+        let report = `*تقرير الإنتاج (${this.data.currentDepartment})*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
         
         document.querySelectorAll('.hour-row').forEach(row => {
             if(row.classList.contains('break-row')) {
@@ -555,16 +554,9 @@ const App = {
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     },
 
-    showToast(msg, isError = false) {
-        const toast = document.getElementById('toast');
-        if (!toast) return;
-        toast.innerText = msg;
-        toast.className = isError ? 'show error' : 'show';
-        setTimeout(() => { toast.className = ''; }, 3000);
-    },
-
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الكاش. لن تحذف البيانات السحابية. متأكد؟")) {
+        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
+            localStorage.removeItem(CONFIG.STORAGE_KEY);
             location.reload();
         }
     }
