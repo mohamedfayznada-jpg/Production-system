@@ -126,7 +126,7 @@ const App = {
     formatAMPM(timeStr) { 
         let [hours, minutes] = timeStr.split(':'); 
         hours = parseInt(hours); 
-        let ampm = hours >= 12 ? 'PM' : 'AM'; 
+        let ampm = hours >= 12 ? 'م' : 'ص'; 
         hours = hours % 12; hours = hours ? hours : 12; 
         let hoursStr = hours < 10 ? '0' + hours : hours; 
         return `${hoursStr}:${minutes} ${ampm}`; 
@@ -158,7 +158,7 @@ const App = {
             if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
             if (this.timeToMins(nextHour) > endMins) nextHour = end;
             
-            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
+            intervals.push({ isBreak: false, label: this.formatAMPM(current), rawTime: current });
             current = nextHour;
         }
         this.data.generatedHours = intervals;
@@ -171,7 +171,7 @@ const App = {
         if(!container || !selectMenu) return;
         container.innerHTML = ''; selectMenu.innerHTML = '';
         this.data.settings.defectTypes.forEach((type, index) => {
-            container.innerHTML += `<div class="defect-badge-setting"><span>${type}</span><i class="fa-solid fa-xmark" onclick="App.removeDefectType(${index})"></i></div>`;
+            container.innerHTML += `<div class="defect-badge-setting"><span>${type}</span><i class="fa-solid fa-xmark text-red" onclick="App.removeDefectType(${index})"></i></div>`;
             selectMenu.innerHTML += `<option value="${type}">${type}</option>`;
         });
     },
@@ -229,7 +229,6 @@ const App = {
 
         this.clearInputs();
 
-        // استماع للإنتاج
         this.currentProdListener = API.production.listenToShift(date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
@@ -243,7 +242,6 @@ const App = {
             this.calculateLocalTotal();
         });
 
-        // استماع للعيوب
         this.currentDefectListener = API.quality.listenToDefects(date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
@@ -382,13 +380,13 @@ const App = {
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type}</h4>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">${defect.time}</span>
+                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
-                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
+                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
                         </div>
                     </div>
                 </div>
@@ -434,13 +432,24 @@ const App = {
         document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
 
         Chart.defaults.font.family = 'Cairo';
-        Chart.defaults.color = '#a39e9c'; // لون يتناسب مع الثيم الجديد
+        Chart.defaults.color = '#94a3b8';
 
         if(this.charts.prod) this.charts.prod.destroy(); 
         this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
-            type: 'bar', 
-            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#c48c7e', borderRadius: 4 }] }, 
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+            type: 'line', 
+            data: { 
+                labels: hourlyLabels, 
+                datasets: [{ 
+                    label: 'الإنتاج', 
+                    data: hourlyData, 
+                    backgroundColor: 'rgba(10, 179, 156, 0.2)', 
+                    borderColor: '#0ab39c', 
+                    borderWidth: 3, 
+                    tension: 0.4,
+                    fill: true
+                }] 
+            }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
         });
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
@@ -449,7 +458,7 @@ const App = {
         if(this.charts.defects) this.charts.defects.destroy();
         this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
             type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#c4a47e', '#c48c7e', '#8c7eb5', '#b56c6c', '#7b9e89'] : ['#43454e'], borderWidth: 0 }] }, 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
         });
     },
@@ -475,6 +484,14 @@ const App = {
 
         report += `\n*إجمالي الإنتاج: ${total}*\n*إجمالي العيوب: ${this.data.scratches.length}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
+    },
+
+    showToast(msg, isError = false) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.innerText = msg;
+        toast.className = isError ? 'show error' : 'show';
+        setTimeout(() => { toast.className = ''; }, 3000);
     },
 
     hardReset() {
