@@ -45,8 +45,11 @@ const App = {
         const today = new Date();
         const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
         
-        document.getElementById('global-date').value = dateString;
-        document.getElementById('global-shift').value = "1";
+        const globalDate = document.getElementById('global-date');
+        const globalShift = document.getElementById('global-shift');
+        
+        if (globalDate) globalDate.value = dateString;
+        if (globalShift) globalShift.value = "1";
 
         this.systemListenerUnsubscribe = API.system.listenToDepartments((depts) => {
             this.data.departments = depts;
@@ -55,18 +58,22 @@ const App = {
             
             if(!this.data.currentDepartment && depts.length > 0) {
                 this.data.currentDepartment = depts[0];
-                document.getElementById('global-department').value = this.data.currentDepartment;
+                const deptSelect = document.getElementById('global-department');
+                if (deptSelect) deptSelect.value = this.data.currentDepartment;
                 this.listenToCurrentDepartmentSettings();
             }
         });
 
-        document.getElementById('global-department').addEventListener('change', (e) => {
-            this.data.currentDepartment = e.target.value;
-            this.listenToCurrentDepartmentSettings(); 
-        });
+        const deptSelect = document.getElementById('global-department');
+        if (deptSelect) {
+            deptSelect.addEventListener('change', (e) => {
+                this.data.currentDepartment = e.target.value;
+                this.listenToCurrentDepartmentSettings(); 
+            });
+        }
 
-        document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
-        document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
+        if (globalDate) globalDate.addEventListener('change', () => this.loadDayData());
+        if (globalShift) globalShift.addEventListener('change', () => this.loadDayData());
     },
 
     showToast(msg, isError = false) {
@@ -80,6 +87,7 @@ const App = {
     // ---------------- الإدارة والأقسام ----------------
     renderDepartmentSelector() {
         const select = document.getElementById('global-department');
+        if (!select) return;
         select.innerHTML = '';
         this.data.departments.forEach(dept => { select.innerHTML += `<option value="${dept}">${dept}</option>`; });
         if(this.data.currentDepartment) select.value = this.data.currentDepartment;
@@ -87,6 +95,7 @@ const App = {
 
     renderSettingsDepartmentsList() {
         const container = document.getElementById('departments-list');
+        if (!container) return;
         container.innerHTML = '';
         this.data.departments.forEach((dept, index) => {
             const deleteBtn = this.data.departments.length > 1 ? `<i class="fa-solid fa-xmark text-red" onclick="App.removeDepartment(${index})"></i>` : '';
@@ -96,6 +105,7 @@ const App = {
 
     addDepartment() {
         const input = document.getElementById('new-department-name');
+        if (!input) return;
         const val = input.value.trim();
         if(val !== '' && !this.data.departments.includes(val)) {
             this.data.departments.push(val);
@@ -112,7 +122,8 @@ const App = {
             API.system.saveDepartments(this.data.departments);
             if(this.data.currentDepartment === removedDept) {
                 this.data.currentDepartment = this.data.departments[0];
-                document.getElementById('global-department').value = this.data.currentDepartment;
+                const deptSelect = document.getElementById('global-department');
+                if (deptSelect) deptSelect.value = this.data.currentDepartment;
                 this.listenToCurrentDepartmentSettings();
             }
         }
@@ -136,6 +147,7 @@ const App = {
 
     updateConnectionStatus(isOnline) {
         const dot = document.getElementById('connection-status');
+        if(!dot) return;
         if(isOnline) { dot.className = 'status-dot online'; dot.title = 'متصل بالسحابة'; } 
         else { dot.className = 'status-dot offline'; dot.title = 'غير متصل'; }
     },
@@ -158,7 +170,8 @@ const App = {
 
     switchToDepartmentAndGo(deptName, screenId) {
         this.data.currentDepartment = deptName;
-        document.getElementById('global-department').value = deptName;
+        const deptSelect = document.getElementById('global-department');
+        if (deptSelect) deptSelect.value = deptName;
         this.listenToCurrentDepartmentSettings();
         this.navigate(screenId);
     },
@@ -166,12 +179,17 @@ const App = {
     openSettings() {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
-        document.getElementById('screen-settings').classList.add('active');
+        const settingsScreen = document.getElementById('screen-settings');
+        if (settingsScreen) settingsScreen.classList.add('active');
+        
         let targetPanel = document.getElementById(`settings-panel-${this.currentScreen}`);
         if(!targetPanel) targetPanel = document.getElementById('settings-panel-home');
+        
         if(this.currentScreen === 'home' || this.currentScreen === 'quality' || this.currentScreen === 'analytics' || this.currentScreen === 'balances') {
-            document.getElementById('settings-panel-departments').style.display = 'block';
-            document.getElementById('settings-panel-home').style.display = 'block';
+            const deptsPanel = document.getElementById('settings-panel-departments');
+            const homePanel = document.getElementById('settings-panel-home');
+            if(deptsPanel) deptsPanel.style.display = 'block';
+            if(homePanel) homePanel.style.display = 'block';
         } else {
             targetPanel.style.display = 'block';
         }
@@ -182,11 +200,17 @@ const App = {
 
     // ---------------- إعدادات وتوليد الساعات ----------------
     applySettingsToFields() {
-        document.getElementById('set-shift-start').value = this.data.settings.start;
-        document.getElementById('set-shift-end').value = this.data.settings.end;
-        document.getElementById('set-break-start').value = this.data.settings.bStart;
-        document.getElementById('set-break-end').value = this.data.settings.bEnd;
-        document.getElementById('set-line-name').value = this.data.settings.lineName;
+        const setStart = document.getElementById('set-shift-start');
+        const setEnd = document.getElementById('set-shift-end');
+        const setBStart = document.getElementById('set-break-start');
+        const setBEnd = document.getElementById('set-break-end');
+        const setLineName = document.getElementById('set-line-name');
+
+        if(setStart) setStart.value = this.data.settings.start;
+        if(setEnd) setEnd.value = this.data.settings.end;
+        if(setBStart) setBStart.value = this.data.settings.bStart;
+        if(setBEnd) setBEnd.value = this.data.settings.bEnd;
+        if(setLineName) setLineName.value = this.data.settings.lineName;
     },
 
     applySettings() {
@@ -238,6 +262,7 @@ const App = {
     // ---------------- الإنتاج والتارجت ----------------
     buildProductionUI() {
         const container = document.getElementById('production-list');
+        if (!container) return;
         container.innerHTML = '';
         this.data.generatedHours.forEach(timeSlot => {
             if (timeSlot.isBreak) {
@@ -275,7 +300,7 @@ const App = {
         // Target Listener
         API.production.listenToTarget(this.data.currentDepartment, date, shift, (targetVal) => {
             const tInput = document.getElementById('prod-target');
-            if(document.activeElement !== tInput) tInput.value = targetVal || '';
+            if(tInput && document.activeElement !== tInput) tInput.value = targetVal || '';
         });
 
         // Current Dept Production
@@ -285,8 +310,8 @@ const App = {
                 if (row) {
                     const actualInput = row.querySelector('.actual-input');
                     const reasonInput = row.querySelector('.reason-input');
-                    if (document.activeElement !== actualInput) actualInput.value = record.actual || '';
-                    if (document.activeElement !== reasonInput) reasonInput.value = record.shortfallReason || '';
+                    if (actualInput && document.activeElement !== actualInput) actualInput.value = record.actual || '';
+                    if (reasonInput && document.activeElement !== reasonInput) reasonInput.value = record.shortfallReason || '';
                 }
             });
             this.calculateLocalTotal();
@@ -324,13 +349,15 @@ const App = {
     clearInputs() {
         document.querySelectorAll('.actual-input').forEach(input => input.value = '');
         document.querySelectorAll('.reason-input').forEach(input => input.value = '');
-        document.getElementById('live-total').innerText = '0';
+        const liveTotal = document.getElementById('live-total');
+        if (liveTotal) liveTotal.innerText = '0';
     },
 
     calculateLocalTotal() {
         let total = 0;
         document.querySelectorAll('.actual-input').forEach(input => { total += Number(input.value) || 0; });
-        document.getElementById('live-total').innerText = total;
+        const liveTotal = document.getElementById('live-total');
+        if(liveTotal) liveTotal.innerText = total;
     },
 
     saveTarget() {
@@ -385,23 +412,31 @@ const App = {
 
         this.data.departments.forEach(d => { deptProd[d] = 0; deptScratches[d] = 0; });
 
-        this.data.master.production.forEach(r => {
-            const val = Number(r.actual) || 0;
-            factoryTotalActual += val;
-            if(deptProd[r.department] !== undefined) deptProd[r.department] += val;
-        });
+        if(this.data.master.production) {
+            this.data.master.production.forEach(r => {
+                const val = Number(r.actual) || 0;
+                factoryTotalActual += val;
+                if(deptProd[r.department] !== undefined) deptProd[r.department] += val;
+            });
+        }
 
-        this.data.master.targets.forEach(r => {
-            factoryTotalTarget += (Number(r.target) || 0);
-        });
+        if(this.data.master.targets) {
+            this.data.master.targets.forEach(r => {
+                factoryTotalTarget += (Number(r.target) || 0);
+            });
+        }
 
-        this.data.master.scratches.forEach(r => {
-            if(deptScratches[r.department] !== undefined) deptScratches[r.department] += 1;
-        });
+        if(this.data.master.scratches) {
+            this.data.master.scratches.forEach(r => {
+                if(deptScratches[r.department] !== undefined) deptScratches[r.department] += 1;
+            });
+        }
 
-        document.getElementById('home-total-prod').innerText = deptProd[this.data.currentDepartment] || 0;
-        document.getElementById('master-total-prod').innerText = factoryTotalActual;
-        document.getElementById('master-total-target').innerText = factoryTotalTarget;
+        const masterTotalProdEl = document.getElementById('master-total-prod');
+        if (masterTotalProdEl) masterTotalProdEl.innerText = factoryTotalActual;
+
+        const masterTotalTargetEl = document.getElementById('master-total-target');
+        if (masterTotalTargetEl) masterTotalTargetEl.innerText = factoryTotalTarget;
 
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
@@ -410,65 +445,75 @@ const App = {
         const prodData = depts.map(d => deptProd[d]);
         const scratchData = depts.map(d => deptScratches[d]);
 
-        // Chart 1: Master Production
-        if(this.charts.masterProd) this.charts.masterProd.destroy(); 
-        this.charts.masterProd = new Chart(document.getElementById('masterProdChart').getContext('2d'), { 
-            type: 'bar', 
-            data: { labels: depts, datasets: [{ label: 'الإنتاج', data: prodData, backgroundColor: '#0ab39c', borderRadius: 4 }] }, 
-            options: { 
-                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                onClick: (e, elements) => {
-                    if(elements.length > 0) {
-                        const deptIndex = elements[0].index;
-                        this.switchToDepartmentAndGo(depts[deptIndex], 'analytics');
+        const prodChartCanvas = document.getElementById('masterProdChart');
+        if (prodChartCanvas) {
+            if(this.charts.masterProd) this.charts.masterProd.destroy(); 
+            this.charts.masterProd = new Chart(prodChartCanvas.getContext('2d'), { 
+                type: 'bar', 
+                data: { labels: depts, datasets: [{ label: 'الإنتاج', data: prodData, backgroundColor: '#0ab39c', borderRadius: 4 }] }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    onClick: (e, elements) => {
+                        if(elements.length > 0) {
+                            const deptIndex = elements[0].index;
+                            this.switchToDepartmentAndGo(depts[deptIndex], 'analytics');
+                        }
                     }
-                }
-            } 
-        });
+                } 
+            });
+        }
 
-        // Chart 2: Master Defects
-        if(this.charts.masterDefects) this.charts.masterDefects.destroy(); 
-        this.charts.masterDefects = new Chart(document.getElementById('masterDefectsChart').getContext('2d'), { 
-            type: 'bar', 
-            data: { labels: depts, datasets: [{ label: 'عيوب الرش', data: scratchData, backgroundColor: '#f59e0b', borderRadius: 4 }] }, 
-            options: { 
-                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                onClick: (e, elements) => {
-                    if(elements.length > 0) {
-                        const deptIndex = elements[0].index;
-                        this.switchToDepartmentAndGo(depts[deptIndex], 'scratches');
+        const defectsChartCanvas = document.getElementById('masterDefectsChart');
+        if (defectsChartCanvas) {
+            if(this.charts.masterDefects) this.charts.masterDefects.destroy(); 
+            this.charts.masterDefects = new Chart(defectsChartCanvas.getContext('2d'), { 
+                type: 'bar', 
+                data: { labels: depts, datasets: [{ label: 'عيوب الرش', data: scratchData, backgroundColor: '#f59e0b', borderRadius: 4 }] }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    onClick: (e, elements) => {
+                        if(elements.length > 0) {
+                            const deptIndex = elements[0].index;
+                            this.switchToDepartmentAndGo(depts[deptIndex], 'scratches');
+                        }
                     }
-                }
-            } 
-        });
+                } 
+            });
+        }
     },
 
     // ---------------- Balances ----------------
     switchBalanceTab(tabId) {
         this.currentBalanceTab = tabId;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.tab-btn[onclick="App.switchBalanceTab('${tabId}')"]`).classList.add('active');
+        const activeBtn = document.querySelector(`.tab-btn[onclick="App.switchBalanceTab('${tabId}')"]`);
+        if(activeBtn) activeBtn.classList.add('active');
         this.populateBalanceInputs();
     },
     populateBalanceInputs() {
         const currentData = this.data.balances[this.currentBalanceTab];
-        document.getElementById('balance-initial').value = currentData.initial || '';
-        document.getElementById('balance-added').value = currentData.added || '';
-        document.getElementById('balance-consumed').value = currentData.consumed || '';
+        const initialEl = document.getElementById('balance-initial');
+        const addedEl = document.getElementById('balance-added');
+        const consumedEl = document.getElementById('balance-consumed');
+
+        if(initialEl) initialEl.value = currentData.initial || '';
+        if(addedEl) addedEl.value = currentData.added || '';
+        if(consumedEl) consumedEl.value = currentData.consumed || '';
         this.calculateCurrentBalance();
     },
     calculateCurrentBalance() {
-        const initial = Number(document.getElementById('balance-initial').value) || 0;
-        const added = Number(document.getElementById('balance-added').value) || 0;
-        const consumed = Number(document.getElementById('balance-consumed').value) || 0;
-        document.getElementById('balance-current').innerText = (initial + added) - consumed;
+        const initial = Number(document.getElementById('balance-initial')?.value) || 0;
+        const added = Number(document.getElementById('balance-added')?.value) || 0;
+        const consumed = Number(document.getElementById('balance-consumed')?.value) || 0;
+        const currentEl = document.getElementById('balance-current');
+        if(currentEl) currentEl.innerText = (initial + added) - consumed;
     },
     async saveCurrentBalance() {
         if(!this.isOnline) { this.showToast("تأكد من الاتصال", true); return; }
         const payload = { 
-            initial: document.getElementById('balance-initial').value, 
-            added: document.getElementById('balance-added').value, 
-            consumed: document.getElementById('balance-consumed').value 
+            initial: document.getElementById('balance-initial')?.value || '', 
+            added: document.getElementById('balance-added')?.value || '', 
+            consumed: document.getElementById('balance-consumed')?.value || '' 
         };
         try {
             await API.balances.saveBalance(this.data.currentDepartment, this.currentBalanceTab, payload);
@@ -488,9 +533,12 @@ const App = {
         });
     },
     addDefectType() {
-        const input = document.getElementById('new-defect-type'); const val = input.value.trim();
+        const input = document.getElementById('new-defect-type'); 
+        if(!input) return;
+        const val = input.value.trim();
         if(val !== '' && !this.data.settings.defectTypes.includes(val)) {
-            this.data.settings.defectTypes.push(val); input.value = ''; 
+            this.data.settings.defectTypes.push(val); 
+            input.value = ''; 
             API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
             this.showToast("تم إضافة التصنيف");
         }
@@ -503,29 +551,36 @@ const App = {
     },
 
     addScratchDefect() {
-        const type = document.getElementById('scratch-type').value;
-        const notes = document.getElementById('scratch-notes').value;
+        const typeEl = document.getElementById('scratch-type');
+        const notesEl = document.getElementById('scratch-notes');
         const fileInput = document.getElementById('scratch-image');
-        const date = document.getElementById('global-date').value;
+        const dateEl = document.getElementById('global-date');
         
+        if (!typeEl || !dateEl) return;
+
+        const date = dateEl.value;
         const defectBase = {
-            id: Date.now(), type: type, notes: notes, 
+            id: Date.now(), type: typeEl.value, notes: notesEl ? notesEl.value : '', 
             status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), 
             date: date
         };
 
-        if(!fileInput.files || !fileInput.files[0]) { 
+        if(!fileInput || !fileInput.files || !fileInput.files[0]) { 
             defectBase.image = "";
             API.quality.saveDefect(this.data.currentDepartment, defectBase);
-            document.getElementById('scratch-notes').value = ''; 
+            if(notesEl) notesEl.value = ''; 
             this.showToast("تم التسجيل والمزامنة بدون صورة ✅");
             return; 
         }
 
         if(CONFIG.GOOGLE_API_URL === '') { this.showToast("رابط الرفع غير موجود", true); return; }
 
-        const loader = document.getElementById('upload-loader'); loader.classList.add('show'); 
-        const file = fileInput.files[0]; const reader = new FileReader();
+        const loader = document.getElementById('upload-loader'); 
+        if(loader) loader.classList.add('show'); 
+        
+        const file = fileInput.files[0]; 
+        const reader = new FileReader();
+        
         reader.onload = (e) => {
             const img = new Image();
             img.onload = async () => {
@@ -544,11 +599,12 @@ const App = {
                     if (result.status === 'success') {
                         defectBase.image = result.url;
                         await API.quality.saveDefect(this.data.currentDepartment, defectBase);
-                        document.getElementById('scratch-notes').value = ''; fileInput.value = ''; 
+                        if(notesEl) notesEl.value = ''; 
+                        if(fileInput) fileInput.value = ''; 
                         App.showToast("تم الرفع والتسجيل بنجاح ✅");
                     } else { App.showToast("فشل الرفع السحابي للصورة ❌", true); }
                 } catch (err) { App.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
-                finally { loader.classList.remove('show'); }
+                finally { if(loader) loader.classList.remove('show'); }
             };
             img.src = e.target.result;
         };
@@ -556,7 +612,9 @@ const App = {
     },
 
     renderScratchesList() {
-        const container = document.getElementById('scratches-list'); container.innerHTML = '';
+        const container = document.getElementById('scratches-list'); 
+        if(!container) return;
+        container.innerHTML = '';
         let countToday = 0; let countFixed = 0; let countPending = 0;
         
         this.data.scratches.forEach(d => {
@@ -565,9 +623,13 @@ const App = {
             if (d.status === 'fixed') countFixed++; 
         });
 
-        document.getElementById('qc-count-today').innerText = countToday;
-        document.getElementById('qc-count-fixed').innerText = countFixed;
-        document.getElementById('qc-count-pending').innerText = countPending;
+        const qcToday = document.getElementById('qc-count-today');
+        const qcFixed = document.getElementById('qc-count-fixed');
+        const qcPending = document.getElementById('qc-count-pending');
+
+        if(qcToday) qcToday.innerText = countToday;
+        if(qcFixed) qcFixed.innerText = countFixed;
+        if(qcPending) qcPending.innerText = countPending;
 
         if(this.data.scratches.length === 0) { 
             container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; 
@@ -587,7 +649,7 @@ const App = {
                             <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
                             <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
@@ -602,9 +664,25 @@ const App = {
         const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending';
         API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus });
     },
-    deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
-    openImage(src) { document.getElementById('modal-image').src = src; document.getElementById('image-modal').classList.add('show'); },
-    closeImageModal(e) { if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) document.getElementById('image-modal').classList.remove('show'); },
+    
+    deleteScratch(id) { 
+        if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id);
+    },
+
+    openImage(src) { 
+        const modalImg = document.getElementById('modal-image');
+        const modal = document.getElementById('image-modal');
+        if(modalImg && modal) {
+            modalImg.src = src; modal.classList.add('show'); 
+        }
+    },
+    closeImageModal(e) { 
+        const modal = document.getElementById('image-modal');
+        if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) {
+            modal.classList.remove('show'); 
+        }
+    },
+
     getImageUrl(url) {
         if (!url) return "";
         if (url.includes("drive.google.com")) {
@@ -616,69 +694,92 @@ const App = {
 
     // ---------------- Analytics & WhatsApp ----------------
     renderAnalytics() {
-        let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
+        const liveTotalEl = document.getElementById('live-total');
+        let totalProd = Number(liveTotalEl ? liveTotalEl.innerText : 0) || 0; 
         let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
         
         document.querySelectorAll('.hour-row').forEach(row => {
             if(!row.classList.contains('break-row')) {
-                const act = Number(row.querySelector('.actual-input').value) || 0;
-                activeHours += (act > 0 ? 1 : 0);
-                hourlyLabels.push(row.querySelector('.time-label').innerText.replace(' ص', '').replace(' م', ''));
-                hourlyData.push(act);
+                const actualInput = row.querySelector('.actual-input');
+                const timeLabel = row.querySelector('.time-label');
+                if (actualInput && timeLabel) {
+                    const act = Number(actualInput.value) || 0;
+                    activeHours += (act > 0 ? 1 : 0);
+                    hourlyLabels.push(timeLabel.innerText.replace(' ص', '').replace(' م', ''));
+                    hourlyData.push(act);
+                }
             }
         });
 
-        document.getElementById('analytics-avg-prod').innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
-        document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
+        const avgProdEl = document.getElementById('analytics-avg-prod');
+        if(avgProdEl) avgProdEl.innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
+        
+        const totalDefectsEl = document.getElementById('analytics-total-defects');
+        if(totalDefectsEl) totalDefectsEl.innerText = this.data.scratches.length;
 
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
 
-        if(this.charts.prod) this.charts.prod.destroy(); 
-        this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
-            type: 'line', 
-            data: { 
-                labels: hourlyLabels, 
-                datasets: [{ 
-                    label: 'الإنتاج', 
-                    data: hourlyData, 
-                    backgroundColor: 'rgba(10, 179, 156, 0.2)', 
-                    borderColor: '#0ab39c', 
-                    borderWidth: 3, 
-                    tension: 0.4,
-                    fill: true
-                }] 
-            }, 
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
-        });
+        const prodChartCanvas = document.getElementById('prodChart');
+        if (prodChartCanvas) {
+            if(this.charts.prod) this.charts.prod.destroy(); 
+            this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { 
+                type: 'line', 
+                data: { 
+                    labels: hourlyLabels, 
+                    datasets: [{ 
+                        label: 'الإنتاج', 
+                        data: hourlyData, 
+                        backgroundColor: 'rgba(10, 179, 156, 0.2)', 
+                        borderColor: '#0ab39c', 
+                        borderWidth: 3, 
+                        tension: 0.4,
+                        fill: true
+                    }] 
+                }, 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
+            });
+        }
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
         let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
         
-        if(this.charts.defects) this.charts.defects.destroy();
-        this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
-            type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
-            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
-        });
+        const defectsChartCanvas = document.getElementById('defectsChart');
+        if (defectsChartCanvas) {
+            if(this.charts.defects) this.charts.defects.destroy();
+            this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { 
+                type: 'doughnut', 
+                data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
+            });
+        }
     },
 
     sendWhatsAppReport() {
-        let dParts = document.getElementById('global-date').value.split('-'); 
+        const globalDateEl = document.getElementById('global-date');
+        const globalShiftEl = document.getElementById('global-shift');
+        if (!globalDateEl || !globalShiftEl) return;
+
+        let dParts = globalDateEl.value.split('-'); 
         let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
         let total = 0; 
-        let report = `*تقرير الإنتاج (${this.data.currentDepartment})*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
+        let report = `*تقرير الإنتاج (${this.data.currentDepartment})*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${globalShiftEl.value}\n\n`; 
         
         document.querySelectorAll('.hour-row').forEach(row => {
             if(row.classList.contains('break-row')) {
                 report += `\n*فترة راحة*\n\n`;
             } else {
-                const label = row.querySelector('.time-label').innerText;
-                const actual = row.querySelector('.actual-input').value || "0";
-                const reason = row.querySelector('.reason-input').value;
-                report += `${label} : ${actual}\n`;
-                if(reason.trim() !== '') report += `- ${reason.trim()}\n`;
-                total += Number(actual);
+                const labelEl = row.querySelector('.time-label');
+                const actualEl = row.querySelector('.actual-input');
+                const reasonEl = row.querySelector('.reason-input');
+                
+                if (labelEl && actualEl) {
+                    const label = labelEl.innerText;
+                    const actual = actualEl.value || "0";
+                    report += `${label} : ${actual}\n`;
+                    if(reasonEl && reasonEl.value.trim() !== '') report += `- ${reasonEl.value.trim()}\n`;
+                    total += Number(actual);
+                }
             }
         });
 
@@ -687,7 +788,7 @@ const App = {
     },
 
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الكاش. لن تحذف البيانات السحابية. متأكد؟")) {
+        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
             localStorage.removeItem(CONFIG.STORAGE_KEY);
             location.reload();
         }
