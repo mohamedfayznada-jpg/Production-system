@@ -139,3 +139,4 @@ body { background-color: var(--bg-base); color: var(--text-primary); padding-bot
 .overlay-loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(27, 28, 32, 0.9); z-index: 4000; display: none; justify-content: center; align-items: center; flex-direction: column;}
 .overlay-loader.show { display: flex; }
 .spinner { border: 4px solid var(--surface-2); border-top-color: var(--accent-main); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; box-shadow: var(--shadow-out);}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
