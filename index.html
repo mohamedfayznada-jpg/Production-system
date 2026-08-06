@@ -54,14 +54,23 @@
         
         <!-- 1. الشاشة الرئيسية التفاعلية (Master Dashboard) -->
         <section id="screen-home" class="screen active">
+            
+            <div class="section-header mb-0">
+                <h3 class="section-title">إنتاج الأقسام (الوردية الحالية)</h3>
+            </div>
+            
+            <!-- سيتم توليد كروت الأقسام هنا ديناميكياً -->
+            <div id="master-departments-cards" class="grid-actions mb-4" style="grid-template-columns: 1fr;">
+            </div>
+
             <div class="grid-actions mb-4" style="grid-template-columns: 1fr 1fr;">
-                <div class="card text-center mb-0 gradient-bg" style="padding: 20px 10px;">
+                <div class="card text-center mb-0 gradient-bg" style="padding: 15px 10px;">
                     <div class="card-subtitle text-white" style="opacity:0.9;">مخرجات المصنع</div>
-                    <div class="total-number" id="master-total-prod" style="font-size: 2.2rem;">0</div>
+                    <div class="total-number" id="master-total-prod" style="font-size: 2rem;">0</div>
                 </div>
-                <div class="card text-center mb-0" style="padding: 20px 10px; border: 2px solid var(--primary-color);">
+                <div class="card text-center mb-0" style="padding: 15px 10px; border: 2px solid var(--primary-color);">
                     <div class="card-subtitle text-teal">المستهدف الكلي</div>
-                    <div class="total-number text-teal" id="master-total-target" style="font-size: 2.2rem;">0</div>
+                    <div class="total-number text-teal" id="master-total-target" style="font-size: 2rem;">0</div>
                 </div>
             </div>
 
@@ -256,6 +265,7 @@
 
     </main>
 
+    <!-- شريط التنقل السفلي -->
     <nav class="bottom-nav">
         <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
             <i class="fa-solid fa-house"></i><span>الرئيسية</span>
