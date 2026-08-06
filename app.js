@@ -12,18 +12,22 @@ const App = {
     currentSettingsListener: null,
     currentProdListener: null,
     currentDefectListener: null,
+    masterProdListener: null,
+    currentBalanceListener: null,
     
     isOnline: true,
     saveTimers: {},
     charts: {},
     currentScreen: 'home',
+    currentBalanceTab: 'cabinet', // التبويب الافتراضي للأرصدة
     
     data: {
         departments: [],
         currentDepartment: '',
-        settings: { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: 'الخط الرئيسي', defectTypes: ['خدش خفيف'] },
+        settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: 'التجميع النهائي', defectTypes: ['خدش خفيف'] },
         generatedHours: [],
-        scratches: []
+        scratches: [],
+        balances: { cabinet: { initial: '', added: '', consumed: '' }, door: { initial: '', added: '', consumed: '' }, accessories: { initial: '', added: '', consumed: '' } }
     },
 
     async init() {
@@ -62,7 +66,6 @@ const App = {
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
     },
 
-    // ---------------- الإشعارات (Toast) ----------------
     showToast(msg, isError = false) {
         const toast = document.getElementById('toast');
         if (!toast) return;
@@ -71,7 +74,7 @@ const App = {
         setTimeout(() => { toast.className = ''; }, 3000);
     },
 
-    // ---------------- إدارة الأقسام ----------------
+    // ---------------- إدارة الأقسام والإعدادات ----------------
 
     renderDepartmentSelector() {
         const select = document.getElementById('global-department');
@@ -107,7 +110,6 @@ const App = {
             const removedDept = this.data.departments[index];
             this.data.departments.splice(index, 1);
             API.system.saveDepartments(this.data.departments);
-            
             if(this.data.currentDepartment === removedDept) {
                 this.data.currentDepartment = this.data.departments[0];
                 document.getElementById('global-department').value = this.data.currentDepartment;
@@ -116,16 +118,13 @@ const App = {
         }
     },
 
-    // ---------------- إدارة الإعدادات ----------------
-
     listenToCurrentDepartmentSettings() {
         if(this.currentSettingsListener) this.currentSettingsListener();
-        
         this.currentSettingsListener = API.settings.listenToSettings(this.data.currentDepartment, (cloudSettings) => {
             if(cloudSettings) {
                 this.data.settings = cloudSettings;
             } else {
-                this.data.settings = { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
+                this.data.settings = { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
                 API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
             }
             this.applySettingsToFields();
@@ -137,11 +136,8 @@ const App = {
 
     updateConnectionStatus(isOnline) {
         const dot = document.getElementById('connection-status');
-        if(isOnline) {
-            dot.className = 'status-dot online'; dot.title = 'متصل بالسحابة';
-        } else {
-            dot.className = 'status-dot offline'; dot.title = 'يتم المزامنة بالخلفية';
-        }
+        if(isOnline) { dot.className = 'status-dot online'; dot.title = 'متصل بالسحابة'; } 
+        else { dot.className = 'status-dot offline'; dot.title = 'غير متصل'; }
     },
 
     navigate(screenId) {
@@ -163,17 +159,14 @@ const App = {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
         document.getElementById('screen-settings').classList.add('active');
-        
         let targetPanel = document.getElementById(`settings-panel-${this.currentScreen}`);
         if(!targetPanel) targetPanel = document.getElementById('settings-panel-home');
-        
         if(this.currentScreen === 'home' || this.currentScreen === 'quality') {
             document.getElementById('settings-panel-departments').style.display = 'block';
             document.getElementById('settings-panel-home').style.display = 'block';
         } else {
             targetPanel.style.display = 'block';
         }
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
@@ -193,7 +186,6 @@ const App = {
         this.data.settings.bStart = document.getElementById('set-break-start').value;
         this.data.settings.bEnd = document.getElementById('set-break-end').value;
         this.data.settings.lineName = document.getElementById('set-line-name').value;
-        
         API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
         this.showToast("تم حفظ الإعدادات للقسم الحالي ✅");
     },
@@ -232,8 +224,7 @@ const App = {
             let nextHour = this.addMinutes(current, 60);
             if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
             if (this.timeToMins(nextHour) > endMins) nextHour = end;
-            
-            intervals.push({ isBreak: false, label: this.formatAMPM(current), rawTime: current });
+            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
             current = nextHour;
         }
         this.data.generatedHours = intervals;
@@ -270,7 +261,6 @@ const App = {
     },
 
     // ---------------- Production Sync ----------------
-
     buildProductionUI() {
         const container = document.getElementById('production-list');
         container.innerHTML = '';
@@ -301,9 +291,12 @@ const App = {
 
         if (this.currentProdListener) this.currentProdListener();
         if (this.currentDefectListener) this.currentDefectListener();
+        if (this.masterProdListener) this.masterProdListener();
+        if (this.currentBalanceListener) this.currentBalanceListener();
 
         this.clearInputs();
 
+        // 1. استماع إنتاج القسم المحدد
         this.currentProdListener = API.production.listenToShift(this.data.currentDepartment, date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
@@ -317,10 +310,28 @@ const App = {
             this.calculateLocalTotal();
         });
 
+        // 2. استماع لعيوب الرش للقسم المحدد
         this.currentDefectListener = API.quality.listenToDefects(this.data.currentDepartment, date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
             if(this.currentScreen === 'analytics') this.renderAnalytics();
+        });
+
+        // 3. استماع لكل الإنتاج في المصنع (Master Dashboard)
+        this.masterProdListener = API.master.listenToAllProduction(date, shift, (allRecords) => {
+            this.renderMasterDashboard(allRecords);
+        });
+
+        // 4. استماع لأرصدة القسم المحدد
+        this.currentBalanceListener = API.balances.listenToBalances(this.data.currentDepartment, (balancesData) => {
+            // تصفير القيم أولاً
+            this.data.balances = { cabinet: { initial: '', added: '', consumed: '' }, door: { initial: '', added: '', consumed: '' }, accessories: { initial: '', added: '', consumed: '' } };
+            balancesData.forEach(b => {
+                if(this.data.balances[b.type]) {
+                    this.data.balances[b.type] = b;
+                }
+            });
+            this.populateBalanceInputs();
         });
     },
 
@@ -328,14 +339,12 @@ const App = {
         document.querySelectorAll('.actual-input').forEach(input => input.value = '');
         document.querySelectorAll('.reason-input').forEach(input => input.value = '');
         document.getElementById('live-total').innerText = '0';
-        document.getElementById('home-total-prod').innerText = '0';
     },
 
     calculateLocalTotal() {
         let total = 0;
         document.querySelectorAll('.actual-input').forEach(input => { total += Number(input.value) || 0; });
         document.getElementById('live-total').innerText = total;
-        document.getElementById('home-total-prod').innerText = total;
     },
 
     handleProdInput(hourStr) {
@@ -369,8 +378,91 @@ const App = {
         }, 700);
     },
 
-    // ---------------- Quality (Scratches) Sync ----------------
+    // ---------------- Master Dashboard ----------------
+    renderMasterDashboard(allRecords) {
+        let factoryTotal = 0;
+        let deptTotals = {};
 
+        // تهيئة العدادات لكل الأقسام
+        this.data.departments.forEach(dept => deptTotals[dept] = 0);
+
+        // تجميع البيانات
+        allRecords.forEach(record => {
+            const val = Number(record.actual) || 0;
+            factoryTotal += val;
+            if(deptTotals[record.department] !== undefined) {
+                deptTotals[record.department] += val;
+            }
+        });
+
+        document.getElementById('master-total-prod').innerText = factoryTotal;
+
+        const listContainer = document.getElementById('master-departments-list');
+        listContainer.innerHTML = '';
+
+        // إيجاد أعلى قسم لضبط نسبة شريط التقدم
+        const maxProd = Math.max(...Object.values(deptTotals), 1); // لا يقل عن 1 لتجنب القسمة على صفر
+
+        this.data.departments.forEach(dept => {
+            const deptTotal = deptTotals[dept];
+            const percent = (deptTotal / maxProd) * 100;
+            
+            listContainer.innerHTML += `
+                <div class="master-dept-item">
+                    <div class="master-dept-header">
+                        <span style="color: var(--text-main);">${dept}</span>
+                        <span class="text-teal">${deptTotal}</span>
+                    </div>
+                    <div class="master-progress-bar">
+                        <div class="master-progress-fill" style="width: ${percent}%;"></div>
+                    </div>
+                </div>
+            `;
+        });
+    },
+
+    // ---------------- Balances (الأرصدة) ----------------
+    switchBalanceTab(tabId) {
+        this.currentBalanceTab = tabId;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="App.switchBalanceTab('${tabId}')"]`).classList.add('active');
+        this.populateBalanceInputs();
+    },
+
+    populateBalanceInputs() {
+        const currentData = this.data.balances[this.currentBalanceTab];
+        document.getElementById('balance-initial').value = currentData.initial || '';
+        document.getElementById('balance-added').value = currentData.added || '';
+        document.getElementById('balance-consumed').value = currentData.consumed || '';
+        this.calculateCurrentBalance();
+    },
+
+    calculateCurrentBalance() {
+        const initial = Number(document.getElementById('balance-initial').value) || 0;
+        const added = Number(document.getElementById('balance-added').value) || 0;
+        const consumed = Number(document.getElementById('balance-consumed').value) || 0;
+        const current = (initial + added) - consumed;
+        document.getElementById('balance-current').innerText = current;
+    },
+
+    async saveCurrentBalance() {
+        if(!this.isOnline) { this.showToast("تأكد من الاتصال", true); return; }
+        
+        const initial = document.getElementById('balance-initial').value;
+        const added = document.getElementById('balance-added').value;
+        const consumed = document.getElementById('balance-consumed').value;
+
+        const payload = { initial, added, consumed };
+        
+        try {
+            await API.balances.saveBalance(this.data.currentDepartment, this.currentBalanceTab, payload);
+            this.showToast("تم تحديث الرصيد بنجاح ✅");
+        } catch(e) {
+            this.showToast("فشل تحديث الرصيد", true);
+        }
+    },
+
+    // ---------------- Quality (Scratches) Sync ----------------
     addScratchDefect() {
         const type = document.getElementById('scratch-type').value;
         const notes = document.getElementById('scratch-notes').value;
@@ -457,10 +549,10 @@ const App = {
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-primary); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
                             <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
@@ -493,7 +585,6 @@ const App = {
     },
 
     // ---------------- Analytics & WhatsApp ----------------
-
     renderAnalytics() {
         let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
         let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
@@ -511,13 +602,24 @@ const App = {
         document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
 
         Chart.defaults.font.family = 'Cairo';
-        Chart.defaults.color = '#a39e9c';
+        Chart.defaults.color = '#94a3b8';
 
         if(this.charts.prod) this.charts.prod.destroy(); 
         this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
-            type: 'bar', 
-            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#c48c7e', borderRadius: 4 }] }, 
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+            type: 'line', 
+            data: { 
+                labels: hourlyLabels, 
+                datasets: [{ 
+                    label: 'الإنتاج', 
+                    data: hourlyData, 
+                    backgroundColor: 'rgba(10, 179, 156, 0.2)', 
+                    borderColor: '#0ab39c', 
+                    borderWidth: 3, 
+                    tension: 0.4,
+                    fill: true
+                }] 
+            }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
         });
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
@@ -526,7 +628,7 @@ const App = {
         if(this.charts.defects) this.charts.defects.destroy();
         this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
             type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#c4a47e', '#c48c7e', '#8c7eb5', '#b56c6c', '#7b9e89'] : ['#43454e'], borderWidth: 0 }] }, 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
         });
     },
@@ -556,6 +658,7 @@ const App = {
 
     hardReset() {
         if(confirm("تحذير: سيتم مسح الكاش. لن تحذف البيانات السحابية. متأكد؟")) {
+            localStorage.removeItem(CONFIG.STORAGE_KEY);
             location.reload();
         }
     }
