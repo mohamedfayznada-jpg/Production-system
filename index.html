@@ -110,35 +110,35 @@
             </div>
         </section>
 
-        <!-- 3. شاشة الأرصدة -->
+     <!-- 3. شاشة الأرصدة (المخزون الديناميكي) -->
         <section id="screen-balances" class="screen">
-            <div class="section-header"><h3 class="section-title">إدارة الأرصدة</h3></div>
+            <div class="section-header"><h3 class="section-title">إدارة الأرصدة (BOM)</h3></div>
+            
             <div class="tabs-container">
                 <button class="tab-btn active" onclick="App.switchBalanceTab('cabinet')">الكابينة</button>
                 <button class="tab-btn" onclick="App.switchBalanceTab('door')">الباب</button>
-                <button class="tab-btn" onclick="App.switchBalanceTab('accessories')">الإكسسوار</button>
+                <button class="tab-btn" onclick="App.switchBalanceTab('final')">الرصيد النهائي</button>
             </div>
-            <div class="card">
-                <div class="input-group">
-                    <label>الرصيد الافتتاحي</label>
-                    <input type="number" id="balance-initial" class="modern-input" placeholder="0" oninput="App.calculateCurrentBalance()">
-                </div>
+
+            <!-- كارت إضافة موديل جديد -->
+            <div class="card mb-4" id="add-model-card" style="border: 2px solid var(--border-color);">
+                <h4 class="card-title mb-4" style="font-size: 1rem;"><i class="fa-solid fa-folder-plus text-primary"></i> تعريف موديل جديد للمخزون</h4>
                 <div class="grid-actions mb-4" style="grid-template-columns: 1fr 1fr;">
-                    <div class="input-group mb-0">
-                        <label class="text-green">المنصرف (+)</label>
-                        <input type="number" id="balance-added" class="modern-input" placeholder="0" oninput="App.calculateCurrentBalance()">
-                    </div>
-                    <div class="input-group mb-0">
-                        <label class="text-red">المسحوب (-)</label>
-                        <input type="number" id="balance-consumed" class="modern-input" placeholder="0" oninput="App.calculateCurrentBalance()">
-                    </div>
+                    <input type="text" id="inv-model-name" class="modern-input" placeholder="اسم الموديل...">
+                    <input type="text" id="inv-model-color" class="modern-input" placeholder="اللون...">
                 </div>
-                <div class="total-row" style="background: var(--bg-color); border-radius: var(--radius-md);">
-                    <span>الرصيد الفعلي المتوفر:</span>
-                    <span id="balance-current" class="total-val text-blue">0</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="check-container">
+                        <input type="checkbox" id="inv-is-3door">
+                        <span class="checkmark"></span>
+                        موديل 3 باب
+                    </label>
+                    <button class="primary-btn gradient-bg" style="width: auto; padding: 12px 25px;" onclick="App.addInventoryModel()">إضافة للمخزون</button>
                 </div>
-                <button class="primary-btn gradient-bg mt-4" onclick="App.saveCurrentBalance()">تحديث الرصيد اللحظي</button>
             </div>
+
+            <!-- قائمة الموديلات الديناميكية -->
+            <div id="inventory-list"></div>
         </section>
 
         <!-- 4. شاشة الجودة -->
