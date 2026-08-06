@@ -44,6 +44,7 @@
 
     <main class="content-area">
         
+        <!-- 1. الشاشة الرئيسية -->
         <section id="screen-home" class="screen active">
             <div class="card summary-card">
                 <h2>إجمالي الإنتاج (مباشر)</h2>
@@ -55,13 +56,14 @@
                     <i class="fa-solid fa-stopwatch action-icon text-blue"></i>
                     <span>سجل الساعات</span>
                 </div>
-                <div class="action-card" onclick="App.navigate('scratches')">
-                    <i class="fa-solid fa-spray-can action-icon text-orange"></i>
-                    <span>سجل العيوب</span>
+                <div class="action-card" onclick="App.navigate('quality')">
+                    <i class="fa-solid fa-shield-halved action-icon text-purple"></i>
+                    <span>بوابة الجودة</span>
                 </div>
             </div>
         </section>
 
+        <!-- 2. شاشة الإنتاج -->
         <section id="screen-production" class="screen">
             <div class="card">
                 <h3 class="card-title">سجل الساعات اللحظي</h3>
@@ -73,17 +75,35 @@
             </div>
         </section>
 
+        <!-- 3. شاشة الجودة (تم تحديثها للاختيار بين سجل العيوب وعيوب الرش) -->
         <section id="screen-quality" class="screen">
             <h3 class="section-title">بوابة الجودة الشاملة</h3>
             <div class="grid-actions">
+                <div class="action-card" onclick="App.navigate('defects_log')">
+                    <i class="fa-solid fa-clipboard-list action-icon text-purple"></i>
+                    <span>سجل العيوب</span>
+                </div>
                 <div class="action-card" onclick="App.navigate('scratches')">
                     <i class="fa-solid fa-spray-can action-icon text-orange"></i>
-                    <span>سجل العيوب</span>
+                    <span>عيوب الرش</span>
                 </div>
             </div>
         </section>
 
+        <!-- 4. شاشة سجل العيوب (الشاشة الجديدة التي سنعمل عليها) -->
+        <section id="screen-defects_log" class="screen">
+            <h3 class="section-title">سجل العيوب العام</h3>
+            <div class="card text-center" style="padding: 40px 20px;">
+                <i class="fa-solid fa-person-digging" style="font-size: 4rem; color: var(--accent-main); margin-bottom: 20px; filter: drop-shadow(0 0 10px var(--accent-glow));"></i>
+                <h4 style="color: var(--text-primary); font-size: 1.2rem; margin-bottom: 10px;">مساحة عمل جديدة</h4>
+                <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6;">هذا القسم مخصص لسجل العيوب العام. سيتم تصميم وبرمجة الحقول والجداول الخاصة به في الخطوات القادمة بناءً على متطلباتك.</p>
+                <button class="secondary-btn mt-4" onclick="App.navigate('quality')">رجوع للبوابة</button>
+            </div>
+        </section>
+
+        <!-- 5. شاشة عيوب الرش -->
         <section id="screen-scratches" class="screen">
+            <h3 class="section-title">سجل عيوب الرش</h3>
             <div class="qc-counters">
                 <div class="qc-box"><div class="qc-val text-blue" id="qc-count-today">0</div><div class="qc-lbl">سُجل اليوم</div></div>
                 <div class="qc-box"><div class="qc-val text-green" id="qc-count-fixed">0</div><div class="qc-lbl">تم الإصلاح</div></div>
@@ -108,11 +128,12 @@
             <div id="scratches-list"></div>
         </section>
 
+        <!-- 6. شاشة التحليلات -->
         <section id="screen-analytics" class="screen">
             <h3 class="section-title">تحليلات الأداء</h3>
             <div class="grid-actions mb-4">
                 <div class="card text-center" style="margin-bottom:0;">
-                    <div class="card-subtitle">إجمالي العيوب اليوم</div>
+                    <div class="card-subtitle">إجمالي عيوب الرش اليوم</div>
                     <div class="total-number text-purple" style="font-size: 2.5rem;" id="analytics-total-defects">0</div>
                 </div>
                 <div class="card text-center" style="margin-bottom:0;">
@@ -130,10 +151,10 @@
             </div>
         </section>
 
+        <!-- 7. شاشة الإعدادات -->
         <section id="screen-settings" class="screen">
             <h3 class="section-title" id="settings-title">الإعدادات</h3>
 
-            <!-- إدارة الأقسام -->
             <div id="settings-panel-departments" class="settings-panel">
                 <div class="card">
                     <div class="card-title mb-4">إدارة الأقسام بالمصنع</div>
@@ -165,6 +186,13 @@
                         <button class="icon-btn primary-bg" onclick="App.addDefectType()"><i class="fa-solid fa-plus"></i></button>
                     </div>
                     <div id="defect-types-list" class="mt-4"></div>
+                </div>
+            </div>
+
+            <!-- تمت إضافة لوحة إعدادات خاصة بسجل العيوب العام لبرمجتها لاحقاً -->
+            <div id="settings-panel-defects_log" class="settings-panel">
+                <div class="card text-center">
+                    <p class="text-muted mb-4">إعدادات سجل العيوب (سيتم إضافتها لاحقاً)</p>
                 </div>
             </div>
 
