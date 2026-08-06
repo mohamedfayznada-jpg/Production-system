@@ -7,17 +7,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
+    <!-- شاشة التحميل -->
+    <div id="cinematic-splash">
+        <div class="splash-content">
+            <h1>مجموعة العربي</h1>
+            <p>نظام الإنتاج الموحد</p>
+            <div class="loader-line"></div>
+        </div>
+        <div class="splash-seal">
+            <div class="seal-name">إشراف: م. محمد فايز</div>
+            <div class="seal-title">التجميع النهائي</div>
+        </div>
+    </div>
+
+    <!-- الشريط العلوي -->
     <header class="app-header">
         <div class="header-top">
             <div class="dept-title">
                 <i class="fa-solid fa-layer-group"></i> 
                 <span>التجميع النهائي</span>
-                <!-- مؤشر الاتصال بالسيرفر -->
                 <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span>
             </div>
+            <button class="icon-btn" onclick="App.openSettings()"><i class="fa-solid fa-sliders"></i></button>
         </div>
         <div class="global-filters">
             <input type="date" id="global-date">
@@ -30,22 +45,168 @@
     </header>
 
     <main class="content-area">
-        <section id="screen-production" class="screen active">
+        
+        <!-- 1. الشاشة الرئيسية -->
+        <section id="screen-home" class="screen active">
             <div class="card summary-card">
-                <h2>إجمالي الإنتاج (مباشر)</h2>
-                <div class="total-number" id="live-total">0</div>
+                <h2>إجمالي الإنتاج (الوردية المحددة)</h2>
+                <div class="total-number" id="home-total-prod">0</div>
             </div>
-
-            <div class="card">
-                <h3 class="card-title">سجل الساعات</h3>
-                <div id="production-list">
-                    <!-- سيتم التوليد بواسطة JS -->
+            <h3 class="section-title">العمليات السريعة</h3>
+            <div class="grid-actions">
+                <div class="action-card" onclick="App.navigate('production')">
+                    <i class="fa-solid fa-stopwatch action-icon text-blue"></i>
+                    <span>سجل الساعات</span>
+                </div>
+                <div class="action-card" onclick="App.navigate('scratches')">
+                    <i class="fa-solid fa-spray-can action-icon text-orange"></i>
+                    <span>عيوب الرش</span>
                 </div>
             </div>
         </section>
+
+        <!-- 2. شاشة الإنتاج -->
+        <section id="screen-production" class="screen">
+            <div class="card">
+                <h3 class="card-title">سجل الساعات اللحظي</h3>
+                <div id="production-list"></div>
+                <div class="total-row">
+                    <span>الإجمالي: </span>
+                    <span id="live-total" class="total-val">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. شاشة الجودة -->
+        <section id="screen-quality" class="screen">
+            <h3 class="section-title">بوابة الجودة الشاملة</h3>
+            <div class="grid-actions">
+                <div class="action-card" onclick="App.navigate('scratches')">
+                    <i class="fa-solid fa-spray-can action-icon text-orange"></i>
+                    <span>سجل عيوب الرش</span>
+                </div>
+                <div class="action-card" onclick="App.showToast('سيتم تفعيلها قريباً')">
+                    <i class="fa-solid fa-screwdriver-wrench action-icon text-purple"></i>
+                    <span>عيوب التجميع</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. شاشة عيوب الرش -->
+        <section id="screen-scratches" class="screen">
+            <div class="qc-counters">
+                <div class="qc-box"><div class="qc-val text-blue" id="qc-count-today">0</div><div class="qc-lbl">سُجل اليوم</div></div>
+                <div class="qc-box"><div class="qc-val text-green" id="qc-count-fixed">0</div><div class="qc-lbl">تم الإصلاح</div></div>
+                <div class="qc-box highlight"><div class="qc-val text-red" id="qc-count-pending">0</div><div class="qc-lbl">تحت الإصلاح</div></div>
+            </div>
+            
+            <div class="card">
+                <div class="input-group">
+                    <label>نوع العيب</label>
+                    <select id="scratch-type" class="modern-input"></select>
+                </div>
+                <div class="input-group">
+                    <label>صورة العيب (اختياري للرفع السحابي)</label>
+                    <input type="file" id="scratch-image" accept="image/*" capture="environment" class="modern-input file-input">
+                </div>
+                <div class="input-group">
+                    <label>ملاحظات إضافية</label>
+                    <input type="text" id="scratch-notes" class="modern-input" placeholder="مثال: الباب السفلي...">
+                </div>
+                <button class="primary-btn" onclick="App.addScratchDefect()">إضافة للسجل اللحظي</button>
+            </div>
+            <div id="scratches-list"></div>
+        </section>
+
+        <!-- 5. شاشة التحليلات -->
+        <section id="screen-analytics" class="screen">
+            <h3 class="section-title">تحليلات الأداء</h3>
+            <div class="grid-actions mb-4">
+                <div class="card text-center" style="margin-bottom:0;">
+                    <div class="card-subtitle">إجمالي العيوب اليوم</div>
+                    <div class="total-number text-purple" style="font-size: 2.5rem;" id="analytics-total-defects">0</div>
+                </div>
+                <div class="card text-center" style="margin-bottom:0;">
+                    <div class="card-subtitle">متوسط الإنتاج / ساعة</div>
+                    <div class="total-number text-blue" style="font-size: 2.5rem;" id="analytics-avg-prod">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <h4 class="card-title text-center">مسار الإنتاج الزمني</h4>
+                <div class="chart-container"><canvas id="prodChart"></canvas></div>
+            </div>
+            <div class="card">
+                <h4 class="card-title text-center">توزيع العيوب</h4>
+                <div class="chart-container"><canvas id="defectsChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- 6. شاشة الإعدادات -->
+        <section id="screen-settings" class="screen">
+            <h3 class="section-title" id="settings-title">الإعدادات</h3>
+            
+            <div id="settings-panel-home" class="settings-panel">
+                <div class="card text-center">
+                    <p class="text-muted mb-4">إعدادات النظام العامة</p>
+                    <button class="danger-btn" onclick="App.hardReset()">إعادة ضبط المصنع ومسح الكاش</button>
+                </div>
+            </div>
+            
+            <div id="settings-panel-production" class="settings-panel">
+                <div class="card">
+                    <div class="input-group"><label>اسم خط الإنتاج</label><input type="text" id="set-line-name" class="modern-input"></div>
+                    <div class="input-group"><label>بداية الوردية</label><input type="time" id="set-shift-start" class="modern-input"></div>
+                    <div class="input-group"><label>نهاية الوردية</label><input type="time" id="set-shift-end" class="modern-input"></div>
+                    <div class="input-group"><label>بداية الراحة</label><input type="time" id="set-break-start" class="modern-input"></div>
+                    <div class="input-group"><label>نهاية الراحة</label><input type="time" id="set-break-end" class="modern-input"></div>
+                    <button class="primary-btn mt-4" onclick="App.applySettings()">توليد الساعات وحفظ الإعدادات</button>
+                </div>
+            </div>
+            
+            <div id="settings-panel-scratches" class="settings-panel">
+                <div class="card">
+                    <div class="card-title mb-4">تخصيص أنواع العيوب</div>
+                    <div class="flex-row">
+                        <input type="text" id="new-defect-type" class="modern-input" placeholder="اسم العيب الجديد...">
+                        <button class="icon-btn primary-bg" onclick="App.addDefectType()"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div id="defect-types-list" class="mt-4"></div>
+                </div>
+            </div>
+            
+            <button class="secondary-btn mt-4" onclick="App.closeSettings()">رجوع</button>
+        </section>
+
     </main>
 
+    <!-- شريط التنقل السفلي -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
+            <i class="fa-solid fa-house"></i><span>الرئيسية</span>
+        </div>
+        <div class="nav-item" data-target="production" onclick="App.navigate('production')">
+            <i class="fa-solid fa-clipboard-list"></i><span>الإنتاج</span>
+        </div>
+        <div class="nav-item special-nav" onclick="App.sendWhatsAppReport()">
+            <div class="fab-btn"><i class="fa-brands fa-whatsapp"></i></div>
+        </div>
+        <div class="nav-item" data-target="quality" onclick="App.navigate('quality')">
+            <i class="fa-solid fa-shield-halved"></i><span>الجودة</span>
+        </div>
+        <div class="nav-item" data-target="analytics" onclick="App.navigate('analytics')">
+            <i class="fa-solid fa-chart-pie"></i><span>التحليل</span>
+        </div>
+    </nav>
+
+    <!-- النوافذ المنبثقة -->
     <div id="toast">رسالة تنبيه</div>
+    <div id="image-modal" onclick="App.closeImageModal(event)">
+        <div class="close-modal-btn"><i class="fa-solid fa-xmark"></i></div>
+        <img id="modal-image" src="">
+    </div>
+    <div id="upload-loader" class="overlay-loader">
+        <div class="spinner"></div><h3 id="loader-text">جاري المعالجة...</h3>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
