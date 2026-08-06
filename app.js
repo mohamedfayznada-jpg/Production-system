@@ -403,34 +403,62 @@ const App = {
         }, 700);
     },
 
-    // ---------------- Master Dashboard ----------------
+    // ---------------- Master Dashboard (المصحح برمجياً) ----------------
     renderMasterDashboard() {
         let factoryTotalActual = 0;
         let factoryTotalTarget = 0;
+        
         let deptProd = {};
         let deptScratches = {};
 
-        this.data.departments.forEach(d => { deptProd[d] = 0; deptScratches[d] = 0; });
+        // تهيئة الكائنات بناءً على الأقسام الحالية فقط (تجاهل أي أقسام قديمة محذوفة)
+        this.data.departments.forEach(d => { 
+            deptProd[d] = {}; // سنحتفظ بالبيانات بصيغة {ساعة: قيمة} لمنع التكرار
+            deptScratches[d] = 0; 
+        });
 
+        // 1. فلترة وتجميع الإنتاج
         if(this.data.master.production) {
             this.data.master.production.forEach(r => {
-                const val = Number(r.actual) || 0;
-                factoryTotalActual += val;
-                if(deptProd[r.department] !== undefined) deptProd[r.department] += val;
+                // التأكد أن السجل يتبع لقسم حقيقي وموجود حالياً
+                if(r.department && this.data.departments.includes(r.department)) {
+                    const val = Number(r.actual) || 0;
+                    // حماية ضد التكرار: نأخذ قيمة واحدة فقط لكل ساعة في كل قسم
+                    // ونفضل السجلات الجديدة التي يحتوي الـ recordId الخاص بها على اسم القسم
+                    if (!deptProd[r.department][r.hour] || r.recordId.startsWith(r.department)) {
+                        deptProd[r.department][r.hour] = val;
+                    }
+                }
             });
         }
 
+        // 2. فلترة وتجميع التارجت
+        let validTargets = {};
         if(this.data.master.targets) {
             this.data.master.targets.forEach(r => {
-                factoryTotalTarget += (Number(r.target) || 0);
+                if(r.department && this.data.departments.includes(r.department)) {
+                    validTargets[r.department] = Number(r.target) || 0;
+                }
+            });
+        }
+        factoryTotalTarget = Object.values(validTargets).reduce((sum, val) => sum + val, 0);
+
+        // 3. فلترة عيوب الرش
+        if(this.data.master.scratches) {
+            this.data.master.scratches.forEach(r => {
+                if(r.department && deptScratches[r.department] !== undefined) {
+                    deptScratches[r.department] += 1;
+                }
             });
         }
 
-        if(this.data.master.scratches) {
-            this.data.master.scratches.forEach(r => {
-                if(deptScratches[r.department] !== undefined) deptScratches[r.department] += 1;
-            });
-        }
+        // 4. الحساب النهائي الفعلي للمصنع
+        let finalDeptProdTotals = {};
+        this.data.departments.forEach(d => {
+            const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
+            finalDeptProdTotals[d] = sum;
+            factoryTotalActual += sum; 
+        });
 
         const masterTotalProdEl = document.getElementById('master-total-prod');
         if (masterTotalProdEl) masterTotalProdEl.innerText = factoryTotalActual;
@@ -442,7 +470,7 @@ const App = {
         Chart.defaults.color = '#94a3b8';
 
         const depts = this.data.departments;
-        const prodData = depts.map(d => deptProd[d]);
+        const prodData = depts.map(d => finalDeptProdTotals[d]);
         const scratchData = depts.map(d => deptScratches[d]);
 
         const prodChartCanvas = document.getElementById('masterProdChart');
@@ -649,7 +677,7 @@ const App = {
                             <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
                             <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
@@ -783,6 +811,7 @@ const App = {
             }
         });
 
+        // تم إزالة سطر إجمالي العيوب بناءً على طلبك السابق
         report += `\n*إجمالي الإنتاج: ${total}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     },
