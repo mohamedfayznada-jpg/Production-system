@@ -1,9 +1,9 @@
 import { API } from './api.js';
 
 const CONFIG = {
-    // ضع رابط سكريبت جوجل الخاص بك هنا لرفع الصور
+    // رابط جوجل سكريبت لرفع الصور
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
-    STORAGE_KEY: "production_system_v2_settings",
+    STORAGE_KEY: "production_system_v3_settings",
     IMAGE_MAX_WIDTH: 800,
     IMAGE_MAX_HEIGHT: 800,
     IMAGE_QUALITY: 0.6
@@ -17,7 +17,6 @@ const App = {
     charts: {},
     currentScreen: 'home',
     
-    // إدارة الإعدادات والحالة محلياً
     data: {
         settings: { 
             start: '07:30', 
@@ -27,12 +26,11 @@ const App = {
             lineName: 'التجميع النهائي', 
             defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] 
         },
-        generatedHours: [], // الساعات المولدة
-        scratches: [] // العيوب المحملة لحظياً
+        generatedHours: [],
+        scratches: []
     },
 
     async init() {
-        // Splash Screen
         setTimeout(() => { 
             const splash = document.getElementById('cinematic-splash'); 
             if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
@@ -41,7 +39,6 @@ const App = {
         this.isOnline = await API.production.testConnection();
         this.updateConnectionStatus(this.isOnline);
 
-        // تحميل الإعدادات من LocalStorage إن وجدت
         try {
             const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
             if (saved) {
@@ -60,7 +57,6 @@ const App = {
         this.generateIntervals();
         this.renderDefectTypesSettings();
 
-        // Listeners للتغيير
         document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
 
@@ -71,14 +67,12 @@ const App = {
         }
     },
 
-    // ---------------- UI & Navigation ----------------
-    
     updateConnectionStatus(isOnline) {
         const dot = document.getElementById('connection-status');
         if(isOnline) {
             dot.className = 'status-dot online'; dot.title = 'متصل بالسحابة';
         } else {
-            dot.className = 'status-dot offline'; dot.title = 'غير متصل';
+            dot.className = 'status-dot offline'; dot.title = 'يتم المزامنة بالخلفية';
         }
     },
 
@@ -108,8 +102,6 @@ const App = {
     },
 
     closeSettings() { this.navigate(this.currentScreen); },
-
-    // ---------------- Settings & Time Generators ----------------
 
     applySettingsToFields() {
         document.getElementById('set-shift-start').value = this.data.settings.start;
@@ -204,8 +196,6 @@ const App = {
         }
     },
 
-    // ---------------- Production Sync ----------------
-
     buildProductionUI() {
         const container = document.getElementById('production-list');
         container.innerHTML = '';
@@ -215,7 +205,7 @@ const App = {
                 container.innerHTML += `<div class="hour-row break-row"><span>${timeSlot.label}</span></div>`;
             } else {
                 container.innerHTML += `
-                    <div class="hour-row" id="row-${timeSlot.rawTime}" data-hour="${timeSlot.rawTime}">
+                    <div class="hour-row" id="row-${timeSlot.rawTime.replace(':','-')}" data-hour="${timeSlot.rawTime}">
                         <div class="hour-header">
                             <span class="time-label">${timeSlot.label}</span>
                             <input type="number" class="actual-input" placeholder="0" 
@@ -242,7 +232,7 @@ const App = {
         // استماع للإنتاج
         this.currentProdListener = API.production.listenToShift(date, shift, (records) => {
             records.forEach(record => {
-                const row = document.getElementById(`row-${record.hour}`);
+                const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
                 if (row) {
                     const actualInput = row.querySelector('.actual-input');
                     const reasonInput = row.querySelector('.reason-input');
@@ -277,16 +267,18 @@ const App = {
 
     handleProdInput(hourStr) {
         this.calculateLocalTotal();
-        if (this.saveTimers[hourStr]) clearTimeout(this.saveTimers[hourStr]);
+        const safeId = hourStr.replace(':','-');
+        if (this.saveTimers[safeId]) clearTimeout(this.saveTimers[safeId]);
 
-        this.saveTimers[hourStr] = setTimeout(async () => {
+        this.saveTimers[safeId] = setTimeout(async () => {
             if (!this.isOnline) return;
             const date = document.getElementById('global-date').value;
             const shift = document.getElementById('global-shift').value;
-            const row = document.getElementById(`row-${hourStr}`);
-            
+            const row = document.getElementById(`row-${safeId}`);
+            if(!row) return;
+
             const payload = {
-                recordId: `${date}_${shift}_${hourStr}`,
+                recordId: `${date}_${shift}_${safeId}`,
                 date: date, shift: shift, hour: hourStr,
                 actual: row.querySelector('.actual-input').value,
                 shortfallReason: row.querySelector('.reason-input').value
@@ -296,11 +288,13 @@ const App = {
                 row.classList.add('saving');
                 await API.production.saveHour(payload);
                 row.classList.remove('saving');
-            } catch (e) { row.classList.remove('saving'); }
-        }, 700); // Debounce time
+                this.updateConnectionStatus(true);
+            } catch (e) { 
+                row.classList.remove('saving'); 
+                this.updateConnectionStatus(false);
+            }
+        }, 700);
     },
-
-    // ---------------- Quality (Scratches) Sync ----------------
 
     addScratchDefect() {
         const type = document.getElementById('scratch-type').value;
@@ -316,17 +310,20 @@ const App = {
 
         if(!fileInput.files || !fileInput.files[0]) { 
             defectBase.image = "";
-            API.quality.saveDefect(defectBase); // يرسل لفيربيز لحظياً
+            API.quality.saveDefect(defectBase);
             document.getElementById('scratch-notes').value = ''; 
             this.showToast("تم التسجيل بدون صورة ✅");
             return; 
         }
+
+        if(CONFIG.GOOGLE_API_URL === '') { this.showToast("رابط الرفع غير موجود", true); return; }
 
         const loader = document.getElementById('upload-loader'); 
         loader.classList.add('show'); 
         
         const file = fileInput.files[0]; 
         const reader = new FileReader();
+        
         reader.onload = (e) => {
             const img = new Image();
             img.onload = async () => {
@@ -346,9 +343,9 @@ const App = {
                         defectBase.image = result.url;
                         await API.quality.saveDefect(defectBase);
                         document.getElementById('scratch-notes').value = ''; fileInput.value = ''; 
-                        this.showToast("تم الرفع والتسجيل بنجاح ✅");
-                    } else { this.showToast("فشل الرفع السحابي للصورة ❌", true); }
-                } catch (err) { this.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
+                        App.showToast("تم الرفع والتسجيل بنجاح ✅");
+                    } else { App.showToast("فشل الرفع السحابي للصورة ❌", true); }
+                } catch (err) { App.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
                 finally { loader.classList.remove('show'); }
             };
             img.src = e.target.result;
@@ -385,10 +382,10 @@ const App = {
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-main); font-size: 1rem;">${defect.type}</h4>
+                            <h4 style="color:var(--text-primary); font-size: 1rem;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted);">${defect.time}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
                             <i class="fa-solid fa-trash-can text-red" style="cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
@@ -420,8 +417,6 @@ const App = {
         return url;
     },
 
-    // ---------------- Analytics & WhatsApp ----------------
-
     renderAnalytics() {
         let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
         let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
@@ -439,10 +434,12 @@ const App = {
         document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
 
         Chart.defaults.font.family = 'Cairo';
+        Chart.defaults.color = '#a39e9c'; // لون يتناسب مع الثيم الجديد
+
         if(this.charts.prod) this.charts.prod.destroy(); 
         this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
             type: 'bar', 
-            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#0ea5e9', borderRadius: 4 }] }, 
+            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#c48c7e', borderRadius: 4 }] }, 
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
         });
 
@@ -452,7 +449,7 @@ const App = {
         if(this.charts.defects) this.charts.defects.destroy();
         this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
             type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ea5e9', '#8b5cf6', '#ef4444', '#10b981'] : ['#e2e8f0'], borderWidth: 0 }] }, 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#c4a47e', '#c48c7e', '#8c7eb5', '#b56c6c', '#7b9e89'] : ['#43454e'], borderWidth: 0 }] }, 
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
         });
     },
