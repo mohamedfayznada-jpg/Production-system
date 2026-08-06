@@ -1,72 +1,66 @@
 import { db } from "./firebase.js";
 import {
-    collection,
-    doc,
-    setDoc,
-    deleteDoc,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    serverTimestamp,
-    getDocs,
-    limit
+    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, limit
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export const API = {
-    // ---------------- قسم الإعدادات العامة (جديد) ----------------
-    settings: {
-        async saveSettings(settingsData) {
-            const docRef = doc(db, "app_settings", "global_config");
-            await setDoc(docRef, {
-                ...settingsData,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        },
-
-        listenToSettings(callback) {
-            const docRef = doc(db, "app_settings", "global_config");
+    // ---------------- قسم إدارة النظام والأقسام ----------------
+    system: {
+        listenToDepartments(callback) {
+            const docRef = doc(db, "app_settings", "global_system");
             return onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    callback(docSnap.data());
+                if (docSnap.exists() && docSnap.data().departments) {
+                    callback(docSnap.data().departments);
                 } else {
-                    callback(null);
+                    callback(['التجميع النهائي']); // القسم الافتراضي
                 }
-            }, (error) => {
-                console.error("Settings Listener Error:", error);
             });
+        },
+        async saveDepartments(departments) {
+            const docRef = doc(db, "app_settings", "global_system");
+            await setDoc(docRef, { departments: departments }, { merge: true });
         }
     },
 
-    // ---------------- قسم الإنتاج ----------------
+    // ---------------- قسم الإعدادات لكل قسم ----------------
+    settings: {
+        async saveSettings(department, settingsData) {
+            const docRef = doc(db, "app_settings", `dept_${department}`);
+            await setDoc(docRef, { ...settingsData, updatedAt: serverTimestamp() }, { merge: true });
+        },
+
+        listenToSettings(department, callback) {
+            const docRef = doc(db, "app_settings", `dept_${department}`);
+            return onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) callback(docSnap.data());
+                else callback(null);
+            }, (error) => console.error("Settings Error:", error));
+        }
+    },
+
+    // ---------------- قسم الإنتاج المعزول ----------------
     production: {
         async testConnection() {
             try {
                 const q = query(collection(db, "production_records"), limit(1));
                 await getDocs(q);
                 return true;
-            } catch (error) {
-                console.error("Firebase Connection Error:", error);
-                return false;
-            }
+            } catch (error) { return false; }
         },
 
-        async saveHour(record) {
+        async saveHour(department, record) {
             const docRef = doc(db, "production_records", record.recordId);
             await setDoc(docRef, {
-                recordId: record.recordId,
-                date: record.date,
-                shift: record.shift,
-                hour: record.hour,
-                actual: record.actual,
-                shortfallReason: record.shortfallReason,
+                ...record,
+                department: department, // ربط السجل بالقسم
                 updatedAt: serverTimestamp()
             }, { merge: true });
         },
 
-        listenToShift(date, shift, callback) {
+        listenToShift(department, date, shift, callback) {
             const q = query(
                 collection(db, "production_records"),
+                where("department", "==", department),
                 where("date", "==", date),
                 where("shift", "==", shift),
                 orderBy("hour")
@@ -78,12 +72,13 @@ export const API = {
         }
     },
 
-    // ---------------- قسم الجودة (عيوب الرش) ----------------
+    // ---------------- قسم الجودة المعزول ----------------
     quality: {
-        async saveDefect(defect) {
+        async saveDefect(department, defect) {
             const docRef = doc(db, "scratches_records", defect.id.toString());
             await setDoc(docRef, {
                 ...defect,
+                department: department, // ربط العيب بالقسم
                 updatedAt: serverTimestamp()
             }, { merge: true });
         },
@@ -93,9 +88,10 @@ export const API = {
             await deleteDoc(docRef);
         },
 
-        listenToDefects(date, callback) {
+        listenToDefects(department, date, callback) {
             const q = query(
                 collection(db, "scratches_records"),
+                where("department", "==", department),
                 where("date", "==", date),
                 orderBy("id", "desc")
             );
