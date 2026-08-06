@@ -14,6 +14,30 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export const API = {
+    // ---------------- قسم الإعدادات العامة (جديد) ----------------
+    settings: {
+        async saveSettings(settingsData) {
+            const docRef = doc(db, "app_settings", "global_config");
+            await setDoc(docRef, {
+                ...settingsData,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        },
+
+        listenToSettings(callback) {
+            const docRef = doc(db, "app_settings", "global_config");
+            return onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    callback(docSnap.data());
+                } else {
+                    callback(null);
+                }
+            }, (error) => {
+                console.error("Settings Listener Error:", error);
+            });
+        }
+    },
+
     // ---------------- قسم الإنتاج ----------------
     production: {
         async testConnection() {
