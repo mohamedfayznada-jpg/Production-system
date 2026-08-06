@@ -21,7 +21,15 @@ const App = {
     data: {
         departments: [],
         currentDepartment: '',
-        settings: { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: 'الخط الرئيسي', defectTypes: ['خدش خفيف'] },
+        // تم تعديل الأوقات الافتراضية لتطابق وردية المصنع
+        settings: { 
+            start: '07:30', 
+            end: '16:00', 
+            bStart: '12:30', 
+            bEnd: '13:30', 
+            lineName: 'التجميع النهائي', 
+            defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] 
+        },
         generatedHours: [],
         scratches: []
     },
@@ -62,7 +70,7 @@ const App = {
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
     },
 
-    // ---------------- الإشعارات (Toast) ----------------
+    // ---------------- الإشعارات ----------------
     showToast(msg, isError = false) {
         const toast = document.getElementById('toast');
         if (!toast) return;
@@ -72,7 +80,6 @@ const App = {
     },
 
     // ---------------- إدارة الأقسام ----------------
-
     renderDepartmentSelector() {
         const select = document.getElementById('global-department');
         select.innerHTML = '';
@@ -117,7 +124,6 @@ const App = {
     },
 
     // ---------------- إدارة الإعدادات ----------------
-
     listenToCurrentDepartmentSettings() {
         if(this.currentSettingsListener) this.currentSettingsListener();
         
@@ -125,7 +131,7 @@ const App = {
             if(cloudSettings) {
                 this.data.settings = cloudSettings;
             } else {
-                this.data.settings = { start: '08:00', end: '16:00', bStart: '12:00', bEnd: '13:00', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
+                this.data.settings = { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
                 API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
             }
             this.applySettingsToFields();
@@ -218,24 +224,41 @@ const App = {
         let [h, m] = t.split(':').map(Number); return h * 60 + m; 
     },
 
+    // تم تصحيح الخوارزمية هنا لتقوم بعرض الـ nextHour كعنوان للحقل
     generateIntervals() {
         const { start, end, bStart, bEnd } = this.data.settings;
-        let current = start; let intervals = []; let endMins = this.timeToMins(end);
+        let current = start; 
+        let intervals = []; 
+        let endMins = this.timeToMins(end);
+        
         if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
         
         while (this.timeToMins(current) < endMins) {
+            // التحقق من بدء فترة الراحة
             if (current === bStart) { 
                 intervals.push({ isBreak: true, label: "فترة راحة" }); 
                 current = bEnd; 
                 continue; 
             }
-            let nextHour = this.addMinutes(current, 60);
-            if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
-            if (this.timeToMins(nextHour) > endMins) nextHour = end;
             
-            intervals.push({ isBreak: false, label: this.formatAMPM(current), rawTime: current });
+            // إضافة ساعة للوقت الحالي
+            let nextHour = this.addMinutes(current, 60);
+            
+            // إذا كانت الساعة القادمة تتخطى أو تتقاطع مع بداية الراحة، نتوقف عند بداية الراحة
+            if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) {
+                nextHour = bStart;
+            }
+            
+            // إذا كانت الساعة القادمة تتخطى نهاية الوردية، نتوقف عند نهاية الوردية
+            if (this.timeToMins(nextHour) > endMins) {
+                nextHour = end;
+            }
+            
+            // نعرض الوقت المستهدف (nextHour) بدلاً من وقت البدء
+            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
             current = nextHour;
         }
+        
         this.data.generatedHours = intervals;
         this.buildProductionUI();
     },
@@ -270,7 +293,6 @@ const App = {
     },
 
     // ---------------- Production Sync ----------------
-
     buildProductionUI() {
         const container = document.getElementById('production-list');
         container.innerHTML = '';
@@ -370,7 +392,6 @@ const App = {
     },
 
     // ---------------- Quality (Scratches) Sync ----------------
-
     addScratchDefect() {
         const type = document.getElementById('scratch-type').value;
         const notes = document.getElementById('scratch-notes').value;
@@ -457,7 +478,7 @@ const App = {
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-primary); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
                         </div>
                         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
@@ -493,7 +514,6 @@ const App = {
     },
 
     // ---------------- Analytics & WhatsApp ----------------
-
     renderAnalytics() {
         let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
         let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
@@ -515,9 +535,20 @@ const App = {
 
         if(this.charts.prod) this.charts.prod.destroy(); 
         this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
-            type: 'bar', 
-            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#c48c7e', borderRadius: 4 }] }, 
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+            type: 'line', 
+            data: { 
+                labels: hourlyLabels, 
+                datasets: [{ 
+                    label: 'الإنتاج', 
+                    data: hourlyData, 
+                    backgroundColor: 'rgba(10, 179, 156, 0.2)', 
+                    borderColor: '#0ab39c', 
+                    borderWidth: 3, 
+                    tension: 0.4,
+                    fill: true
+                }] 
+            }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
         });
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
@@ -526,7 +557,7 @@ const App = {
         if(this.charts.defects) this.charts.defects.destroy();
         this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
             type: 'doughnut', 
-            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#c4a47e', '#c48c7e', '#8c7eb5', '#b56c6c', '#7b9e89'] : ['#43454e'], borderWidth: 0 }] }, 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
         });
     },
@@ -555,8 +586,7 @@ const App = {
     },
 
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
+        if(confirm("تحذير: سيتم مسح الكاش. لن تحذف البيانات السحابية. متأكد؟")) {
             location.reload();
         }
     }
