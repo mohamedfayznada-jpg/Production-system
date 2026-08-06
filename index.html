@@ -52,27 +52,47 @@
 
     <main class="content-area">
         
-        <!-- 1. الشاشة الرئيسية المجمعة (Master Dashboard) -->
+        <!-- 1. الشاشة الرئيسية التفاعلية (Master Dashboard) -->
         <section id="screen-home" class="screen active">
-            <div class="card summary-card gradient-bg">
-                <h2>إجمالي إنتاج المصنع (الوردية الحالية)</h2>
-                <div class="total-number" id="master-total-prod">0</div>
+            <div class="grid-actions mb-4" style="grid-template-columns: 1fr 1fr;">
+                <div class="card text-center mb-0 gradient-bg" style="padding: 20px 10px;">
+                    <div class="card-subtitle text-white" style="opacity:0.9;">مخرجات المصنع</div>
+                    <div class="total-number" id="master-total-prod" style="font-size: 2.2rem;">0</div>
+                </div>
+                <div class="card text-center mb-0" style="padding: 20px 10px; border: 2px solid var(--primary-color);">
+                    <div class="card-subtitle text-teal">المستهدف الكلي</div>
+                    <div class="total-number text-teal" id="master-total-target" style="font-size: 2.2rem;">0</div>
+                </div>
             </div>
-            
-            <div class="section-header">
-                <h3 class="section-title">مقارنة الأقسام اللحظية</h3>
+
+            <div class="card">
+                <div class="section-header mb-0">
+                    <h4 class="card-title">مقارنة الإنتاج (اضغط للتفاصيل)</h4>
+                </div>
+                <div class="chart-container" style="height: 250px;"><canvas id="masterProdChart"></canvas></div>
             </div>
-            <div id="master-departments-list">
-                <!-- سيتم توليد أشرطة التقدم والمقارنة هنا -->
+
+            <div class="card">
+                <div class="section-header mb-0">
+                    <h4 class="card-title">مقارنة عيوب الرش (اضغط للتفاصيل)</h4>
+                </div>
+                <div class="chart-container" style="height: 250px;"><canvas id="masterDefectsChart"></canvas></div>
             </div>
         </section>
 
         <!-- 2. شاشة الإنتاج -->
         <section id="screen-production" class="screen">
-            <div class="section-header">
-                <h3 class="section-title">سجل الساعات اللحظي</h3>
+            <div class="card" style="padding: 15px; border-bottom: 4px solid var(--primary-color);">
+                <div class="input-group mb-0 flex-row">
+                    <label style="margin-bottom:0; flex:1;">تارجت الوردية للقسم:</label>
+                    <input type="number" id="prod-target" class="modern-input" style="width:100px; text-align:center; color:var(--primary-color); font-size:1.2rem;" placeholder="0" oninput="App.saveTarget()">
+                </div>
             </div>
+
             <div class="card p-0">
+                <div class="section-header" style="padding: 20px 20px 0 20px;">
+                    <h3 class="card-title mb-0">سجل الساعات اللحظي</h3>
+                </div>
                 <div id="production-list"></div>
                 <div class="total-row">
                     <span>إجمالي المخرجات:</span>
@@ -81,18 +101,14 @@
             </div>
         </section>
 
-        <!-- 3. شاشة الأرصدة (الجديدة) -->
+        <!-- 3. شاشة الأرصدة -->
         <section id="screen-balances" class="screen">
-            <div class="section-header">
-                <h3 class="section-title">إدارة الأرصدة</h3>
-            </div>
-            
+            <div class="section-header"><h3 class="section-title">إدارة الأرصدة</h3></div>
             <div class="tabs-container">
                 <button class="tab-btn active" onclick="App.switchBalanceTab('cabinet')">الكابينة</button>
                 <button class="tab-btn" onclick="App.switchBalanceTab('door')">الباب</button>
                 <button class="tab-btn" onclick="App.switchBalanceTab('accessories')">الإكسسوار</button>
             </div>
-
             <div class="card">
                 <div class="input-group">
                     <label>الرصيد الافتتاحي</label>
@@ -118,39 +134,36 @@
 
         <!-- 4. شاشة الجودة -->
         <section id="screen-quality" class="screen">
-            <div class="section-header">
-                <h3 class="section-title">بوابة الجودة الشاملة</h3>
-            </div>
+            <div class="section-header"><h3 class="section-title">بوابة الجودة الشاملة</h3></div>
             <div class="grid-actions">
+                <div class="action-card" onclick="App.navigate('defects_log')">
+                    <div class="action-icon-wrapper text-purple"><i class="fa-solid fa-clipboard-list"></i></div>
+                    <span>سجل العيوب العام</span>
+                </div>
                 <div class="action-card" onclick="App.navigate('scratches')">
                     <div class="action-icon-wrapper text-orange"><i class="fa-solid fa-spray-can"></i></div>
                     <span>عيوب الرش</span>
                 </div>
-                <div class="action-card" onclick="App.showToast('سيتم تفعيلها قريباً')">
-                    <div class="action-icon-wrapper text-purple"><i class="fa-solid fa-clipboard-list"></i></div>
-                    <span>سجل العيوب</span>
-                </div>
             </div>
         </section>
 
-        <!-- 5. شاشة عيوب الرش -->
+        <!-- 4.1 شاشة سجل العيوب العام -->
+        <section id="screen-defects_log" class="screen">
+            <div class="section-header"><h3 class="section-title">سجل العيوب العام</h3></div>
+            <div class="card text-center" style="padding: 40px 20px;">
+                <i class="fa-solid fa-person-digging text-teal" style="font-size: 4rem; margin-bottom: 20px;"></i>
+                <h4 style="color: var(--text-main); font-size: 1.2rem; margin-bottom: 10px;">مساحة عمل جديدة</h4>
+                <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6;">هذا القسم مخصص لسجل العيوب العام الخاص بقسم التجميع. سيتم برمجته لاحقاً بناءً على متطلباتك.</p>
+                <button class="secondary-btn mt-4" onclick="App.navigate('quality')">رجوع للبوابة</button>
+            </div>
+        </section>
+
+        <!-- 4.2 شاشة عيوب الرش -->
         <section id="screen-scratches" class="screen">
             <div class="qc-counters">
-                <div class="qc-box">
-                    <div class="qc-icon text-blue"><i class="fa-solid fa-clipboard-check"></i></div>
-                    <div class="qc-val text-main" id="qc-count-today">0</div>
-                    <div class="qc-lbl">سُجل اليوم</div>
-                </div>
-                <div class="qc-box">
-                    <div class="qc-icon text-teal"><i class="fa-solid fa-check-double"></i></div>
-                    <div class="qc-val text-main" id="qc-count-fixed">0</div>
-                    <div class="qc-lbl">تم الإصلاح</div>
-                </div>
-                <div class="qc-box highlight">
-                    <div class="qc-icon text-red"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                    <div class="qc-val text-red" id="qc-count-pending">0</div>
-                    <div class="qc-lbl">تحت الإصلاح</div>
-                </div>
+                <div class="qc-box"><div class="qc-icon text-blue"><i class="fa-solid fa-clipboard-check"></i></div><div class="qc-val text-main" id="qc-count-today">0</div><div class="qc-lbl">سُجل اليوم</div></div>
+                <div class="qc-box"><div class="qc-icon text-teal"><i class="fa-solid fa-check-double"></i></div><div class="qc-val text-main" id="qc-count-fixed">0</div><div class="qc-lbl">تم الإصلاح</div></div>
+                <div class="qc-box highlight"><div class="qc-icon text-red"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="qc-val text-red" id="qc-count-pending">0</div><div class="qc-lbl">تحت الإصلاح</div></div>
             </div>
             
             <div class="card">
@@ -171,15 +184,13 @@
             <div id="scratches-list"></div>
         </section>
 
-        <!-- 6. شاشة التحليلات -->
+        <!-- 5. شاشة التحليلات الخاصة بالقسم -->
         <section id="screen-analytics" class="screen">
-            <div class="section-header">
-                <h3 class="section-title">نظرة عامة على الأداء</h3>
-            </div>
+            <div class="section-header"><h3 class="section-title">تقارير القسم الحالي</h3></div>
             <div class="grid-actions mb-4">
                 <div class="card text-center mb-0">
                     <div class="card-icon-top text-purple"><i class="fa-solid fa-bug"></i></div>
-                    <div class="card-subtitle">إجمالي العيوب</div>
+                    <div class="card-subtitle">عيوب القسم</div>
                     <div class="total-number text-main" style="font-size: 2.2rem;" id="analytics-total-defects">0</div>
                 </div>
                 <div class="card text-center mb-0">
@@ -198,11 +209,9 @@
             </div>
         </section>
 
-        <!-- 7. شاشة الإعدادات -->
+        <!-- 6. شاشة الإعدادات -->
         <section id="screen-settings" class="screen">
-            <div class="section-header">
-                <h3 class="section-title" id="settings-title">الإعدادات</h3>
-            </div>
+            <div class="section-header"><h3 class="section-title" id="settings-title">الإعدادات</h3></div>
             
             <div id="settings-panel-home" class="settings-panel">
                 <div class="card">
@@ -221,6 +230,7 @@
             
             <div id="settings-panel-production" class="settings-panel">
                 <div class="card">
+                    <div class="card-title mb-4">إعدادات القسم المختار</div>
                     <div class="input-group"><label>اسم خط الإنتاج</label><input type="text" id="set-line-name" class="modern-input"></div>
                     <div class="input-group"><label>بداية الوردية</label><input type="time" id="set-shift-start" class="modern-input"></div>
                     <div class="input-group"><label>نهاية الوردية</label><input type="time" id="set-shift-end" class="modern-input"></div>
@@ -246,7 +256,6 @@
 
     </main>
 
-    <!-- شريط التنقل السفلي -->
     <nav class="bottom-nav">
         <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
             <i class="fa-solid fa-house"></i><span>الرئيسية</span>
