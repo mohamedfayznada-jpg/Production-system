@@ -3,7 +3,6 @@ import { API } from './api.js';
 const CONFIG = {
     // رابط جوجل سكريبت لرفع الصور
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
-    STORAGE_KEY: "production_system_v3_settings",
     IMAGE_MAX_WIDTH: 800,
     IMAGE_MAX_HEIGHT: 800,
     IMAGE_QUALITY: 0.6
@@ -12,6 +11,7 @@ const CONFIG = {
 const App = {
     currentProdListener: null,
     currentDefectListener: null,
+    currentSettingsListener: null,
     isOnline: true,
     saveTimers: {},
     charts: {},
@@ -39,23 +39,28 @@ const App = {
         this.isOnline = await API.production.testConnection();
         this.updateConnectionStatus(this.isOnline);
 
-        try {
-            const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-            if (saved) {
-                const parsedData = JSON.parse(saved);
-                this.data.settings = parsedData.settings;
-            }
-        } catch (e) { console.error("Cache Reset", e); }
-
         const today = new Date();
         const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
         
         document.getElementById('global-date').value = dateString;
         document.getElementById('global-shift').value = "1";
 
-        this.applySettingsToFields();
-        this.generateIntervals();
-        this.renderDefectTypesSettings();
+        // الاستماع لإعدادات التطبيق من السحابة مباشرة لجميع الأجهزة
+        this.currentSettingsListener = API.settings.listenToSettings((cloudSettings) => {
+            if(cloudSettings) {
+                this.data.settings = cloudSettings;
+                this.applySettingsToFields();
+                this.renderDefectTypesSettings();
+                this.generateIntervals();
+                
+                // تحديث اسم الخط في الواجهة الرئيسية إن وجد
+                const titleText = document.querySelector('.title-text');
+                if(titleText) titleText.innerText = cloudSettings.lineName;
+            } else {
+                // إذا كانت قاعدة البيانات جديدة تماماً، قم بحفظ الإعدادات الافتراضية
+                API.settings.saveSettings(this.data.settings);
+            }
+        });
 
         document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
         document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
@@ -103,6 +108,8 @@ const App = {
 
     closeSettings() { this.navigate(this.currentScreen); },
 
+    // ---------------- Settings & Time Generators ----------------
+
     applySettingsToFields() {
         document.getElementById('set-shift-start').value = this.data.settings.start;
         document.getElementById('set-shift-end').value = this.data.settings.end;
@@ -118,9 +125,9 @@ const App = {
         this.data.settings.bEnd = document.getElementById('set-break-end').value;
         this.data.settings.lineName = document.getElementById('set-line-name').value;
         
-        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
-        this.generateIntervals(); 
-        this.showToast("تم حفظ الإعدادات وتوليد الساعات ✅");
+        // حفظ الإعدادات في السحابة بدلاً من المتصفح المحلي
+        API.settings.saveSettings(this.data.settings);
+        this.showToast("تم حفظ الإعدادات ومزامنتها لجميع الأجهزة ✅");
     },
 
     formatAMPM(timeStr) { 
@@ -182,19 +189,19 @@ const App = {
         if(val !== '' && !this.data.settings.defectTypes.includes(val)) {
             this.data.settings.defectTypes.push(val); 
             input.value = ''; 
-            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
-            this.renderDefectTypesSettings(); 
-            this.showToast("تم إضافة التصنيف");
+            API.settings.saveSettings(this.data.settings);
+            this.showToast("تم إضافة التصنيف ومزامنته للجميع");
         }
     },
 
     removeDefectType(index) {
-        if(confirm("حذف هذا التصنيف من القائمة؟")) {
+        if(confirm("حذف هذا التصنيف من القائمة لجميع الأجهزة؟")) {
             this.data.settings.defectTypes.splice(index, 1); 
-            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
-            this.renderDefectTypesSettings();
+            API.settings.saveSettings(this.data.settings);
         }
     },
+
+    // ---------------- Production Sync ----------------
 
     buildProductionUI() {
         const container = document.getElementById('production-list');
@@ -229,6 +236,7 @@ const App = {
 
         this.clearInputs();
 
+        // استماع للإنتاج
         this.currentProdListener = API.production.listenToShift(date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
@@ -242,6 +250,7 @@ const App = {
             this.calculateLocalTotal();
         });
 
+        // استماع للعيوب
         this.currentDefectListener = API.quality.listenToDefects(date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
@@ -294,6 +303,8 @@ const App = {
         }, 700);
     },
 
+    // ---------------- Quality (Scratches) Sync ----------------
+
     addScratchDefect() {
         const type = document.getElementById('scratch-type').value;
         const notes = document.getElementById('scratch-notes').value;
@@ -310,7 +321,7 @@ const App = {
             defectBase.image = "";
             API.quality.saveDefect(defectBase);
             document.getElementById('scratch-notes').value = ''; 
-            this.showToast("تم التسجيل بدون صورة ✅");
+            this.showToast("تم التسجيل والمزامنة بدون صورة ✅");
             return; 
         }
 
@@ -415,6 +426,8 @@ const App = {
         return url;
     },
 
+    // ---------------- Analytics & WhatsApp ----------------
+
     renderAnalytics() {
         let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
         let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
@@ -495,7 +508,8 @@ const App = {
     },
 
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
+        if(confirm("تحذير: سيتم مسح الإعدادات للبدء من جديد! هل أنت متأكد؟")) {
+            // سنقوم بمسح المتصفح المحلي فقط ولا نمسح الداتا من السحابة لتبقى آمنة
             localStorage.removeItem(CONFIG.STORAGE_KEY);
             location.reload();
         }
