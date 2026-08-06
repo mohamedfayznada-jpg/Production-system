@@ -2,7 +2,8 @@ import { API } from './api.js';
 
 const App = {
     currentListenerUnsubscribe: null,
-    isOnline: false,
+    isOnline: true,
+    saveTimers: {}, // لتأخير الحفظ أثناء الكتابة (Debounce) لعدم إرهاق السيرفر
     
     shiftHours: [
         { hour: "08:00", label: "08:00 ص" },
@@ -17,9 +18,7 @@ const App = {
     ],
 
     async init() {
-        // اختبار الاتصال بـ Firebase عند فتح التطبيق
-        this.isOnline = await API.production.testConnection();
-        this.updateConnectionStatus(this.isOnline);
+        this.updateConnectionStatus(true);
 
         const today = new Date();
         const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
@@ -31,13 +30,7 @@ const App = {
         document.getElementById('global-shift').addEventListener('change', () => this.loadCurrentShift());
 
         this.buildProductionUI();
-        
-        // إذا كان متصلاً، ابدأ بجلب البيانات الحية
-        if(this.isOnline) {
-            this.loadCurrentShift();
-        } else {
-            this.showToast("خطأ: لا يوجد اتصال بالسيرفر أو الصلاحيات مرفوضة", true);
-        }
+        this.loadCurrentShift();
     },
 
     updateConnectionStatus(isOnline) {
@@ -47,7 +40,7 @@ const App = {
             dot.title = 'متصل بالسحابة';
         } else {
             dot.className = 'status-dot offline';
-            dot.title = 'غير متصل';
+            dot.title = 'يتم المزامنة بالخلفية';
         }
     },
 
@@ -56,15 +49,16 @@ const App = {
         container.innerHTML = '';
 
         this.shiftHours.forEach(timeSlot => {
+            // استخدام oninput ليعمل مع كل حرف يُكتب فوراً
             const html = `
                 <div class="hour-row" id="row-${timeSlot.hour}" data-hour="${timeSlot.hour}">
                     <div class="hour-header">
                         <span class="time-label">${timeSlot.label}</span>
                         <input type="number" class="actual-input" placeholder="0" 
-                            onchange="App.handleInputChange('${timeSlot.hour}')">
+                            oninput="App.handleInputChange('${timeSlot.hour}')">
                     </div>
                     <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." 
-                        onchange="App.handleInputChange('${timeSlot.hour}')">
+                        oninput="App.handleInputChange('${timeSlot.hour}')">
                 </div>
             `;
             container.innerHTML += html;
@@ -72,8 +66,6 @@ const App = {
     },
 
     loadCurrentShift() {
-        if (!this.isOnline) return;
-
         const date = document.getElementById('global-date').value;
         const shift = document.getElementById('global-shift').value;
 
@@ -83,6 +75,7 @@ const App = {
 
         this.clearInputs();
 
+        // الاستماع المباشر من Firebase
         this.currentListenerUnsubscribe = API.production.listenToShift(date, shift, (records) => {
             this.updateUIFromCloud(records);
         });
@@ -95,63 +88,72 @@ const App = {
     },
 
     updateUIFromCloud(records) {
-        let total = 0;
-
         records.forEach(record => {
             const row = document.getElementById(`row-${record.hour}`);
             if (row) {
                 const actualInput = row.querySelector('.actual-input');
                 const reasonInput = row.querySelector('.reason-input');
                 
+                // لا نُحدث الحقل من السيرفر إذا كان المستخدم يقف عليه ويكتب بداخله الآن
                 if (document.activeElement !== actualInput) {
                     actualInput.value = record.actual || '';
                 }
                 if (document.activeElement !== reasonInput) {
                     reasonInput.value = record.shortfallReason || '';
                 }
-
-                total += Number(record.actual) || 0;
             }
         });
+        
+        // تحديث الإجمالي بعد جلب البيانات
+        this.calculateLocalTotal();
+    },
 
+    calculateLocalTotal() {
+        let total = 0;
+        document.querySelectorAll('.actual-input').forEach(input => {
+            total += Number(input.value) || 0;
+        });
         document.getElementById('live-total').innerText = total;
     },
 
-    async handleInputChange(hourStr) {
-        if (!this.isOnline) {
-            this.showToast("لا يمكن الحفظ، يرجى التحقق من الاتصال", true);
-            return;
+    handleInputChange(hourStr) {
+        // 1. تحديث إجمالي الشاشة فوراً عند الكتابة بدون انتظار السيرفر
+        this.calculateLocalTotal();
+
+        // 2. مسح المؤقت القديم إذا استمر المستخدم بالكتابة بسرعة
+        if (this.saveTimers[hourStr]) {
+            clearTimeout(this.saveTimers[hourStr]);
         }
 
-        const date = document.getElementById('global-date').value;
-        const shift = document.getElementById('global-shift').value;
-        const row = document.getElementById(`row-${hourStr}`);
-        
-        const actualVal = row.querySelector('.actual-input').value;
-        const reasonVal = row.querySelector('.reason-input').value;
+        // 3. إنشاء مؤقت جديد ينتظر 700 ملي ثانية بعد آخر حرف يكتبه المستخدم ليرسل للسيرفر
+        this.saveTimers[hourStr] = setTimeout(async () => {
+            const date = document.getElementById('global-date').value;
+            const shift = document.getElementById('global-shift').value;
+            const row = document.getElementById(`row-${hourStr}`);
+            
+            const actualVal = row.querySelector('.actual-input').value;
+            const reasonVal = row.querySelector('.reason-input').value;
 
-        // تأثير بصري أثناء الحفظ
-        row.classList.add('saving');
+            const payload = {
+                recordId: `${date}_${shift}_${hourStr}`,
+                date: date,
+                shift: shift,
+                hour: hourStr,
+                actual: actualVal,
+                shortfallReason: reasonVal
+            };
 
-        const payload = {
-            recordId: `${date}_${shift}_${hourStr}`,
-            date: date,
-            shift: shift,
-            hour: hourStr,
-            actual: actualVal,
-            shortfallReason: reasonVal
-        };
-
-        try {
-            await API.production.saveHour(payload);
-            row.classList.remove('saving');
-        } catch (error) {
-            console.error(error);
-            row.classList.remove('saving');
-            this.showToast("فشل الحفظ في السيرفر", true);
-            this.updateConnectionStatus(false);
-            this.isOnline = false;
-        }
+            try {
+                row.classList.add('saving'); // إظهار تأثير الحفظ
+                await API.production.saveHour(payload);
+                row.classList.remove('saving');
+                this.updateConnectionStatus(true);
+            } catch (error) {
+                console.error(error);
+                row.classList.remove('saving');
+                this.updateConnectionStatus(false); // لم يتم الحفظ للسحابة (سيتم الحفظ محلياً بالكاش)
+            }
+        }, 700);
     },
 
     showToast(msg, isError = false) {
