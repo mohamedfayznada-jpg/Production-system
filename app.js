@@ -15,7 +15,7 @@ const App = {
     masterProdListener: null,
     masterTargetListener: null,
     masterDefectListener: null,
-    currentBalanceListener: null,
+    currentInventoryListener: null,
     
     isOnline: true,
     saveTimers: {},
@@ -29,7 +29,7 @@ const App = {
         settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: 'التجميع النهائي', defectTypes: ['خدش خفيف'] },
         generatedHours: [],
         scratches: [],
-        balances: { cabinet: { initial: '', added: '', consumed: '' }, door: { initial: '', added: '', consumed: '' }, accessories: { initial: '', added: '', consumed: '' } },
+        inventory: { models: [], cabinet: {}, door: {} },
         master: { production: [], targets: [], scratches: [] }
     },
 
@@ -259,7 +259,6 @@ const App = {
         this.buildProductionUI();
     },
 
-    // ---------------- الإنتاج والتارجت ----------------
     buildProductionUI() {
         const container = document.getElementById('production-list');
         if (!container) return;
@@ -293,17 +292,15 @@ const App = {
         if (this.masterProdListener) this.masterProdListener();
         if (this.masterTargetListener) this.masterTargetListener();
         if (this.masterDefectListener) this.masterDefectListener();
-        if (this.currentBalanceListener) this.currentBalanceListener();
+        if (this.currentInventoryListener) this.currentInventoryListener();
 
         this.clearInputs();
 
-        // Target Listener
         API.production.listenToTarget(this.data.currentDepartment, date, shift, (targetVal) => {
             const tInput = document.getElementById('prod-target');
             if(tInput && document.activeElement !== tInput) tInput.value = targetVal || '';
         });
 
-        // Current Dept Production
         this.currentProdListener = API.production.listenToShift(this.data.currentDepartment, date, shift, (records) => {
             records.forEach(record => {
                 const row = document.getElementById(`row-${record.hour.replace(':','-')}`);
@@ -317,14 +314,12 @@ const App = {
             this.calculateLocalTotal();
         });
 
-        // Current Dept Scratches
         this.currentDefectListener = API.quality.listenToDefects(this.data.currentDepartment, date, (records) => {
             this.data.scratches = records;
             this.renderScratchesList();
             if(this.currentScreen === 'analytics') this.renderAnalytics();
         });
 
-        // Master Dashboard Listeners
         this.masterProdListener = API.master.listenToAllProduction(date, shift, (records) => {
             this.data.master.production = records;
             if(this.currentScreen === 'home') this.renderMasterDashboard();
@@ -338,11 +333,10 @@ const App = {
             if(this.currentScreen === 'home') this.renderMasterDashboard();
         });
 
-        // Balances
-        this.currentBalanceListener = API.balances.listenToBalances(this.data.currentDepartment, (balancesData) => {
-            this.data.balances = { cabinet: { initial: '', added: '', consumed: '' }, door: { initial: '', added: '', consumed: '' }, accessories: { initial: '', added: '', consumed: '' } };
-            balancesData.forEach(b => { if(this.data.balances[b.type]) this.data.balances[b.type] = b; });
-            this.populateBalanceInputs();
+        // استماع لنظام المخزون الجديد
+        this.currentInventoryListener = API.balances.listenToInventory(this.data.currentDepartment, (invData) => {
+            this.data.inventory = invData;
+            this.renderInventory();
         });
     },
 
@@ -407,7 +401,6 @@ const App = {
     renderMasterDashboard() {
         let factoryTotalActual = 0;
         let factoryTotalTarget = 0;
-        
         let deptProd = {};
         let deptScratches = {};
 
@@ -416,14 +409,12 @@ const App = {
             deptScratches[d] = 0; 
         });
 
-        // 1. فلترة وتجميع الإنتاج 
         if(this.data.master.production) {
             this.data.master.production.forEach(r => {
                 if(r.department && this.data.departments.includes(r.department)) {
                     if(r.recordId && r.recordId.startsWith(r.department)) {
                         const val = Number(r.actual) || 0;
                         const hourPrefix = r.hour.split(':')[0]; 
-                        
                         if (deptProd[r.department][hourPrefix] === undefined) {
                             deptProd[r.department][hourPrefix] = val;
                         } else {
@@ -434,7 +425,6 @@ const App = {
             });
         }
 
-        // 2. فلترة وتجميع التارجت
         let validTargets = {};
         if(this.data.master.targets) {
             this.data.master.targets.forEach(r => {
@@ -444,10 +434,8 @@ const App = {
             });
         }
         
-        // التعديل الجديد: المستهدف الكلي للمصنع هو فقط مستهدف قسم التجميع النهائي
         factoryTotalTarget = validTargets['التجميع النهائي'] || 0;
 
-        // 3. فلترة عيوب الرش
         if(this.data.master.scratches) {
             this.data.master.scratches.forEach(r => {
                 if(r.department && deptScratches[r.department] !== undefined) {
@@ -456,19 +444,15 @@ const App = {
             });
         }
 
-        // 4. الحساب النهائي
         let finalDeptProdTotals = {};
         this.data.departments.forEach(d => {
             const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
             finalDeptProdTotals[d] = sum;
-            
-            // التعديل الجديد: مخرجات المصنع تحسب فقط من قسم التجميع النهائي
             if (d === 'التجميع النهائي') {
                 factoryTotalActual += sum; 
             }
         });
 
-        // 5. تحديث الشاشة
         const masterTotalProdEl = document.getElementById('master-total-prod');
         if (masterTotalProdEl) masterTotalProdEl.innerText = factoryTotalActual;
 
@@ -504,7 +488,6 @@ const App = {
 
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
-
         const depts = this.data.departments;
         const prodData = depts.map(d => finalDeptProdTotals[d]);
         const scratchData = depts.map(d => deptScratches[d]);
@@ -515,15 +498,7 @@ const App = {
             this.charts.masterProd = new Chart(prodChartCanvas.getContext('2d'), { 
                 type: 'bar', 
                 data: { labels: depts, datasets: [{ label: 'الإنتاج', data: prodData, backgroundColor: '#0ab39c', borderRadius: 4 }] }, 
-                options: { 
-                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                    onClick: (e, elements) => {
-                        if(elements.length > 0) {
-                            const deptIndex = elements[0].index;
-                            this.switchToDepartmentAndGo(depts[deptIndex], 'analytics');
-                        }
-                    }
-                } 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, onClick: (e, elements) => { if(elements.length > 0) this.switchToDepartmentAndGo(depts[elements[0].index], 'analytics'); } } 
             });
         }
 
@@ -533,59 +508,173 @@ const App = {
             this.charts.masterDefects = new Chart(defectsChartCanvas.getContext('2d'), { 
                 type: 'bar', 
                 data: { labels: depts, datasets: [{ label: 'عيوب الرش', data: scratchData, backgroundColor: '#f59e0b', borderRadius: 4 }] }, 
-                options: { 
-                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-                    onClick: (e, elements) => {
-                        if(elements.length > 0) {
-                            const deptIndex = elements[0].index;
-                            this.switchToDepartmentAndGo(depts[deptIndex], 'scratches');
-                        }
-                    }
-                } 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, onClick: (e, elements) => { if(elements.length > 0) this.switchToDepartmentAndGo(depts[elements[0].index], 'scratches'); } } 
             });
         }
     },
 
-    // ---------------- Balances ----------------
+    // ---------------- الأرصدة (نظام الـ BOM المتقدم) ----------------
     switchBalanceTab(tabId) {
         this.currentBalanceTab = tabId;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tab-btn[onclick="App.switchBalanceTab('${tabId}')"]`);
         if(activeBtn) activeBtn.classList.add('active');
-        this.populateBalanceInputs();
-    },
-    populateBalanceInputs() {
-        const currentData = this.data.balances[this.currentBalanceTab];
-        const initialEl = document.getElementById('balance-initial');
-        const addedEl = document.getElementById('balance-added');
-        const consumedEl = document.getElementById('balance-consumed');
-
-        if(initialEl) initialEl.value = currentData.initial || '';
-        if(addedEl) addedEl.value = currentData.added || '';
-        if(consumedEl) consumedEl.value = currentData.consumed || '';
-        this.calculateCurrentBalance();
-    },
-    calculateCurrentBalance() {
-        const initial = Number(document.getElementById('balance-initial')?.value) || 0;
-        const added = Number(document.getElementById('balance-added')?.value) || 0;
-        const consumed = Number(document.getElementById('balance-consumed')?.value) || 0;
-        const currentEl = document.getElementById('balance-current');
-        if(currentEl) currentEl.innerText = (initial + added) - consumed;
-    },
-    async saveCurrentBalance() {
-        if(!this.isOnline) { this.showToast("تأكد من الاتصال", true); return; }
-        const payload = { 
-            initial: document.getElementById('balance-initial')?.value || '', 
-            added: document.getElementById('balance-added')?.value || '', 
-            consumed: document.getElementById('balance-consumed')?.value || '' 
-        };
-        try {
-            await API.balances.saveBalance(this.data.currentDepartment, this.currentBalanceTab, payload);
-            this.showToast("تم تحديث الرصيد بنجاح ✅");
-        } catch(e) { this.showToast("فشل تحديث الرصيد", true); }
+        
+        const addCard = document.getElementById('add-model-card');
+        if(addCard) addCard.style.display = tabId === 'final' ? 'none' : 'block';
+        
+        this.renderInventory();
     },
 
-    // ---------------- Defect Types & Scratches ----------------
+    addInventoryModel() {
+        const nameInput = document.getElementById('inv-model-name');
+        const colorInput = document.getElementById('inv-model-color');
+        const is3DoorInput = document.getElementById('inv-is-3door');
+        
+        const name = nameInput.value.trim();
+        const color = colorInput.value.trim();
+        const is3Door = is3DoorInput.checked;
+
+        if(name === '') { this.showToast('أدخل اسم الموديل', true); return; }
+
+        const newId = Date.now().toString();
+        this.data.inventory.models = this.data.inventory.models || [];
+        this.data.inventory.cabinet = this.data.inventory.cabinet || {};
+        this.data.inventory.door = this.data.inventory.door || {};
+
+        this.data.inventory.models.push({ id: newId, name: name, color: color, is3Door: is3Door });
+        this.data.inventory.cabinet[newId] = { boq: '', out: '' };
+        this.data.inventory.door[newId] = { r: '', f: '', v: '' };
+
+        API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+        
+        nameInput.value = ''; colorInput.value = ''; is3DoorInput.checked = false;
+        this.showToast('تمت الإضافة للمخزون ✅');
+    },
+
+    deleteInventoryModel(modelId) {
+        if(!confirm('هل أنت متأكد من حذف هذا الموديل بأرصدته؟')) return;
+        
+        this.data.inventory.models = this.data.inventory.models.filter(m => m.id !== modelId);
+        delete this.data.inventory.cabinet[modelId];
+        delete this.data.inventory.door[modelId];
+        
+        API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+        this.showToast('تم حذف الموديل');
+    },
+
+    handleInventoryInput(modelId, part, field) {
+        const inputEl = document.getElementById(`inv_${part}_${modelId}_${field}`);
+        if(!inputEl) return;
+        
+        const val = inputEl.value;
+        this.data.inventory[part][modelId][field] = val;
+
+        const timerId = `inv_${modelId}_${part}_${field}`;
+        if(this.saveTimers[timerId]) clearTimeout(this.saveTimers[timerId]);
+        this.saveTimers[timerId] = setTimeout(() => {
+            API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+        }, 1000);
+    },
+
+    renderInventory() {
+        const container = document.getElementById('inventory-list');
+        if(!container) return;
+        container.innerHTML = '';
+
+        const models = this.data.inventory.models || [];
+        if(models.length === 0) {
+            container.innerHTML = `<div class="text-center text-muted" style="padding: 30px;">لا توجد موديلات في المخزون. أضف موديل للبدء.</div>`;
+            return;
+        }
+
+        models.forEach(model => {
+            let contentHtml = '';
+            let badgeHtml = model.is3Door ? `<span class="inv-badge">3 باب</span>` : `<span class="inv-badge" style="background:#e0f2fe; color:var(--primary-color);">2 باب</span>`;
+            
+            if (this.currentBalanceTab === 'cabinet') {
+                const cabData = this.data.inventory.cabinet[model.id] || { boq:'', out:'' };
+                contentHtml = `
+                    <div class="inv-inputs-grid">
+                        <div class="inv-input-group">
+                            <label>رصيد المقايسة</label>
+                            <input type="number" id="inv_cabinet_${model.id}_boq" class="inv-input" placeholder="0" value="${cabData.boq}" oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'boq')">
+                        </div>
+                        <div class="inv-input-group">
+                            <label>خارج المقايسة</label>
+                            <input type="number" id="inv_cabinet_${model.id}_out" class="inv-input" placeholder="0" value="${cabData.out}" oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'out')">
+                        </div>
+                    </div>
+                `;
+            } 
+            else if (this.currentBalanceTab === 'door') {
+                const doorData = this.data.inventory.door[model.id] || { r:'', f:'', v:'' };
+                const gridCols = model.is3Door ? '1fr 1fr 1fr' : '1fr 1fr';
+                const vInput = model.is3Door ? `
+                    <div class="inv-input-group">
+                        <label>باب V</label>
+                        <input type="number" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
+                    </div>` : '';
+
+                contentHtml = `
+                    <div class="inv-inputs-grid" style="grid-template-columns: ${gridCols};">
+                        <div class="inv-input-group">
+                            <label>باب R</label>
+                            <input type="number" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
+                        </div>
+                        <div class="inv-input-group">
+                            <label>باب F</label>
+                            <input type="number" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
+                        </div>
+                        ${vInput}
+                    </div>
+                `;
+            }
+            else if (this.currentBalanceTab === 'final') {
+                const cabData = this.data.inventory.cabinet[model.id] || {boq:0, out:0};
+                const doorData = this.data.inventory.door[model.id] || {r:0, f:0, v:0};
+                
+                const cabTotal = (Number(cabData.boq) || 0) + (Number(cabData.out) || 0);
+                const r = Number(doorData.r) || 0;
+                const f = Number(doorData.f) || 0;
+                const v = Number(doorData.v) || 0;
+
+                let availableSets = 0;
+                if(model.is3Door) { availableSets = Math.min(cabTotal, r, f, v); } 
+                else { availableSets = Math.min(cabTotal, r, f); }
+
+                const vBox = model.is3Door ? `<div class="inv-stat-box"><span class="inv-stat-lbl">باب V</span><span class="inv-stat-val">${v}</span></div>` : '';
+                
+                contentHtml = `
+                    <div class="inv-final-grid" style="${model.is3Door ? 'grid-template-columns: repeat(4, 1fr);' : 'grid-template-columns: repeat(3, 1fr);'}">
+                        <div class="inv-stat-box"><span class="inv-stat-lbl">كابينة</span><span class="inv-stat-val text-primary">${cabTotal}</span></div>
+                        <div class="inv-stat-box"><span class="inv-stat-lbl">باب R</span><span class="inv-stat-val">${r}</span></div>
+                        <div class="inv-stat-box"><span class="inv-stat-lbl">باب F</span><span class="inv-stat-val">${f}</span></div>
+                        ${vBox}
+                    </div>
+                    <div class="inv-result">
+                        <span>متاح للتجميع النهائي:</span>
+                        <span class="set-qty">${availableSets}</span>
+                    </div>
+                `;
+            }
+
+            container.innerHTML += `
+                <div class="card inv-card mb-4" style="margin-bottom: 15px;">
+                    <div class="inv-header">
+                        <div class="inv-title">${model.name} <span style="color:var(--text-muted); font-size:0.9rem;">${model.color ? ' - '+model.color : ''}</span></div>
+                        <div>
+                            ${badgeHtml}
+                            <i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
+                        </div>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+        });
+    },
+
+    // ---------------- Defect Types & Quality ----------------
     renderDefectTypesSettings() {
         const container = document.getElementById('defect-types-list'); 
         const selectMenu = document.getElementById('scratch-type');
@@ -623,27 +712,17 @@ const App = {
         if (!typeEl || !dateEl) return;
 
         const date = dateEl.value;
-        const defectBase = {
-            id: Date.now(), type: typeEl.value, notes: notesEl ? notesEl.value : '', 
-            status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), 
-            date: date
-        };
+        const defectBase = { id: Date.now(), type: typeEl.value, notes: notesEl ? notesEl.value : '', status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: date };
 
         if(!fileInput || !fileInput.files || !fileInput.files[0]) { 
-            defectBase.image = "";
-            API.quality.saveDefect(this.data.currentDepartment, defectBase);
-            if(notesEl) notesEl.value = ''; 
-            this.showToast("تم التسجيل والمزامنة بدون صورة ✅");
-            return; 
+            defectBase.image = ""; API.quality.saveDefect(this.data.currentDepartment, defectBase);
+            if(notesEl) notesEl.value = ''; this.showToast("تم التسجيل بدون صورة ✅"); return; 
         }
 
         if(CONFIG.GOOGLE_API_URL === '') { this.showToast("رابط الرفع غير موجود", true); return; }
 
-        const loader = document.getElementById('upload-loader'); 
-        if(loader) loader.classList.add('show'); 
-        
-        const file = fileInput.files[0]; 
-        const reader = new FileReader();
+        const loader = document.getElementById('upload-loader'); if(loader) loader.classList.add('show'); 
+        const file = fileInput.files[0]; const reader = new FileReader();
         
         reader.onload = (e) => {
             const img = new Image();
@@ -654,50 +733,31 @@ const App = {
                 else { if (height > CONFIG.IMAGE_MAX_HEIGHT) { width *= CONFIG.IMAGE_MAX_HEIGHT / height; height = CONFIG.IMAGE_MAX_HEIGHT; } }
                 canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
                 const compressedBase64 = canvas.toDataURL('image/webp', CONFIG.IMAGE_QUALITY);
-
                 const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: date } };
                 
                 try {
                     let response = await fetch(CONFIG.GOOGLE_API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(uploadPayload) });
                     let result = JSON.parse(await response.text());
                     if (result.status === 'success') {
-                        defectBase.image = result.url;
-                        await API.quality.saveDefect(this.data.currentDepartment, defectBase);
-                        if(notesEl) notesEl.value = ''; 
-                        if(fileInput) fileInput.value = ''; 
-                        App.showToast("تم الرفع والتسجيل بنجاح ✅");
-                    } else { App.showToast("فشل الرفع السحابي للصورة ❌", true); }
+                        defectBase.image = result.url; await API.quality.saveDefect(this.data.currentDepartment, defectBase);
+                        if(notesEl) notesEl.value = ''; if(fileInput) fileInput.value = ''; App.showToast("تم الرفع والتسجيل بنجاح ✅");
+                    } else { App.showToast("فشل الرفع للصورة ❌", true); }
                 } catch (err) { App.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
                 finally { if(loader) loader.classList.remove('show'); }
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+            }; img.src = e.target.result;
+        }; reader.readAsDataURL(file);
     },
 
     renderScratchesList() {
         const container = document.getElementById('scratches-list'); 
-        if(!container) return;
-        container.innerHTML = '';
+        if(!container) return; container.innerHTML = '';
         let countToday = 0; let countFixed = 0; let countPending = 0;
         
-        this.data.scratches.forEach(d => {
-            countToday++;
-            if (d.status === 'pending') countPending++;
-            if (d.status === 'fixed') countFixed++; 
-        });
+        this.data.scratches.forEach(d => { countToday++; if (d.status === 'pending') countPending++; if (d.status === 'fixed') countFixed++; });
+        const qcToday = document.getElementById('qc-count-today'); const qcFixed = document.getElementById('qc-count-fixed'); const qcPending = document.getElementById('qc-count-pending');
+        if(qcToday) qcToday.innerText = countToday; if(qcFixed) qcFixed.innerText = countFixed; if(qcPending) qcPending.innerText = countPending;
 
-        const qcToday = document.getElementById('qc-count-today');
-        const qcFixed = document.getElementById('qc-count-fixed');
-        const qcPending = document.getElementById('qc-count-pending');
-
-        if(qcToday) qcToday.innerText = countToday;
-        if(qcFixed) qcFixed.innerText = countFixed;
-        if(qcPending) qcPending.innerText = countPending;
-
-        if(this.data.scratches.length === 0) { 
-            container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; 
-        }
+        if(this.data.scratches.length === 0) { container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; }
         
         this.data.scratches.forEach(defect => {
             const isPending = defect.status === 'pending';
@@ -724,37 +784,11 @@ const App = {
         });
     },
 
-    toggleScratchStatus(id, currentStatus) { 
-        const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending';
-        API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus });
-    },
-    
-    deleteScratch(id) { 
-        if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id);
-    },
-
-    openImage(src) { 
-        const modalImg = document.getElementById('modal-image');
-        const modal = document.getElementById('image-modal');
-        if(modalImg && modal) {
-            modalImg.src = src; modal.classList.add('show'); 
-        }
-    },
-    closeImageModal(e) { 
-        const modal = document.getElementById('image-modal');
-        if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) {
-            modal.classList.remove('show'); 
-        }
-    },
-
-    getImageUrl(url) {
-        if (!url) return "";
-        if (url.includes("drive.google.com")) {
-            const match = url.match(/id=([^&]+)/);
-            if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
-        }
-        return url;
-    },
+    toggleScratchStatus(id, currentStatus) { const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending'; API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus }); },
+    deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
+    openImage(src) { const modalImg = document.getElementById('modal-image'); const modal = document.getElementById('image-modal'); if(modalImg && modal) { modalImg.src = src; modal.classList.add('show'); } },
+    closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
+    getImageUrl(url) { if (!url) return ""; if (url.includes("drive.google.com")) { const match = url.match(/id=([^&]+)/); if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`; } return url; },
 
     // ---------------- Analytics & WhatsApp ----------------
     renderAnalytics() {
@@ -781,28 +815,12 @@ const App = {
         const totalDefectsEl = document.getElementById('analytics-total-defects');
         if(totalDefectsEl) totalDefectsEl.innerText = this.data.scratches.length;
 
-        Chart.defaults.font.family = 'Cairo';
-        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Cairo'; Chart.defaults.color = '#94a3b8';
 
         const prodChartCanvas = document.getElementById('prodChart');
         if (prodChartCanvas) {
             if(this.charts.prod) this.charts.prod.destroy(); 
-            this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { 
-                type: 'line', 
-                data: { 
-                    labels: hourlyLabels, 
-                    datasets: [{ 
-                        label: 'الإنتاج', 
-                        data: hourlyData, 
-                        backgroundColor: 'rgba(10, 179, 156, 0.2)', 
-                        borderColor: '#0ab39c', 
-                        borderWidth: 3, 
-                        tension: 0.4,
-                        fill: true
-                    }] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } 
-            });
+            this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { type: 'line', data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: 'rgba(10, 179, 156, 0.2)', borderColor: '#0ab39c', borderWidth: 3, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
         }
 
         let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
@@ -811,11 +829,7 @@ const App = {
         const defectsChartCanvas = document.getElementById('defectsChart');
         if (defectsChartCanvas) {
             if(this.charts.defects) this.charts.defects.destroy();
-            this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { 
-                type: 'doughnut', 
-                data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, 
-                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
-            });
+            this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } });
         }
     },
 
@@ -824,22 +838,15 @@ const App = {
         const globalShiftEl = document.getElementById('global-shift');
         if (!globalDateEl || !globalShiftEl) return;
 
-        let dParts = globalDateEl.value.split('-'); 
-        let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
-        let total = 0; 
-        let report = `*تقرير الإنتاج (${this.data.currentDepartment})*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${globalShiftEl.value}\n\n`; 
+        let dParts = globalDateEl.value.split('-'); let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
+        let total = 0; let report = `*تقرير الإنتاج (${this.data.currentDepartment})*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${globalShiftEl.value}\n\n`; 
         
         document.querySelectorAll('.hour-row').forEach(row => {
-            if(row.classList.contains('break-row')) {
-                report += `\n*فترة راحة*\n\n`;
-            } else {
-                const labelEl = row.querySelector('.time-label');
-                const actualEl = row.querySelector('.actual-input');
-                const reasonEl = row.querySelector('.reason-input');
-                
+            if(row.classList.contains('break-row')) { report += `\n*فترة راحة*\n\n`; } 
+            else {
+                const labelEl = row.querySelector('.time-label'); const actualEl = row.querySelector('.actual-input'); const reasonEl = row.querySelector('.reason-input');
                 if (labelEl && actualEl) {
-                    const label = labelEl.innerText;
-                    const actual = actualEl.value || "0";
+                    const label = labelEl.innerText; const actual = actualEl.value || "0";
                     report += `${label} : ${actual}\n`;
                     if(reasonEl && reasonEl.value.trim() !== '') report += `- ${reasonEl.value.trim()}\n`;
                     total += Number(actual);
@@ -852,12 +859,8 @@ const App = {
     },
 
     hardReset() {
-        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
-            location.reload();
-        }
+        if(confirm("تحذير: سيتم مسح الإعدادات المحلية! هل أنت متأكد؟")) { localStorage.removeItem(CONFIG.STORAGE_KEY); location.reload(); }
     }
 };
 
-window.App = App;
-document.addEventListener('DOMContentLoaded', () => App.init());
+window.App = App; document.addEventListener('DOMContentLoaded', () => App.init());
