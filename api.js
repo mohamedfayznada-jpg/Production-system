@@ -4,16 +4,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export const API = {
-    // ---------------- قسم إدارة النظام والأقسام ----------------
     system: {
         listenToDepartments(callback) {
             const docRef = doc(db, "app_settings", "global_system");
             return onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists() && docSnap.data().departments) {
-                    callback(docSnap.data().departments);
-                } else {
-                    callback(['التجميع النهائي']);
-                }
+                if (docSnap.exists() && docSnap.data().departments) callback(docSnap.data().departments);
+                else callback(['التجميع النهائي']);
             });
         },
         async saveDepartments(departments) {
@@ -21,8 +17,6 @@ export const API = {
             await setDoc(docRef, { departments: departments }, { merge: true });
         }
     },
-
-    // ---------------- قسم الإعدادات لكل قسم ----------------
     settings: {
         async saveSettings(department, settingsData) {
             const docRef = doc(db, "app_settings", `dept_${department}`);
@@ -36,48 +30,24 @@ export const API = {
             });
         }
     },
-
-    // ---------------- قسم اللوحة المجمعة (Master Dashboard) ----------------
     master: {
         listenToAllProduction(date, shift, callback) {
-            const q = query(
-                collection(db, "production_records"),
-                where("date", "==", date),
-                where("shift", "==", shift)
-            );
-            return onSnapshot(q, (snapshot) => {
-                callback(snapshot.docs.map(doc => doc.data()));
-            });
+            const q = query(collection(db, "production_records"), where("date", "==", date), where("shift", "==", shift));
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         },
         listenToAllTargets(date, shift, callback) {
-            const q = query(
-                collection(db, "shift_targets"),
-                where("date", "==", date),
-                where("shift", "==", shift)
-            );
-            return onSnapshot(q, (snapshot) => {
-                callback(snapshot.docs.map(doc => doc.data()));
-            });
+            const q = query(collection(db, "shift_targets"), where("date", "==", date), where("shift", "==", shift));
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         },
         listenToAllScratches(date, callback) {
-            const q = query(
-                collection(db, "scratches_records"),
-                where("date", "==", date)
-            );
-            return onSnapshot(q, (snapshot) => {
-                callback(snapshot.docs.map(doc => doc.data()));
-            });
+            const q = query(collection(db, "scratches_records"), where("date", "==", date));
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         }
     },
-
-    // ---------------- قسم الإنتاج المعزول والتارجت ----------------
     production: {
         async testConnection() {
-            try {
-                const q = query(collection(db, "production_records"), limit(1));
-                await getDocs(q);
-                return true;
-            } catch (error) { return false; }
+            try { const q = query(collection(db, "production_records"), limit(1)); await getDocs(q); return true; } 
+            catch (error) { return false; }
         },
         async saveHour(department, record) {
             const docRef = doc(db, "production_records", record.recordId);
@@ -85,18 +55,10 @@ export const API = {
         },
         async saveTarget(department, date, shift, targetVal) {
             const docRef = doc(db, "shift_targets", `${department}_${date}_${shift}`);
-            await setDoc(docRef, {
-                department: department, date: date, shift: shift, target: Number(targetVal), updatedAt: serverTimestamp()
-            }, { merge: true });
+            await setDoc(docRef, { department: department, date: date, shift: shift, target: Number(targetVal), updatedAt: serverTimestamp() }, { merge: true });
         },
         listenToShift(department, date, shift, callback) {
-            const q = query(
-                collection(db, "production_records"),
-                where("department", "==", department),
-                where("date", "==", date),
-                where("shift", "==", shift),
-                orderBy("hour")
-            );
+            const q = query(collection(db, "production_records"), where("department", "==", department), where("date", "==", date), where("shift", "==", shift), orderBy("hour"));
             return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         },
         listenToTarget(department, date, shift, callback) {
@@ -107,20 +69,20 @@ export const API = {
             });
         }
     },
-
-    // ---------------- قسم الأرصدة ----------------
+    // ---------------- قسم الأرصدة (المتطور) ----------------
     balances: {
-        async saveBalance(department, type, balanceData) {
-            const docRef = doc(db, "balances_records", `${department}_${type}`);
-            await setDoc(docRef, { ...balanceData, department: department, type: type, updatedAt: serverTimestamp() }, { merge: true });
+        async saveInventory(department, inventoryData) {
+            const docRef = doc(db, "inventory_records", `${department}_inventory`);
+            await setDoc(docRef, { ...inventoryData, updatedAt: serverTimestamp() }, { merge: true });
         },
-        listenToBalances(department, callback) {
-            const q = query(collection(db, "balances_records"), where("department", "==", department));
-            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+        listenToInventory(department, callback) {
+            const docRef = doc(db, "inventory_records", `${department}_inventory`);
+            return onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) callback(docSnap.data());
+                else callback({ models: [], cabinet: {}, door: {} });
+            });
         }
     },
-
-    // ---------------- قسم الجودة ----------------
     quality: {
         async saveDefect(department, defect) {
             const docRef = doc(db, "scratches_records", defect.id.toString());
@@ -131,12 +93,7 @@ export const API = {
             await deleteDoc(docRef);
         },
         listenToDefects(department, date, callback) {
-            const q = query(
-                collection(db, "scratches_records"),
-                where("department", "==", department),
-                where("date", "==", date),
-                orderBy("id", "desc")
-            );
+            const q = query(collection(db, "scratches_records"), where("department", "==", department), where("date", "==", date), orderBy("id", "desc"));
             return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         }
     }
