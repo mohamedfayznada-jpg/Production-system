@@ -403,7 +403,7 @@ const App = {
         }, 700);
     },
 
-    // ---------------- Master Dashboard (المصحح برمجياً) ----------------
+    // ---------------- Master Dashboard (فلترة فائقة الدقة) ----------------
     renderMasterDashboard() {
         let factoryTotalActual = 0;
         let factoryTotalTarget = 0;
@@ -411,22 +411,21 @@ const App = {
         let deptProd = {};
         let deptScratches = {};
 
-        // تهيئة الكائنات بناءً على الأقسام الحالية فقط (تجاهل أي أقسام قديمة محذوفة)
+        // تهيئة الكائنات بناءً على الأقسام الحالية فقط 
         this.data.departments.forEach(d => { 
-            deptProd[d] = {}; // سنحتفظ بالبيانات بصيغة {ساعة: قيمة} لمنع التكرار
+            deptProd[d] = {}; 
             deptScratches[d] = 0; 
         });
 
-        // 1. فلترة وتجميع الإنتاج
+        // 1. فلترة وتجميع الإنتاج بصرامة
         if(this.data.master.production) {
             this.data.master.production.forEach(r => {
-                // التأكد أن السجل يتبع لقسم حقيقي وموجود حالياً
+                // الشرط 1: هل اسم القسم في السجل موجود في قائمة الأقسام الحالية؟
                 if(r.department && this.data.departments.includes(r.department)) {
-                    const val = Number(r.actual) || 0;
-                    // حماية ضد التكرار: نأخذ قيمة واحدة فقط لكل ساعة في كل قسم
-                    // ونفضل السجلات الجديدة التي يحتوي الـ recordId الخاص بها على اسم القسم
-                    if (!deptProd[r.department][r.hour] || r.recordId.startsWith(r.department)) {
-                        deptProd[r.department][r.hour] = val;
+                    // الشرط 2: هل المعرف الفريد للسجل يبدأ باسم القسم؟ (لمنع تداخل البيانات القديمة التجريبية)
+                    if(r.recordId && r.recordId.startsWith(r.department)) {
+                        const val = Number(r.actual) || 0;
+                        deptProd[r.department][r.hour] = val; // سيتم استبدال أي قيمة سابقة لنفس الساعة لمنع التكرار
                     }
                 }
             });
@@ -452,7 +451,7 @@ const App = {
             });
         }
 
-        // 4. الحساب النهائي الفعلي للمصنع
+        // 4. الحساب النهائي
         let finalDeptProdTotals = {};
         this.data.departments.forEach(d => {
             const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
@@ -460,11 +459,39 @@ const App = {
             factoryTotalActual += sum; 
         });
 
+        // 5. تحديث الشاشة
         const masterTotalProdEl = document.getElementById('master-total-prod');
         if (masterTotalProdEl) masterTotalProdEl.innerText = factoryTotalActual;
 
         const masterTotalTargetEl = document.getElementById('master-total-target');
         if (masterTotalTargetEl) masterTotalTargetEl.innerText = factoryTotalTarget;
+
+        const cardsContainer = document.getElementById('master-departments-cards');
+        if(cardsContainer) {
+            cardsContainer.innerHTML = '';
+            this.data.departments.forEach(dept => {
+                const prod = finalDeptProdTotals[dept];
+                const target = validTargets[dept] || 0;
+                const pct = target > 0 ? Math.round((prod / target) * 100) : 0;
+                let colorClass = pct >= 90 ? 'text-green' : (pct >= 70 ? 'text-orange' : 'text-red');
+                if (target === 0) colorClass = 'text-main';
+
+                cardsContainer.innerHTML += `
+                    <div class="card mb-0" style="padding: 15px; border-right: 4px solid var(--primary-color); cursor:pointer;" onclick="App.switchToDepartmentAndGo('${dept}', 'analytics')">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h4 style="font-size:1.1rem; color:var(--text-main); margin-bottom:5px;">${dept}</h4>
+                                <span style="font-size:0.85rem; color:var(--text-muted);">الهدف: ${target}</span>
+                            </div>
+                            <div style="text-align:left;">
+                                <div style="font-size:1.6rem; font-weight:800; color:var(--primary-color); line-height:1;">${prod}</div>
+                                <span class="${colorClass}" style="font-size:0.8rem; font-weight:bold;">${pct}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
 
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
@@ -811,7 +838,6 @@ const App = {
             }
         });
 
-        // تم إزالة سطر إجمالي العيوب بناءً على طلبك السابق
         report += `\n*إجمالي الإنتاج: ${total}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     },
