@@ -1,24 +1,54 @@
 import { API } from './api.js';
 
+const CONFIG = {
+    // ضع رابط سكريبت جوجل الخاص بك هنا لرفع الصور
+    GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
+    STORAGE_KEY: "production_system_v2_settings",
+    IMAGE_MAX_WIDTH: 800,
+    IMAGE_MAX_HEIGHT: 800,
+    IMAGE_QUALITY: 0.6
+};
+
 const App = {
-    currentListenerUnsubscribe: null,
+    currentProdListener: null,
+    currentDefectListener: null,
     isOnline: true,
-    saveTimers: {}, // لتأخير الحفظ أثناء الكتابة (Debounce) لعدم إرهاق السيرفر
+    saveTimers: {},
+    charts: {},
+    currentScreen: 'home',
     
-    shiftHours: [
-        { hour: "08:00", label: "08:00 ص" },
-        { hour: "09:00", label: "09:00 ص" },
-        { hour: "10:00", label: "10:00 ص" },
-        { hour: "11:00", label: "11:00 ص" },
-        { hour: "12:00", label: "12:00 م" },
-        { hour: "13:00", label: "01:00 م" },
-        { hour: "14:00", label: "02:00 م" },
-        { hour: "15:00", label: "03:00 م" },
-        { hour: "16:00", label: "04:00 م" }
-    ],
+    // إدارة الإعدادات والحالة محلياً
+    data: {
+        settings: { 
+            start: '07:30', 
+            end: '16:00', 
+            bStart: '12:30', 
+            bEnd: '14:30', 
+            lineName: 'التجميع النهائي', 
+            defectTypes: ['خدش خفيف', 'خدش عميق', 'خبطة', 'تسييل لون', 'رايش'] 
+        },
+        generatedHours: [], // الساعات المولدة
+        scratches: [] // العيوب المحملة لحظياً
+    },
 
     async init() {
-        this.updateConnectionStatus(true);
+        // Splash Screen
+        setTimeout(() => { 
+            const splash = document.getElementById('cinematic-splash'); 
+            if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
+        }, 1500);
+
+        this.isOnline = await API.production.testConnection();
+        this.updateConnectionStatus(this.isOnline);
+
+        // تحميل الإعدادات من LocalStorage إن وجدت
+        try {
+            const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+            if (saved) {
+                const parsedData = JSON.parse(saved);
+                this.data.settings = parsedData.settings;
+            }
+        } catch (e) { console.error("Cache Reset", e); }
 
         const today = new Date();
         const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
@@ -26,58 +56,208 @@ const App = {
         document.getElementById('global-date').value = dateString;
         document.getElementById('global-shift').value = "1";
 
-        document.getElementById('global-date').addEventListener('change', () => this.loadCurrentShift());
-        document.getElementById('global-shift').addEventListener('change', () => this.loadCurrentShift());
+        this.applySettingsToFields();
+        this.generateIntervals();
+        this.renderDefectTypesSettings();
 
-        this.buildProductionUI();
-        this.loadCurrentShift();
+        // Listeners للتغيير
+        document.getElementById('global-date').addEventListener('change', () => this.loadDayData());
+        document.getElementById('global-shift').addEventListener('change', () => this.loadDayData());
+
+        if(this.isOnline) {
+            this.loadDayData();
+        } else {
+            this.showToast("التطبيق يعمل بدون اتصال", true);
+        }
     },
 
+    // ---------------- UI & Navigation ----------------
+    
     updateConnectionStatus(isOnline) {
         const dot = document.getElementById('connection-status');
         if(isOnline) {
-            dot.className = 'status-dot online';
-            dot.title = 'متصل بالسحابة';
+            dot.className = 'status-dot online'; dot.title = 'متصل بالسحابة';
         } else {
-            dot.className = 'status-dot offline';
-            dot.title = 'يتم المزامنة بالخلفية';
+            dot.className = 'status-dot offline'; dot.title = 'غير متصل';
         }
     },
+
+    navigate(screenId) {
+        if (screenId === 'settings') return; 
+        this.currentScreen = screenId;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const targetScreen = document.getElementById('screen-' + screenId);
+        if(targetScreen) targetScreen.classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const navBtn = document.querySelector(`.nav-item[data-target="${screenId}"]`);
+        if(navBtn) navBtn.classList.add('active');
+        
+        if(screenId === 'analytics') this.renderAnalytics();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    openSettings() {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('screen-settings').classList.add('active');
+        let targetPanel = document.getElementById(`settings-panel-${this.currentScreen}`);
+        if(!targetPanel) targetPanel = document.getElementById('settings-panel-home');
+        targetPanel.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    closeSettings() { this.navigate(this.currentScreen); },
+
+    // ---------------- Settings & Time Generators ----------------
+
+    applySettingsToFields() {
+        document.getElementById('set-shift-start').value = this.data.settings.start;
+        document.getElementById('set-shift-end').value = this.data.settings.end;
+        document.getElementById('set-break-start').value = this.data.settings.bStart;
+        document.getElementById('set-break-end').value = this.data.settings.bEnd;
+        document.getElementById('set-line-name').value = this.data.settings.lineName;
+    },
+
+    applySettings() {
+        this.data.settings.start = document.getElementById('set-shift-start').value;
+        this.data.settings.end = document.getElementById('set-shift-end').value;
+        this.data.settings.bStart = document.getElementById('set-break-start').value;
+        this.data.settings.bEnd = document.getElementById('set-break-end').value;
+        this.data.settings.lineName = document.getElementById('set-line-name').value;
+        
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
+        this.generateIntervals(); 
+        this.showToast("تم حفظ الإعدادات وتوليد الساعات ✅");
+    },
+
+    formatAMPM(timeStr) { 
+        let [hours, minutes] = timeStr.split(':'); 
+        hours = parseInt(hours); 
+        let ampm = hours >= 12 ? 'PM' : 'AM'; 
+        hours = hours % 12; hours = hours ? hours : 12; 
+        let hoursStr = hours < 10 ? '0' + hours : hours; 
+        return `${hoursStr}:${minutes} ${ampm}`; 
+    },
+    
+    addMinutes(timeStr, minsToAdd) { 
+        let [h, m] = timeStr.split(':').map(Number); 
+        let date = new Date(); date.setHours(h, m, 0); 
+        date.setMinutes(date.getMinutes() + minsToAdd); 
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
+    },
+    
+    timeToMins(t) { 
+        let [h, m] = t.split(':').map(Number); return h * 60 + m; 
+    },
+
+    generateIntervals() {
+        const { start, end, bStart, bEnd } = this.data.settings;
+        let current = start; let intervals = []; let endMins = this.timeToMins(end);
+        if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
+        
+        while (this.timeToMins(current) < endMins) {
+            if (current === bStart) { 
+                intervals.push({ isBreak: true, label: "فترة راحة" }); 
+                current = bEnd; 
+                continue; 
+            }
+            let nextHour = this.addMinutes(current, 60);
+            if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
+            if (this.timeToMins(nextHour) > endMins) nextHour = end;
+            
+            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
+            current = nextHour;
+        }
+        this.data.generatedHours = intervals;
+        this.buildProductionUI();
+    },
+
+    renderDefectTypesSettings() {
+        const container = document.getElementById('defect-types-list'); 
+        const selectMenu = document.getElementById('scratch-type');
+        if(!container || !selectMenu) return;
+        container.innerHTML = ''; selectMenu.innerHTML = '';
+        this.data.settings.defectTypes.forEach((type, index) => {
+            container.innerHTML += `<div class="defect-badge-setting"><span>${type}</span><i class="fa-solid fa-xmark" onclick="App.removeDefectType(${index})"></i></div>`;
+            selectMenu.innerHTML += `<option value="${type}">${type}</option>`;
+        });
+    },
+
+    addDefectType() {
+        const input = document.getElementById('new-defect-type'); 
+        const val = input.value.trim();
+        if(val !== '' && !this.data.settings.defectTypes.includes(val)) {
+            this.data.settings.defectTypes.push(val); 
+            input.value = ''; 
+            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
+            this.renderDefectTypesSettings(); 
+            this.showToast("تم إضافة التصنيف");
+        }
+    },
+
+    removeDefectType(index) {
+        if(confirm("حذف هذا التصنيف من القائمة؟")) {
+            this.data.settings.defectTypes.splice(index, 1); 
+            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({ settings: this.data.settings }));
+            this.renderDefectTypesSettings();
+        }
+    },
+
+    // ---------------- Production Sync ----------------
 
     buildProductionUI() {
         const container = document.getElementById('production-list');
         container.innerHTML = '';
 
-        this.shiftHours.forEach(timeSlot => {
-            // استخدام oninput ليعمل مع كل حرف يُكتب فوراً
-            const html = `
-                <div class="hour-row" id="row-${timeSlot.hour}" data-hour="${timeSlot.hour}">
-                    <div class="hour-header">
-                        <span class="time-label">${timeSlot.label}</span>
-                        <input type="number" class="actual-input" placeholder="0" 
-                            oninput="App.handleInputChange('${timeSlot.hour}')">
+        this.data.generatedHours.forEach(timeSlot => {
+            if (timeSlot.isBreak) {
+                container.innerHTML += `<div class="hour-row break-row"><span>${timeSlot.label}</span></div>`;
+            } else {
+                container.innerHTML += `
+                    <div class="hour-row" id="row-${timeSlot.rawTime}" data-hour="${timeSlot.rawTime}">
+                        <div class="hour-header">
+                            <span class="time-label">${timeSlot.label}</span>
+                            <input type="number" class="actual-input" placeholder="0" 
+                                oninput="App.handleProdInput('${timeSlot.rawTime}')">
+                        </div>
+                        <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." 
+                            oninput="App.handleProdInput('${timeSlot.rawTime}')">
                     </div>
-                    <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." 
-                        oninput="App.handleInputChange('${timeSlot.hour}')">
-                </div>
-            `;
-            container.innerHTML += html;
+                `;
+            }
         });
     },
 
-    loadCurrentShift() {
+    loadDayData() {
+        if (!this.isOnline) return;
         const date = document.getElementById('global-date').value;
         const shift = document.getElementById('global-shift').value;
 
-        if (this.currentListenerUnsubscribe) {
-            this.currentListenerUnsubscribe();
-        }
+        if (this.currentProdListener) this.currentProdListener();
+        if (this.currentDefectListener) this.currentDefectListener();
 
         this.clearInputs();
 
-        // الاستماع المباشر من Firebase
-        this.currentListenerUnsubscribe = API.production.listenToShift(date, shift, (records) => {
-            this.updateUIFromCloud(records);
+        // استماع للإنتاج
+        this.currentProdListener = API.production.listenToShift(date, shift, (records) => {
+            records.forEach(record => {
+                const row = document.getElementById(`row-${record.hour}`);
+                if (row) {
+                    const actualInput = row.querySelector('.actual-input');
+                    const reasonInput = row.querySelector('.reason-input');
+                    if (document.activeElement !== actualInput) actualInput.value = record.actual || '';
+                    if (document.activeElement !== reasonInput) reasonInput.value = record.shortfallReason || '';
+                }
+            });
+            this.calculateLocalTotal();
+        });
+
+        // استماع للعيوب
+        this.currentDefectListener = API.quality.listenToDefects(date, (records) => {
+            this.data.scratches = records;
+            this.renderScratchesList();
+            if(this.currentScreen === 'analytics') this.renderAnalytics();
         });
     },
 
@@ -85,87 +265,228 @@ const App = {
         document.querySelectorAll('.actual-input').forEach(input => input.value = '');
         document.querySelectorAll('.reason-input').forEach(input => input.value = '');
         document.getElementById('live-total').innerText = '0';
-    },
-
-    updateUIFromCloud(records) {
-        records.forEach(record => {
-            const row = document.getElementById(`row-${record.hour}`);
-            if (row) {
-                const actualInput = row.querySelector('.actual-input');
-                const reasonInput = row.querySelector('.reason-input');
-                
-                // لا نُحدث الحقل من السيرفر إذا كان المستخدم يقف عليه ويكتب بداخله الآن
-                if (document.activeElement !== actualInput) {
-                    actualInput.value = record.actual || '';
-                }
-                if (document.activeElement !== reasonInput) {
-                    reasonInput.value = record.shortfallReason || '';
-                }
-            }
-        });
-        
-        // تحديث الإجمالي بعد جلب البيانات
-        this.calculateLocalTotal();
+        document.getElementById('home-total-prod').innerText = '0';
     },
 
     calculateLocalTotal() {
         let total = 0;
-        document.querySelectorAll('.actual-input').forEach(input => {
-            total += Number(input.value) || 0;
-        });
+        document.querySelectorAll('.actual-input').forEach(input => { total += Number(input.value) || 0; });
         document.getElementById('live-total').innerText = total;
+        document.getElementById('home-total-prod').innerText = total;
     },
 
-    handleInputChange(hourStr) {
-        // 1. تحديث إجمالي الشاشة فوراً عند الكتابة بدون انتظار السيرفر
+    handleProdInput(hourStr) {
         this.calculateLocalTotal();
+        if (this.saveTimers[hourStr]) clearTimeout(this.saveTimers[hourStr]);
 
-        // 2. مسح المؤقت القديم إذا استمر المستخدم بالكتابة بسرعة
-        if (this.saveTimers[hourStr]) {
-            clearTimeout(this.saveTimers[hourStr]);
-        }
-
-        // 3. إنشاء مؤقت جديد ينتظر 700 ملي ثانية بعد آخر حرف يكتبه المستخدم ليرسل للسيرفر
         this.saveTimers[hourStr] = setTimeout(async () => {
+            if (!this.isOnline) return;
             const date = document.getElementById('global-date').value;
             const shift = document.getElementById('global-shift').value;
             const row = document.getElementById(`row-${hourStr}`);
             
-            const actualVal = row.querySelector('.actual-input').value;
-            const reasonVal = row.querySelector('.reason-input').value;
-
             const payload = {
                 recordId: `${date}_${shift}_${hourStr}`,
-                date: date,
-                shift: shift,
-                hour: hourStr,
-                actual: actualVal,
-                shortfallReason: reasonVal
+                date: date, shift: shift, hour: hourStr,
+                actual: row.querySelector('.actual-input').value,
+                shortfallReason: row.querySelector('.reason-input').value
             };
 
             try {
-                row.classList.add('saving'); // إظهار تأثير الحفظ
+                row.classList.add('saving');
                 await API.production.saveHour(payload);
                 row.classList.remove('saving');
-                this.updateConnectionStatus(true);
-            } catch (error) {
-                console.error(error);
-                row.classList.remove('saving');
-                this.updateConnectionStatus(false); // لم يتم الحفظ للسحابة (سيتم الحفظ محلياً بالكاش)
-            }
-        }, 700);
+            } catch (e) { row.classList.remove('saving'); }
+        }, 700); // Debounce time
     },
 
-    showToast(msg, isError = false) {
-        const toast = document.getElementById('toast');
-        toast.innerText = msg;
-        toast.className = isError ? 'show error' : 'show';
-        setTimeout(() => toast.className = '', 3000);
+    // ---------------- Quality (Scratches) Sync ----------------
+
+    addScratchDefect() {
+        const type = document.getElementById('scratch-type').value;
+        const notes = document.getElementById('scratch-notes').value;
+        const fileInput = document.getElementById('scratch-image');
+        const date = document.getElementById('global-date').value;
+        
+        const defectBase = {
+            id: Date.now(), type: type, notes: notes, 
+            status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), 
+            date: date
+        };
+
+        if(!fileInput.files || !fileInput.files[0]) { 
+            defectBase.image = "";
+            API.quality.saveDefect(defectBase); // يرسل لفيربيز لحظياً
+            document.getElementById('scratch-notes').value = ''; 
+            this.showToast("تم التسجيل بدون صورة ✅");
+            return; 
+        }
+
+        const loader = document.getElementById('upload-loader'); 
+        loader.classList.add('show'); 
+        
+        const file = fileInput.files[0]; 
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = async () => {
+                const canvas = document.createElement('canvas'); 
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > CONFIG.IMAGE_MAX_WIDTH) { height *= CONFIG.IMAGE_MAX_WIDTH / width; width = CONFIG.IMAGE_MAX_WIDTH; } } 
+                else { if (height > CONFIG.IMAGE_MAX_HEIGHT) { width *= CONFIG.IMAGE_MAX_HEIGHT / height; height = CONFIG.IMAGE_MAX_HEIGHT; } }
+                canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                const compressedBase64 = canvas.toDataURL('image/webp', CONFIG.IMAGE_QUALITY);
+
+                const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: date } };
+                
+                try {
+                    let response = await fetch(CONFIG.GOOGLE_API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(uploadPayload) });
+                    let result = JSON.parse(await response.text());
+                    if (result.status === 'success') {
+                        defectBase.image = result.url;
+                        await API.quality.saveDefect(defectBase);
+                        document.getElementById('scratch-notes').value = ''; fileInput.value = ''; 
+                        this.showToast("تم الرفع والتسجيل بنجاح ✅");
+                    } else { this.showToast("فشل الرفع السحابي للصورة ❌", true); }
+                } catch (err) { this.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
+                finally { loader.classList.remove('show'); }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    renderScratchesList() {
+        const container = document.getElementById('scratches-list'); container.innerHTML = '';
+        let countToday = 0; let countFixed = 0; let countPending = 0;
+        
+        this.data.scratches.forEach(d => {
+            countToday++;
+            if (d.status === 'pending') countPending++;
+            if (d.status === 'fixed') countFixed++; 
+        });
+
+        document.getElementById('qc-count-today').innerText = countToday;
+        document.getElementById('qc-count-fixed').innerText = countFixed;
+        document.getElementById('qc-count-pending').innerText = countPending;
+
+        if(this.data.scratches.length === 0) { 
+            container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; 
+        }
+        
+        this.data.scratches.forEach(defect => {
+            const isPending = defect.status === 'pending';
+            const statusClass = isPending ? 'pending' : 'fixed';
+            const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
+            const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
+
+            container.innerHTML += `
+                <div class="card defect-card" style="border-right-color: ${isPending ? 'var(--danger-color)' : 'var(--success-color)'};">
+                    ${imgHtml}
+                    <div style="flex: 1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                            <h4 style="color:var(--text-main); font-size: 1rem;">${defect.type}</h4>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${defect.time}</span>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
+                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer;" onclick="App.deleteScratch(${defect.id})"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    },
+
+    toggleScratchStatus(id, currentStatus) { 
+        const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending';
+        API.quality.saveDefect({ id: id, status: newStatus });
+    },
+    
+    deleteScratch(id) { 
+        if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id);
+    },
+
+    openImage(src) { document.getElementById('modal-image').src = src; document.getElementById('image-modal').classList.add('show'); },
+    closeImageModal(e) { if(e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn')) document.getElementById('image-modal').classList.remove('show'); },
+
+    getImageUrl(url) {
+        if (!url) return "";
+        if (url.includes("drive.google.com")) {
+            const match = url.match(/id=([^&]+)/);
+            if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        }
+        return url;
+    },
+
+    // ---------------- Analytics & WhatsApp ----------------
+
+    renderAnalytics() {
+        let totalProd = Number(document.getElementById('live-total').innerText) || 0; 
+        let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
+        
+        document.querySelectorAll('.hour-row').forEach(row => {
+            if(!row.classList.contains('break-row')) {
+                const act = Number(row.querySelector('.actual-input').value) || 0;
+                activeHours += (act > 0 ? 1 : 0);
+                hourlyLabels.push(row.querySelector('.time-label').innerText.replace(' ص', '').replace(' م', ''));
+                hourlyData.push(act);
+            }
+        });
+
+        document.getElementById('analytics-avg-prod').innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
+        document.getElementById('analytics-total-defects').innerText = this.data.scratches.length;
+
+        Chart.defaults.font.family = 'Cairo';
+        if(this.charts.prod) this.charts.prod.destroy(); 
+        this.charts.prod = new Chart(document.getElementById('prodChart').getContext('2d'), { 
+            type: 'bar', 
+            data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: '#0ea5e9', borderRadius: 4 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+        });
+
+        let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
+        let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
+        
+        if(this.charts.defects) this.charts.defects.destroy();
+        this.charts.defects = new Chart(document.getElementById('defectsChart').getContext('2d'), { 
+            type: 'doughnut', 
+            data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ea5e9', '#8b5cf6', '#ef4444', '#10b981'] : ['#e2e8f0'], borderWidth: 0 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } 
+        });
+    },
+
+    sendWhatsAppReport() {
+        let dParts = document.getElementById('global-date').value.split('-'); 
+        let formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; 
+        let total = 0; 
+        let report = `*تقرير الإنتاج*\nالخط: ${this.data.settings.lineName}\nالتاريخ: ${formattedDate}\nالوردية: ${document.getElementById('global-shift').value}\n\n`; 
+        
+        document.querySelectorAll('.hour-row').forEach(row => {
+            if(row.classList.contains('break-row')) {
+                report += `\n*فترة راحة*\n\n`;
+            } else {
+                const label = row.querySelector('.time-label').innerText;
+                const actual = row.querySelector('.actual-input').value || "0";
+                const reason = row.querySelector('.reason-input').value;
+                report += `${label} : ${actual}\n`;
+                if(reason.trim() !== '') report += `- ${reason.trim()}\n`;
+                total += Number(actual);
+            }
+        });
+
+        report += `\n*إجمالي الإنتاج: ${total}*\n*إجمالي العيوب: ${this.data.scratches.length}*`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
+    },
+
+    hardReset() {
+        if(confirm("تحذير: سيتم مسح الإعدادات المحلية للمتصفح! هل أنت متأكد؟")) {
+            localStorage.removeItem(CONFIG.STORAGE_KEY);
+            location.reload();
+        }
     }
 };
 
 window.App = App;
-
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
+document.addEventListener('DOMContentLoaded', () => App.init());
