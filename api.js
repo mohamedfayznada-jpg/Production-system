@@ -33,7 +33,7 @@ export const API = {
             return onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) callback(docSnap.data());
                 else callback(null);
-            }, (error) => console.error("Settings Error:", error));
+            });
         }
     },
 
@@ -46,13 +46,31 @@ export const API = {
                 where("shift", "==", shift)
             );
             return onSnapshot(q, (snapshot) => {
-                const records = snapshot.docs.map(doc => doc.data());
-                callback(records);
+                callback(snapshot.docs.map(doc => doc.data()));
+            });
+        },
+        listenToAllTargets(date, shift, callback) {
+            const q = query(
+                collection(db, "shift_targets"),
+                where("date", "==", date),
+                where("shift", "==", shift)
+            );
+            return onSnapshot(q, (snapshot) => {
+                callback(snapshot.docs.map(doc => doc.data()));
+            });
+        },
+        listenToAllScratches(date, callback) {
+            const q = query(
+                collection(db, "scratches_records"),
+                where("date", "==", date)
+            );
+            return onSnapshot(q, (snapshot) => {
+                callback(snapshot.docs.map(doc => doc.data()));
             });
         }
     },
 
-    // ---------------- قسم الإنتاج المعزول ----------------
+    // ---------------- قسم الإنتاج المعزول والتارجت ----------------
     production: {
         async testConnection() {
             try {
@@ -65,6 +83,12 @@ export const API = {
             const docRef = doc(db, "production_records", record.recordId);
             await setDoc(docRef, { ...record, department: department, updatedAt: serverTimestamp() }, { merge: true });
         },
+        async saveTarget(department, date, shift, targetVal) {
+            const docRef = doc(db, "shift_targets", `${department}_${date}_${shift}`);
+            await setDoc(docRef, {
+                department: department, date: date, shift: shift, target: Number(targetVal), updatedAt: serverTimestamp()
+            }, { merge: true });
+        },
         listenToShift(department, date, shift, callback) {
             const q = query(
                 collection(db, "production_records"),
@@ -73,33 +97,26 @@ export const API = {
                 where("shift", "==", shift),
                 orderBy("hour")
             );
-            return onSnapshot(q, (snapshot) => {
-                const records = snapshot.docs.map(doc => doc.data());
-                callback(records);
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+        },
+        listenToTarget(department, date, shift, callback) {
+            const docRef = doc(db, "shift_targets", `${department}_${date}_${shift}`);
+            return onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) callback(docSnap.data().target);
+                else callback(0);
             });
         }
     },
 
-    // ---------------- قسم الأرصدة (جديد) ----------------
+    // ---------------- قسم الأرصدة ----------------
     balances: {
         async saveBalance(department, type, balanceData) {
             const docRef = doc(db, "balances_records", `${department}_${type}`);
-            await setDoc(docRef, {
-                ...balanceData,
-                department: department,
-                type: type,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
+            await setDoc(docRef, { ...balanceData, department: department, type: type, updatedAt: serverTimestamp() }, { merge: true });
         },
         listenToBalances(department, callback) {
-            const q = query(
-                collection(db, "balances_records"),
-                where("department", "==", department)
-            );
-            return onSnapshot(q, (snapshot) => {
-                const records = snapshot.docs.map(doc => doc.data());
-                callback(records);
-            });
+            const q = query(collection(db, "balances_records"), where("department", "==", department));
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         }
     },
 
@@ -120,10 +137,7 @@ export const API = {
                 where("date", "==", date),
                 orderBy("id", "desc")
             );
-            return onSnapshot(q, (snapshot) => {
-                const records = snapshot.docs.map(doc => doc.data());
-                callback(records);
-            });
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         }
     }
 };
