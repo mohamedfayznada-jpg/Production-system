@@ -403,7 +403,7 @@ const App = {
         }, 700);
     },
 
-    // ---------------- Master Dashboard (فلترة فائقة الدقة) ----------------
+    // ---------------- Master Dashboard (المصحح برمجياً - فلترة ذكية ومنع تكرار) ----------------
     renderMasterDashboard() {
         let factoryTotalActual = 0;
         let factoryTotalTarget = 0;
@@ -411,21 +411,31 @@ const App = {
         let deptProd = {};
         let deptScratches = {};
 
-        // تهيئة الكائنات بناءً على الأقسام الحالية فقط 
+        // تهيئة الكائنات بناءً على الأقسام الحالية فقط
         this.data.departments.forEach(d => { 
-            deptProd[d] = {}; 
+            deptProd[d] = {}; // سنحتفظ بالبيانات بصيغة {ساعة: قيمة} لمنع دمج الساعات القديمة مع الجديدة
             deptScratches[d] = 0; 
         });
 
-        // 1. فلترة وتجميع الإنتاج بصرامة
+        // 1. فلترة وتجميع الإنتاج (Smart Deduplication)
         if(this.data.master.production) {
             this.data.master.production.forEach(r => {
-                // الشرط 1: هل اسم القسم في السجل موجود في قائمة الأقسام الحالية؟
+                // التأكد أن السجل يتبع لقسم حقيقي وموجود حالياً
                 if(r.department && this.data.departments.includes(r.department)) {
-                    // الشرط 2: هل المعرف الفريد للسجل يبدأ باسم القسم؟ (لمنع تداخل البيانات القديمة التجريبية)
+                    // التأكد من أن المعرف الفريد يطابق الهيكل الجديد للقسم
                     if(r.recordId && r.recordId.startsWith(r.department)) {
                         const val = Number(r.actual) || 0;
-                        deptProd[r.department][r.hour] = val; // سيتم استبدال أي قيمة سابقة لنفس الساعة لمنع التكرار
+                        
+                        // نأخذ رقم الساعة فقط (مثلاً "08" من "08:30" أو "08:00")
+                        // ده بيضمن إن لو في سجل قديم 8:00 وسجل جديد 8:30، النظام يعتبرهم "نفس خانة الساعة" وياخد قيمة واحدة بس
+                        const hourPrefix = r.hour.split(':')[0]; 
+                        
+                        if (deptProd[r.department][hourPrefix] === undefined) {
+                            deptProd[r.department][hourPrefix] = val;
+                        } else {
+                            // لو فيه تكرار لنفس الساعة، ناخد القيمة الأكبر لضمان الدقة
+                            deptProd[r.department][hourPrefix] = Math.max(deptProd[r.department][hourPrefix], val);
+                        }
                     }
                 }
             });
@@ -451,7 +461,7 @@ const App = {
             });
         }
 
-        // 4. الحساب النهائي
+        // 4. الحساب النهائي الفعلي للمصنع
         let finalDeptProdTotals = {};
         this.data.departments.forEach(d => {
             const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
@@ -459,7 +469,7 @@ const App = {
             factoryTotalActual += sum; 
         });
 
-        // 5. تحديث الشاشة
+        // 5. عرض الأرقام على الشاشة
         const masterTotalProdEl = document.getElementById('master-total-prod');
         if (masterTotalProdEl) masterTotalProdEl.innerText = factoryTotalActual;
 
