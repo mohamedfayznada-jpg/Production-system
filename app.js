@@ -22,7 +22,7 @@ const App = {
     charts: {},
     currentScreen: 'home',
     currentBalanceTab: 'cabinet', 
-    analyticsMode: 'dept', // وضع التقارير: dept أو factory
+    analyticsMode: 'dept', 
     
     data: {
         departments: [],
@@ -343,10 +343,10 @@ const App = {
             }
         });
 
-        // المستمع العام للأرصدة (لا يرتبط بالقسم)
         this.currentInventoryListener = API.balances.listenToInventory((invData) => {
             this.data.inventory = invData;
             this.renderInventory();
+            this.populateDefectModelsList(); // تحديث قائمة الموديلات في شاشة الجودة
         });
     },
 
@@ -676,13 +676,25 @@ const App = {
                         <div class="inv-title">${model.name} <span style="color:var(--text-muted); font-size:0.9rem;">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>
                             ${badgeHtml}
-                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
+                            <i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
                         </div>
                     </div>
                     ${contentHtml}
                 </div>
             `;
         });
+    },
+
+    // ---------------- قراءة الباركود (مبدئياً) ----------------
+    scanBarcode() {
+        const scanInput = document.getElementById('inv-barcode-scan');
+        if(!scanInput || scanInput.value.trim() === '') {
+            this.showToast('يرجى توصيل الماسح الضوئي وتمرير الباركود هنا', true);
+            return;
+        }
+        // سيتم برمجة خوارزمية شيت الإكسيل لاحقاً هنا
+        this.showToast(`تم قراءة الباركود: ${scanInput.value}. (في انتظار ربط الإكسيل)`);
+        scanInput.value = '';
     },
 
     // ---------------- الجودة ----------------
@@ -696,6 +708,23 @@ const App = {
             selectMenu.innerHTML += `<option value="${type}">${type}</option>`;
         });
     },
+    
+    // ربط قائمة الموديلات للعيوب (جديد)
+    populateDefectModelsList() {
+        const selectMenu = document.getElementById('scratch-model');
+        if(!selectMenu) return;
+        
+        // الاحتفاظ بالخيار الأول (المطالبة بالاختيار)
+        selectMenu.innerHTML = '<option value="">-- اختر الموديل المعيب --</option>';
+        selectMenu.innerHTML += '<option value="غير محدد / عام">غير محدد / عام</option>';
+        
+        const models = this.data.inventory.models || [];
+        models.forEach(model => {
+            const displayName = `${model.name} ${model.color ? '('+model.color+')' : ''}`;
+            selectMenu.innerHTML += `<option value="${displayName}">${displayName}</option>`;
+        });
+    },
+
     addDefectType() {
         const input = document.getElementById('new-defect-type'); 
         if(!input) return;
@@ -715,6 +744,7 @@ const App = {
     },
 
     addScratchDefect() {
+        const modelEl = document.getElementById('scratch-model');
         const typeEl = document.getElementById('scratch-type');
         const notesEl = document.getElementById('scratch-notes');
         const fileInput = document.getElementById('scratch-image');
@@ -723,7 +753,10 @@ const App = {
         if (!typeEl || !dateEl) return;
 
         const date = dateEl.value;
-        const defectBase = { id: Date.now(), type: typeEl.value, notes: notesEl ? notesEl.value : '', status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: date };
+        const modelName = modelEl && modelEl.value !== '' ? `[${modelEl.value}] ` : '';
+        const finalNotes = modelName + (notesEl ? notesEl.value : '');
+
+        const defectBase = { id: Date.now(), type: typeEl.value, notes: finalNotes, status: 'pending', time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}), date: date };
 
         if(!fileInput || !fileInput.files || !fileInput.files[0]) { 
             defectBase.image = ""; API.quality.saveDefect(this.data.currentDepartment, defectBase);
@@ -767,7 +800,6 @@ const App = {
         const globalDate = document.getElementById('global-date').value;
         
         this.data.scratches.forEach(d => { 
-            // العدادات الذكية
             if (d.date === globalDate) countToday++; 
             if (d.status === 'pending') countPending++; 
             if (d.status === 'fixed' && d.date === globalDate) countFixed++; 
@@ -814,7 +846,7 @@ const App = {
     closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
     getImageUrl(url) { if (!url) return ""; if (url.includes("drive.google.com")) { const match = url.match(/id=([^&]+)/); if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`; } return url; },
 
-    // ---------------- التقارير والتحليلات الشاملة ----------------
+    // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
     switchAnalyticsMode(mode) {
         this.analyticsMode = mode;
         const btnDept = document.getElementById('btn-analytics-dept');
@@ -867,8 +899,49 @@ const App = {
             }
 
             let defectCounts = {}; todayScratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
-            let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
             
+            // ---------------- تحليل باريتو (جديد) ----------------
+            const paretoChartCanvas = document.getElementById('paretoChart');
+            if(paretoChartCanvas) {
+                if(this.charts.pareto) this.charts.pareto.destroy();
+                
+                // ترتيب العيوب من الأكبر للأصغر
+                let sortedDefects = Object.keys(defectCounts).map(k => ({ type: k, count: defectCounts[k] })).sort((a, b) => b.count - a.count);
+                let pLabels = sortedDefects.map(d => d.type);
+                let pData = sortedDefects.map(d => d.count);
+                
+                // حساب النسبة التراكمية الخطية
+                let cumulativePercent = [];
+                let totalDefectsCount = pData.reduce((a, b) => a + b, 0);
+                let currentSum = 0;
+                
+                if (totalDefectsCount > 0) {
+                    pData.forEach(d => {
+                        currentSum += d;
+                        cumulativePercent.push(Math.round((currentSum / totalDefectsCount) * 100));
+                    });
+                }
+
+                this.charts.pareto = new Chart(paretoChartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: pLabels.length ? pLabels : ['لا يوجد عيوب'],
+                        datasets: [
+                            { type: 'line', label: 'النسبة التراكمية %', data: cumulativePercent.length ? cumulativePercent : [0], borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.1, yAxisID: 'y1' },
+                            { type: 'bar', label: 'تكرار العيب', data: pData.length ? pData : [0], backgroundColor: '#f59e0b', borderRadius: 4, yAxisID: 'y' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', beginAtZero: true },
+                            y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+
+            let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
             const defectsChartCanvas = document.getElementById('defectsChart');
             if (defectsChartCanvas) {
                 if(this.charts.defects) this.charts.defects.destroy();
@@ -885,7 +958,6 @@ const App = {
 
             this.data.departments.forEach(d => { deptProd[d] = {}; deptTargets[d] = 0; });
 
-            // 1. تجميع الإنتاج
             if(this.data.master.production) {
                 this.data.master.production.forEach(r => {
                     if(r.department && this.data.departments.includes(r.department) && r.recordId && r.recordId.startsWith(r.department)) {
@@ -896,7 +968,6 @@ const App = {
                 });
             }
 
-            // 2. تجميع التارجت
             if(this.data.master.targets) {
                 this.data.master.targets.forEach(r => {
                     if(r.department && this.data.departments.includes(r.department)) {
@@ -905,7 +976,6 @@ const App = {
                 });
             }
 
-            // 3. تجميع العيوب
             if(this.data.master.scratches) {
                 this.data.master.scratches.forEach(r => {
                     globalScratches[r.type] = (globalScratches[r.type] || 0) + 1;
@@ -929,7 +999,6 @@ const App = {
             const prodData = depts.map(d => finalDeptProdTotals[d]);
             const targetData = depts.map(d => deptTargets[d]);
 
-            // Chart 1: الإنتاج والمستهدف
             const facTargetChartCanvas = document.getElementById('facTargetChart');
             if(facTargetChartCanvas) {
                 if(this.charts.facTarget) this.charts.facTarget.destroy();
@@ -940,7 +1009,6 @@ const App = {
                 });
             }
 
-            // Chart 2: مساهمة الأقسام
             const facDeptChartCanvas = document.getElementById('facDeptShareChart');
             if(facDeptChartCanvas) {
                 if(this.charts.facDept) this.charts.facDept.destroy();
@@ -951,7 +1019,6 @@ const App = {
                 });
             }
 
-            // Chart 3: التوزيع الكلي لعيوب المصنع
             const facDefectChartCanvas = document.getElementById('facGlobalDefectsChart');
             if(facDefectChartCanvas) {
                 const gDefectLabels = Object.keys(globalScratches);
@@ -964,6 +1031,72 @@ const App = {
                 });
             }
         }
+    },
+
+    // ---------------- التصدير (Excel & PDF) ----------------
+    exportToExcel() {
+        this.showToast('جاري تحضير ملف الإكسيل...');
+        
+        let ws_data = [
+            ["نظام الإنتاج الموحد - تقرير المصنع"],
+            ["التاريخ:", document.getElementById('global-date').value],
+            ["الوردية:", document.getElementById('global-shift').value],
+            [],
+            ["القسم", "الإنتاج الفعلي", "المستهدف"]
+        ];
+
+        let finalDeptProdTotals = {};
+        this.data.departments.forEach(d => {
+            let deptSum = 0;
+            if(this.data.master.production) {
+                this.data.master.production.forEach(r => {
+                    if(r.department === d && r.recordId && r.recordId.startsWith(d)) {
+                        const val = Number(r.actual) || 0;
+                        const hourPrefix = r.hour.split(':')[0]; 
+                        finalDeptProdTotals[d] = finalDeptProdTotals[d] || {};
+                        finalDeptProdTotals[d][hourPrefix] = Math.max(finalDeptProdTotals[d][hourPrefix] || 0, val);
+                    }
+                });
+                deptSum = Object.values(finalDeptProdTotals[d] || {}).reduce((acc, val) => acc + val, 0);
+            }
+
+            let deptTarget = 0;
+            if(this.data.master.targets) {
+                this.data.master.targets.forEach(r => { if(r.department === d) deptTarget = Number(r.target) || 0; });
+            }
+
+            ws_data.push([d, deptSum, deptTarget]);
+        });
+
+        ws_data.push([], ["سجل العيوب العام"], ["القسم", "نوع العيب", "الحالة", "ملاحظات", "الوقت"]);
+        if(this.data.master.scratches) {
+            this.data.master.scratches.forEach(d => {
+                ws_data.push([d.department, d.type, d.status === 'fixed' ? 'تم الإصلاح' : 'قيد الإصلاح', d.notes, d.time]);
+            });
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, "تقرير المصنع");
+        XLSX.writeFile(wb, `Factory_Report_${document.getElementById('global-date').value}.xlsx`);
+        this.showToast('تم التحميل بنجاح ✅');
+    },
+
+    exportToPDF() {
+        this.showToast('جاري تصدير الـ PDF... يرجى الانتظار');
+        const element = document.getElementById('main-content-area'); // تصدير محتوى الشاشة الحالي
+        
+        const opt = {
+          margin:       0.5,
+          filename:     `Report_${document.getElementById('global-date').value}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            this.showToast('تم التحميل بنجاح ✅');
+        });
     },
 
     sendWhatsAppReport() {
