@@ -7,7 +7,6 @@ const CONFIG = {
     IMAGE_QUALITY: 0.6
 };
 
-
 const App = {
     systemListenerUnsubscribe: null,
     currentSettingsListener: null,
