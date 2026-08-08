@@ -7,7 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -50,9 +54,9 @@
         </div>
     </header>
 
-    <main class="content-area">
+    <main class="content-area" id="main-content-area">
         
-        <!-- 1. الشاشة الرئيسية التفاعلية (Master Dashboard) -->
+        <!-- 1. الشاشة الرئيسية التفاعلية -->
         <section id="screen-home" class="screen active">
             <div class="section-header mb-0">
                 <h3 class="section-title">إنتاج الأقسام (الوردية الحالية)</h3>
@@ -98,7 +102,7 @@
             </div>
         </section>
 
-        <!-- 3. شاشة الأرصدة (المخزون الديناميكي العام) -->
+        <!-- 3. شاشة الأرصدة -->
         <section id="screen-balances" class="screen">
             <div class="section-header"><h3 class="section-title">إدارة الأرصدة العامة (BOM)</h3></div>
             <div class="tabs-container">
@@ -108,6 +112,13 @@
             </div>
             <div class="card mb-4" id="add-model-card" style="border: 2px solid var(--border-color);">
                 <h4 class="card-title mb-4" style="font-size: 1rem;"><i class="fa-solid fa-folder-plus text-primary"></i> تعريف موديل جديد للمخزون</h4>
+                
+                <!-- تهيئة الباركود (جديد) -->
+                <div class="input-group mb-4" style="display:flex; gap:10px;">
+                    <input type="text" id="inv-barcode-scan" class="modern-input" placeholder="مسح باركود الموديل..." style="flex:1;">
+                    <button class="icon-btn primary-bg" onclick="App.scanBarcode()" style="border-radius:10px; width:50px;"><i class="fa-solid fa-barcode"></i></button>
+                </div>
+
                 <div class="grid-actions mb-4" style="grid-template-columns: 1fr 1fr;">
                     <input type="text" id="inv-model-name" class="modern-input" placeholder="اسم الموديل...">
                     <input type="text" id="inv-model-color" class="modern-input" placeholder="اللون...">
@@ -155,6 +166,13 @@
                 <div class="qc-box highlight"><div class="qc-icon text-red"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="qc-val text-red" id="qc-count-pending">0</div><div class="qc-lbl">تحت الإصلاح</div></div>
             </div>
             <div class="card">
+                <!-- ربط العيوب بالموديلات (جديد) -->
+                <div class="input-group">
+                    <label>الموديل (من المخزون)</label>
+                    <select id="scratch-model" class="modern-input">
+                        <option value="">-- اختر الموديل --</option>
+                    </select>
+                </div>
                 <div class="input-group">
                     <label>نوع العيب</label>
                     <select id="scratch-type" class="modern-input"></select>
@@ -172,9 +190,17 @@
             <div id="scratches-list"></div>
         </section>
 
-        <!-- 5. شاشة التحليلات (المتطورة بتبويبات القسم/المصنع) -->
+        <!-- 5. شاشة التحليلات والتقارير المتقدمة (تحديث) -->
         <section id="screen-analytics" class="screen">
-            <div class="section-header"><h3 class="section-title">مركز التحليلات المتقدمة</h3></div>
+            <div class="section-header" style="display:flex; justify-content:space-between;">
+                <h3 class="section-title">مركز التحليلات المتقدمة</h3>
+                
+                <!-- أزرار التصدير (جديد) -->
+                <div style="display:flex; gap:8px;">
+                    <button class="icon-btn" onclick="App.exportToExcel()" style="background:#10b981; color:white; width:35px; height:35px; font-size:0.9rem;" title="تصدير Excel"><i class="fa-solid fa-file-excel"></i></button>
+                    <button class="icon-btn" onclick="App.exportToPDF()" style="background:#ef4444; color:white; width:35px; height:35px; font-size:0.9rem;" title="تصدير PDF"><i class="fa-solid fa-file-pdf"></i></button>
+                </div>
+            </div>
             
             <div class="tabs-container mb-4">
                 <button class="tab-btn active" id="btn-analytics-dept" onclick="App.switchAnalyticsMode('dept')">القسم الحالي</button>
@@ -195,6 +221,13 @@
                         <div class="total-number text-main" style="font-size: 2.2rem;" id="analytics-avg-prod">0</div>
                     </div>
                 </div>
+                
+                <!-- تحليل باريتو (جديد) -->
+                <div class="card" style="border: 2px solid var(--warning-color);">
+                    <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-chart-bar text-orange"></i> تحليل باريتو 80/20 (أخطر العيوب)</h4></div>
+                    <div class="chart-container"><canvas id="paretoChart"></canvas></div>
+                </div>
+
                 <div class="card">
                     <div class="section-header mb-0"><h4 class="card-title">مسار الإنتاج الزمني</h4></div>
                     <div class="chart-container"><canvas id="prodChart"></canvas></div>
