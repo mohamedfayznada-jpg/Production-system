@@ -11,7 +11,6 @@ export const API = {
                 if (docSnap.exists() && docSnap.data().departments) callback(docSnap.data().departments);
                 else callback(['التجميع النهائي']);
             });
-            
         },
         async saveDepartments(departments) {
             const docRef = doc(db, "app_settings", "global_system");
@@ -70,20 +69,21 @@ export const API = {
             });
         }
     },
-    // ---------------- قسم الأرصدة (المتطور) ----------------
+    // تم جعل الأرصدة تعمل على مستوى المصنع ككل (Global)
     balances: {
-        async saveInventory(department, inventoryData) {
-            const docRef = doc(db, "inventory_records", `${department}_inventory`);
+        async saveInventory(inventoryData) {
+            const docRef = doc(db, "inventory_records", `factory_global_inventory`);
             await setDoc(docRef, { ...inventoryData, updatedAt: serverTimestamp() }, { merge: true });
         },
-        listenToInventory(department, callback) {
-            const docRef = doc(db, "inventory_records", `${department}_inventory`);
+        listenToInventory(callback) {
+            const docRef = doc(db, "inventory_records", `factory_global_inventory`);
             return onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) callback(docSnap.data());
                 else callback({ models: [], cabinet: {}, door: {} });
             });
         }
     },
+    // تم تعديل نظام العيوب ليجلب عيوب اليوم + العيوب القديمة التي لا تزال تحت الإصلاح
     quality: {
         async saveDefect(department, defect) {
             const docRef = doc(db, "scratches_records", defect.id.toString());
@@ -94,8 +94,23 @@ export const API = {
             await deleteDoc(docRef);
         },
         listenToDefects(department, date, callback) {
-            const q = query(collection(db, "scratches_records"), where("department", "==", department), where("date", "==", date), orderBy("id", "desc"));
-            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+            const qToday = query(collection(db, "scratches_records"), where("department", "==", department), where("date", "==", date));
+            const qPending = query(collection(db, "scratches_records"), where("department", "==", department), where("status", "==", "pending"));
+
+            let todayRecords = [];
+            let pendingRecords = [];
+
+            const mergeData = () => {
+                const map = new Map();
+                todayRecords.forEach(r => map.set(r.id, r));
+                pendingRecords.forEach(r => map.set(r.id, r));
+                callback(Array.from(map.values()).sort((a, b) => b.id - a.id));
+            };
+
+            const unsubToday = onSnapshot(qToday, (snap) => { todayRecords = snap.docs.map(d => d.data()); mergeData(); });
+            const unsubPending = onSnapshot(qPending, (snap) => { pendingRecords = snap.docs.map(d => d.data()); mergeData(); });
+
+            return () => { unsubToday(); unsubPending(); };
         }
     }
 };
