@@ -22,6 +22,7 @@ const App = {
     charts: {},
     currentScreen: 'home',
     currentBalanceTab: 'cabinet', 
+    analyticsMode: 'dept', // وضع التقارير: dept أو factory
     
     data: {
         departments: [],
@@ -322,19 +323,28 @@ const App = {
 
         this.masterProdListener = API.master.listenToAllProduction(date, shift, (records) => {
             this.data.master.production = records;
-            if(this.currentScreen === 'home') this.renderMasterDashboard();
+            if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
+                this.renderMasterDashboard();
+                if(this.currentScreen === 'analytics') this.renderAnalytics();
+            }
         });
         this.masterTargetListener = API.master.listenToAllTargets(date, shift, (records) => {
             this.data.master.targets = records;
-            if(this.currentScreen === 'home') this.renderMasterDashboard();
+            if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
+                this.renderMasterDashboard();
+                if(this.currentScreen === 'analytics') this.renderAnalytics();
+            }
         });
         this.masterDefectListener = API.master.listenToAllScratches(date, (records) => {
             this.data.master.scratches = records;
-            if(this.currentScreen === 'home') this.renderMasterDashboard();
+            if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
+                this.renderMasterDashboard();
+                if(this.currentScreen === 'analytics') this.renderAnalytics();
+            }
         });
 
-        // استماع لنظام المخزون الجديد
-        this.currentInventoryListener = API.balances.listenToInventory(this.data.currentDepartment, (invData) => {
+        // المستمع العام للأرصدة (لا يرتبط بالقسم)
+        this.currentInventoryListener = API.balances.listenToInventory((invData) => {
             this.data.inventory = invData;
             this.renderInventory();
         });
@@ -488,6 +498,7 @@ const App = {
 
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
+
         const depts = this.data.departments;
         const prodData = depts.map(d => finalDeptProdTotals[d]);
         const scratchData = depts.map(d => deptScratches[d]);
@@ -513,7 +524,7 @@ const App = {
         }
     },
 
-    // ---------------- الأرصدة (نظام الـ BOM المتقدم) ----------------
+    // ---------------- الأرصدة والمخزون ----------------
     switchBalanceTab(tabId) {
         this.currentBalanceTab = tabId;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -546,7 +557,7 @@ const App = {
         this.data.inventory.cabinet[newId] = { boq: '', out: '' };
         this.data.inventory.door[newId] = { r: '', f: '', v: '' };
 
-        API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+        API.balances.saveInventory(this.data.inventory);
         
         nameInput.value = ''; colorInput.value = ''; is3DoorInput.checked = false;
         this.showToast('تمت الإضافة للمخزون ✅');
@@ -559,7 +570,7 @@ const App = {
         delete this.data.inventory.cabinet[modelId];
         delete this.data.inventory.door[modelId];
         
-        API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+        API.balances.saveInventory(this.data.inventory);
         this.showToast('تم حذف الموديل');
     },
 
@@ -573,7 +584,7 @@ const App = {
         const timerId = `inv_${modelId}_${part}_${field}`;
         if(this.saveTimers[timerId]) clearTimeout(this.saveTimers[timerId]);
         this.saveTimers[timerId] = setTimeout(() => {
-            API.balances.saveInventory(this.data.currentDepartment, this.data.inventory);
+            API.balances.saveInventory(this.data.inventory);
         }, 1000);
     },
 
@@ -665,7 +676,7 @@ const App = {
                         <div class="inv-title">${model.name} <span style="color:var(--text-muted); font-size:0.9rem;">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>
                             ${badgeHtml}
-                            <i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
+                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
                         </div>
                     </div>
                     ${contentHtml}
@@ -674,7 +685,7 @@ const App = {
         });
     },
 
-    // ---------------- Defect Types & Quality ----------------
+    // ---------------- الجودة ----------------
     renderDefectTypesSettings() {
         const container = document.getElementById('defect-types-list'); 
         const selectMenu = document.getElementById('scratch-type');
@@ -751,11 +762,23 @@ const App = {
     renderScratchesList() {
         const container = document.getElementById('scratches-list'); 
         if(!container) return; container.innerHTML = '';
-        let countToday = 0; let countFixed = 0; let countPending = 0;
         
-        this.data.scratches.forEach(d => { countToday++; if (d.status === 'pending') countPending++; if (d.status === 'fixed') countFixed++; });
-        const qcToday = document.getElementById('qc-count-today'); const qcFixed = document.getElementById('qc-count-fixed'); const qcPending = document.getElementById('qc-count-pending');
-        if(qcToday) qcToday.innerText = countToday; if(qcFixed) qcFixed.innerText = countFixed; if(qcPending) qcPending.innerText = countPending;
+        let countToday = 0; let countFixed = 0; let countPending = 0;
+        const globalDate = document.getElementById('global-date').value;
+        
+        this.data.scratches.forEach(d => { 
+            // العدادات الذكية
+            if (d.date === globalDate) countToday++; 
+            if (d.status === 'pending') countPending++; 
+            if (d.status === 'fixed' && d.date === globalDate) countFixed++; 
+        });
+
+        const qcToday = document.getElementById('qc-count-today'); 
+        const qcFixed = document.getElementById('qc-count-fixed'); 
+        const qcPending = document.getElementById('qc-count-pending');
+        if(qcToday) qcToday.innerText = countToday; 
+        if(qcFixed) qcFixed.innerText = countFixed; 
+        if(qcPending) qcPending.innerText = countPending;
 
         if(this.data.scratches.length === 0) { container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; }
         
@@ -763,6 +786,7 @@ const App = {
             const isPending = defect.status === 'pending';
             const statusClass = isPending ? 'pending' : 'fixed';
             const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
+            const dateText = defect.date === globalDate ? defect.time : `<span class="text-red">${defect.date}</span>`;
             const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
 
             container.innerHTML += `
@@ -771,7 +795,7 @@ const App = {
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                             <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
-                            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${defect.time}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${dateText}</span>
                         </div>
                         <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -790,46 +814,155 @@ const App = {
     closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
     getImageUrl(url) { if (!url) return ""; if (url.includes("drive.google.com")) { const match = url.match(/id=([^&]+)/); if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`; } return url; },
 
-    // ---------------- Analytics & WhatsApp ----------------
+    // ---------------- التقارير والتحليلات الشاملة ----------------
+    switchAnalyticsMode(mode) {
+        this.analyticsMode = mode;
+        const btnDept = document.getElementById('btn-analytics-dept');
+        const btnFactory = document.getElementById('btn-analytics-factory');
+        if(btnDept) btnDept.classList.toggle('active', mode === 'dept');
+        if(btnFactory) btnFactory.classList.toggle('active', mode === 'factory');
+        
+        const viewDept = document.getElementById('analytics-dept-view');
+        const viewFactory = document.getElementById('analytics-factory-view');
+        if(viewDept) viewDept.style.display = mode === 'dept' ? 'block' : 'none';
+        if(viewFactory) viewFactory.style.display = mode === 'factory' ? 'block' : 'none';
+        
+        this.renderAnalytics();
+    },
+
     renderAnalytics() {
-        const liveTotalEl = document.getElementById('live-total');
-        let totalProd = Number(liveTotalEl ? liveTotalEl.innerText : 0) || 0; 
-        let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
-        
-        document.querySelectorAll('.hour-row').forEach(row => {
-            if(!row.classList.contains('break-row')) {
-                const actualInput = row.querySelector('.actual-input');
-                const timeLabel = row.querySelector('.time-label');
-                if (actualInput && timeLabel) {
-                    const act = Number(actualInput.value) || 0;
-                    activeHours += (act > 0 ? 1 : 0);
-                    hourlyLabels.push(timeLabel.innerText.replace(' ص', '').replace(' م', ''));
-                    hourlyData.push(act);
+        Chart.defaults.font.family = 'Cairo'; 
+        Chart.defaults.color = '#94a3b8';
+
+        if(this.analyticsMode === 'dept') {
+            // تحليلات القسم الحالي
+            const liveTotalEl = document.getElementById('live-total');
+            let totalProd = Number(liveTotalEl ? liveTotalEl.innerText : 0) || 0; 
+            let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
+            
+            document.querySelectorAll('.hour-row').forEach(row => {
+                if(!row.classList.contains('break-row')) {
+                    const actualInput = row.querySelector('.actual-input');
+                    const timeLabel = row.querySelector('.time-label');
+                    if (actualInput && timeLabel) {
+                        const act = Number(actualInput.value) || 0;
+                        activeHours += (act > 0 ? 1 : 0);
+                        hourlyLabels.push(timeLabel.innerText.replace(' ص', '').replace(' م', ''));
+                        hourlyData.push(act);
+                    }
                 }
+            });
+
+            const avgProdEl = document.getElementById('analytics-avg-prod');
+            if(avgProdEl) avgProdEl.innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
+            
+            const totalDefectsEl = document.getElementById('analytics-total-defects');
+            const todayScratches = this.data.scratches.filter(d => d.date === document.getElementById('global-date').value);
+            if(totalDefectsEl) totalDefectsEl.innerText = todayScratches.length;
+
+            const prodChartCanvas = document.getElementById('prodChart');
+            if (prodChartCanvas) {
+                if(this.charts.prod) this.charts.prod.destroy(); 
+                this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { type: 'line', data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: 'rgba(10, 179, 156, 0.2)', borderColor: '#0ab39c', borderWidth: 3, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
             }
-        });
 
-        const avgProdEl = document.getElementById('analytics-avg-prod');
-        if(avgProdEl) avgProdEl.innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
-        
-        const totalDefectsEl = document.getElementById('analytics-total-defects');
-        if(totalDefectsEl) totalDefectsEl.innerText = this.data.scratches.length;
+            let defectCounts = {}; todayScratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
+            let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
+            
+            const defectsChartCanvas = document.getElementById('defectsChart');
+            if (defectsChartCanvas) {
+                if(this.charts.defects) this.charts.defects.destroy();
+                this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } });
+            }
+        } 
+        else {
+            // تحليلات المصنع بالكامل
+            let factoryTotalActual = 0;
+            let deptProd = {};
+            let deptTargets = {};
+            let globalScratches = {};
+            let totalScratchesCount = 0;
 
-        Chart.defaults.font.family = 'Cairo'; Chart.defaults.color = '#94a3b8';
+            this.data.departments.forEach(d => { deptProd[d] = {}; deptTargets[d] = 0; });
 
-        const prodChartCanvas = document.getElementById('prodChart');
-        if (prodChartCanvas) {
-            if(this.charts.prod) this.charts.prod.destroy(); 
-            this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { type: 'line', data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: 'rgba(10, 179, 156, 0.2)', borderColor: '#0ab39c', borderWidth: 3, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
-        }
+            // 1. تجميع الإنتاج
+            if(this.data.master.production) {
+                this.data.master.production.forEach(r => {
+                    if(r.department && this.data.departments.includes(r.department) && r.recordId && r.recordId.startsWith(r.department)) {
+                        const val = Number(r.actual) || 0;
+                        const hourPrefix = r.hour.split(':')[0]; 
+                        deptProd[r.department][hourPrefix] = Math.max(deptProd[r.department][hourPrefix] || 0, val);
+                    }
+                });
+            }
 
-        let defectCounts = {}; this.data.scratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
-        let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
-        
-        const defectsChartCanvas = document.getElementById('defectsChart');
-        if (defectsChartCanvas) {
-            if(this.charts.defects) this.charts.defects.destroy();
-            this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } });
+            // 2. تجميع التارجت
+            if(this.data.master.targets) {
+                this.data.master.targets.forEach(r => {
+                    if(r.department && this.data.departments.includes(r.department)) {
+                        deptTargets[r.department] = Number(r.target) || 0;
+                    }
+                });
+            }
+
+            // 3. تجميع العيوب
+            if(this.data.master.scratches) {
+                this.data.master.scratches.forEach(r => {
+                    globalScratches[r.type] = (globalScratches[r.type] || 0) + 1;
+                    totalScratchesCount++;
+                });
+            }
+
+            let finalDeptProdTotals = {};
+            this.data.departments.forEach(d => {
+                const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
+                finalDeptProdTotals[d] = sum;
+                if(d === 'التجميع النهائي') factoryTotalActual += sum; 
+            });
+
+            const facProdEl = document.getElementById('analytics-fac-prod');
+            const facDefectsEl = document.getElementById('analytics-fac-defects');
+            if(facProdEl) facProdEl.innerText = factoryTotalActual;
+            if(facDefectsEl) facDefectsEl.innerText = totalScratchesCount;
+
+            const depts = this.data.departments;
+            const prodData = depts.map(d => finalDeptProdTotals[d]);
+            const targetData = depts.map(d => deptTargets[d]);
+
+            // Chart 1: الإنتاج والمستهدف
+            const facTargetChartCanvas = document.getElementById('facTargetChart');
+            if(facTargetChartCanvas) {
+                if(this.charts.facTarget) this.charts.facTarget.destroy();
+                this.charts.facTarget = new Chart(facTargetChartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: depts, datasets: [{ label: 'الفعلي', data: prodData, backgroundColor: '#0ab39c' }, { label: 'المستهدف', data: targetData, backgroundColor: '#cbd5e1' }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Chart 2: مساهمة الأقسام
+            const facDeptChartCanvas = document.getElementById('facDeptShareChart');
+            if(facDeptChartCanvas) {
+                if(this.charts.facDept) this.charts.facDept.destroy();
+                this.charts.facDept = new Chart(facDeptChartCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: depts, datasets: [{ data: prodData, backgroundColor: ['#0ab39c', '#3b82f6', '#8b5cf6', '#f59e0b', '#64748b'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+                });
+            }
+
+            // Chart 3: التوزيع الكلي لعيوب المصنع
+            const facDefectChartCanvas = document.getElementById('facGlobalDefectsChart');
+            if(facDefectChartCanvas) {
+                const gDefectLabels = Object.keys(globalScratches);
+                const gDefectData = Object.values(globalScratches);
+                if(this.charts.facDefect) this.charts.facDefect.destroy();
+                this.charts.facDefect = new Chart(facDefectChartCanvas.getContext('2d'), {
+                    type: 'pie',
+                    data: { labels: gDefectLabels.length ? gDefectLabels : ['سجل نظيف'], datasets: [{ data: gDefectData.length ? gDefectData : [1], backgroundColor: gDefectData.length ? ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#0ab39c'] : ['#f1f5f9'] }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
         }
     },
 
