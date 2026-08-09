@@ -46,6 +46,7 @@ const App = {
             App.deferredPrompt = e;
             const installBanner = document.getElementById('install-banner');
             if (installBanner) installBanner.style.display = 'flex';
+            if (manualBtn) manualBtn.style.display = 'block';
         });
         setTimeout(() => { 
             const splash = document.getElementById('cinematic-splash'); 
