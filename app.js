@@ -35,6 +35,18 @@ const App = {
     },
 
     async init() {
+        // تفعيل ملف الخدمة لتثبيت التطبيق
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
+        }
+
+        // إظهار رسالة التثبيت عند جاهزية المتصفح
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            App.deferredPrompt = e;
+            const installBanner = document.getElementById('install-banner');
+            if (installBanner) installBanner.style.display = 'flex';
+        });
         setTimeout(() => { 
             const splash = document.getElementById('cinematic-splash'); 
             if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
@@ -1123,7 +1135,17 @@ const App = {
         report += `\n*إجمالي الإنتاج: ${total}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     },
-
+async installPWA() {
+        if (this.deferredPrompt) {
+            this.deferredPrompt.prompt();
+            const { outcome } = await this.deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                const installBanner = document.getElementById('install-banner');
+                if (installBanner) installBanner.style.display = 'none';
+            }
+            this.deferredPrompt = null;
+        }
+    },
     hardReset() {
         if(confirm("تحذير: سيتم مسح الإعدادات المحلية! هل أنت متأكد؟")) { localStorage.removeItem(CONFIG.STORAGE_KEY); location.reload(); }
     }
