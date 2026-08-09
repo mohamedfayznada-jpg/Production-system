@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0ab39c">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2804/2804364.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>نظام الإنتاج الموحد</title>
@@ -307,7 +310,14 @@
         </section>
 
     </main>
-
+<!-- نافذة تثبيت التطبيق -->
+    <div id="install-banner" class="install-banner" style="display:none;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <i class="fa-solid fa-mobile-screen-button" style="font-size:1.8rem;"></i>
+            <span>تثبيت النظام على جهازك</span>
+        </div>
+        <button onclick="App.installPWA()">تثبيت الآن</button>
+    </div>
     <nav class="bottom-nav">
         <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
             <i class="fa-solid fa-house"></i><span>الرئيسية</span>
