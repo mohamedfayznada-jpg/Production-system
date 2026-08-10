@@ -1153,6 +1153,19 @@ async installPWA() {
             this.deferredPrompt = null;
         }
     },
+    // --- دالة إطلاق الإشعارات الصوتية والنصية ---
+    showSystemNotification(title, body) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+                body: body,
+                icon: 'https://cdn-icons-png.flaticon.com/512/2804/2804364.png',
+                vibrate: [200, 100, 200]
+            });
+            // تشغيل صوت تنبيه بسيط (اختياري)
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.play().catch(e => console.log('Audio blocked by browser'));
+        }
+    },
     hardReset() {
         if(confirm("تحذير: سيتم مسح الإعدادات المحلية! هل أنت متأكد؟")) { localStorage.removeItem(CONFIG.STORAGE_KEY); location.reload(); }
     }
