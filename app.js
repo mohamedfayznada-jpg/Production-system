@@ -52,7 +52,13 @@ const App = {
             const splash = document.getElementById('cinematic-splash'); 
             if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
-
+// --- الكود الجديد لطلب صلاحية الإشعارات ---
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+        // متغير لحفظ آخر وقت، لكي لا يعطينا إشعارات للعيوب القديمة
+        this.lastNotificationId = Date.now();
+        // ------------------------------------------
         this.isOnline = await API.production.testConnection();
         this.updateConnectionStatus(this.isOnline);
 
