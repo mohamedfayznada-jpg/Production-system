@@ -354,12 +354,27 @@ const App = {
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             }
         });
-        this.masterDefectListener = API.master.listenToAllScratches(date, (records) => {
+      this.masterDefectListener = API.master.listenToAllScratches(date, (records) => {
             this.data.master.scratches = records;
             if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
                 this.renderMasterDashboard();
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             }
+
+            // --- الكود الجديد لاكتشاف العيوب الجديدة وإطلاق الإشعار ---
+            let maxId = App.lastNotificationId;
+            records.forEach(r => {
+                // إذا كان العيب أحدث من آخر عيب تم رؤيته، وحالته "قيد الإصلاح"
+                if (r.id > App.lastNotificationId && r.status === 'pending') {
+                    App.showSystemNotification(
+                        `🚨 عيب جديد في: ${r.department}`, 
+                        `الموديل: ${r.notes}\nالعيب: ${r.type}`
+                    );
+                    if(r.id > maxId) maxId = r.id; // تحديث العداد
+                }
+            });
+            App.lastNotificationId = maxId;
+            // ----------------------------------------------------
         });
 
         this.currentInventoryListener = API.balances.listenToInventory((invData) => {
