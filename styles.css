@@ -225,12 +225,25 @@ body { background-color: var(--bg-color); color: var(--text-main); padding-botto
 }
 
 /* 5S Notes */
+.s5-screen-header { gap: 12px; }
+.s5-header-actions { display: flex; align-items: center; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+.s5-header-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-height: 38px; padding: 7px 11px; border: 0; border-radius: 12px; font-family: 'Cairo'; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: var(--shadow-soft); transition: 0.2s; white-space: nowrap; }
+.s5-header-btn:active { transform: translateY(1px); }
+.s5-export-btn { background: #fee2e2; color: #b91c1c; }
+.s5-notification-btn { background: #e0f2fe; color: #0369a1; }
+.s5-notification-btn.is-enabled { background: #dcfce7; color: #15803d; }
+.s5-notification-btn.is-disabled { background: #f1f5f9; color: #64748b; }
 .s5-help-text { font-size: 0.85rem; line-height: 1.8; margin: 10px 0 20px; }
 .s5-place-manager { margin-top: -8px; margin-bottom: 20px; }
 .s5-place-manager .icon-btn { flex: 0 0 48px; border-radius: 14px; }
 .s5-upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .s5-textarea { resize: vertical; min-height: 90px; }
 .s5-location-group { border-right: 4px solid var(--primary-color); }
+.s5-note-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+.s5-note-id-label { color: var(--text-muted); font-size: 0.68rem; direction: ltr; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s5-delete-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; padding: 7px 10px; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; color: #b91c1c; font-family: 'Cairo'; font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: 0.2s; }
+.s5-delete-btn:hover { background: #fee2e2; border-color: #fca5a5; }
+.s5-delete-btn:active { transform: translateY(1px); }
 .s5-location-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
 .s5-location-title h4 { font-size: 1rem; font-weight: 800; color: var(--text-main); }
 .s5-location-title span { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; }
@@ -245,9 +258,14 @@ body { background-color: var(--bg-color); color: var(--text-main); padding-botto
 .s5-note-description { color: var(--text-main); font-size: 0.9rem; font-weight: 600; line-height: 1.8; white-space: pre-wrap; }
 .s5-empty { padding: 30px 15px; text-align: center; color: var(--text-muted); font-weight: 700; }
 @media (max-width: 520px) {
+    .s5-screen-header { align-items: flex-start; }
+    .s5-header-actions { gap: 6px; }
+    .s5-header-btn { min-height: 34px; padding: 6px 8px; font-size: 0.7rem; }
     .s5-upload-grid { grid-template-columns: 1fr; }
     .s5-counters .qc-box { padding: 15px 6px; }
     .s5-counters .qc-lbl { font-size: 0.68rem; }
+    .s5-note-footer { align-items: stretch; flex-direction: column; }
+    .s5-delete-btn { width: 100%; }
     .bottom-nav { padding: 0 4px; }
     .nav-item { width: 16.5vw; font-size: 0.62rem; }
     .nav-item i { font-size: 1.1rem; }

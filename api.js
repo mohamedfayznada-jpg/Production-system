@@ -107,6 +107,11 @@ export const API = {
             const docRef = doc(db, "5s_notes", note.id);
             await setDoc(docRef, { ...note, updatedAt: serverTimestamp() }, { merge: true });
         },
+        async deleteNote(noteId) {
+            if (!noteId) throw new Error('missing_5s_note_id');
+            const docRef = doc(db, "5s_notes", noteId);
+            await deleteDoc(docRef);
+        },
         async uploadImage(file, storagePath) {
             const storageRef = ref(storage, storagePath);
             await uploadBytes(storageRef, file, { contentType: file.type || "image/webp", cacheControl: "public,max-age=31536000" });

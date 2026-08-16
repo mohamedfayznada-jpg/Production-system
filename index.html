@@ -154,9 +154,17 @@
 
         <!-- 5. شاشة ملاحظات 5S -->
         <section id="screen-5s" class="screen">
-            <div class="section-header">
+            <div class="section-header s5-screen-header">
                 <h3 class="section-title">ملاحظات 5S</h3>
-                <span class="view-all" id="5s-selected-date-label"></span>
+                <div class="s5-header-actions">
+                    <span class="view-all" id="5s-selected-date-label"></span>
+                    <button type="button" class="s5-header-btn s5-export-btn" onclick="App.export5SReportPDF()" title="تصدير تقرير 5S جاهز للطباعة" aria-label="تصدير تقرير 5S جاهز للطباعة">
+                        <i class="fa-solid fa-file-pdf"></i><span>PDF</span>
+                    </button>
+                    <button type="button" id="5s-notification-toggle" class="s5-header-btn s5-notification-btn" onclick="App.toggle5SNotifications()" title="تفعيل تنبيهات ملاحظات 5S" aria-pressed="false">
+                        <i class="fa-solid fa-bell"></i><span>التنبيهات</span>
+                    </button>
+                </div>
             </div>
 
             <div class="qc-counters s5-counters">
@@ -182,11 +190,11 @@
                 <div class="s5-upload-grid">
                     <div class="input-group mb-0">
                         <label>صورة الملاحظة <span class="text-red">*</span></label>
-                        <input type="file" id="5s-observation-image" accept="image/*" capture="environment" class="modern-input file-input">
+                        <input type="file" id="5s-observation-image" accept="image/*" class="modern-input file-input">
                     </div>
                     <div class="input-group mb-0">
                         <label>صورة الفعل التصحيحي</label>
-                        <input type="file" id="5s-corrective-image" accept="image/*" capture="environment" class="modern-input file-input">
+                        <input type="file" id="5s-corrective-image" accept="image/*" class="modern-input file-input">
                     </div>
                 </div>
                 <div class="input-group mt-4">

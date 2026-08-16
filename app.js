@@ -21,6 +21,10 @@ const App = {
     fiveSLocationsListener: null,
     fiveSNotesListener: null,
     fiveSMonthlyListener: null,
+    fiveSNotificationsEnabled: true,
+    fiveSClientId: '',
+    fiveSKnownNoteIds: new Set(),
+    fiveSNotesSnapshotReady: false,
     
     isOnline: true,
     saveTimers: {},
@@ -58,12 +62,21 @@ const App = {
             const splash = document.getElementById('cinematic-splash'); 
             if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
-// --- الكود الجديد لطلب صلاحية الإشعارات ---
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
+        // --- تهيئة تنبيهات 5S على مستوى المتصفح فقط ---
+        try {
+            this.fiveSNotificationsEnabled = localStorage.getItem('production_system_5s_notifications') !== 'off';
+        } catch (error) {
+            this.fiveSNotificationsEnabled = true;
         }
-        // متغير لحفظ آخر وقت، لكي لا يعطينا إشعارات للعيوب القديمة
+        try {
+            this.fiveSClientId = sessionStorage.getItem('production_system_5s_client_id') || `client_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+            sessionStorage.setItem('production_system_5s_client_id', this.fiveSClientId);
+        } catch (error) {
+            this.fiveSClientId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        }
         this.lastNotificationId = Date.now();
+        this.update5SNotificationButton();
+        // لا يتم طلب الإذن تلقائياً؛ المستخدم يفعّله من زر التنبيهات عند الحاجة.
         // ------------------------------------------
         this.isOnline = await API.production.testConnection();
         this.updateConnectionStatus(this.isOnline);
@@ -336,6 +349,8 @@ const App = {
         if (this.masterDefectListener) this.masterDefectListener();
         if (this.currentInventoryListener) this.currentInventoryListener();
         if (this.fiveSNotesListener) this.fiveSNotesListener();
+        this.fiveSNotesSnapshotReady = false;
+        this.fiveSKnownNoteIds = new Set();
 
         this.clearInputs();
 
@@ -407,6 +422,24 @@ const App = {
         });
 
         this.fiveSNotesListener = API.fiveS.listenToNotes(date, (records) => {
+            const incomingIds = new Set(records.map((note) => String(note.id || '')));
+            if (!this.fiveSNotesSnapshotReady) {
+                this.fiveSKnownNoteIds = incomingIds;
+                this.fiveSNotesSnapshotReady = true;
+            } else {
+                records.forEach((note) => {
+                    const noteId = String(note.id || '');
+                    if (!noteId || this.fiveSKnownNoteIds.has(noteId)) return;
+                    this.fiveSKnownNoteIds.add(noteId);
+                    if (note.createdByClientId !== this.fiveSClientId && this.fiveSNotificationsEnabled) {
+                        this.showSystemNotification(
+                            `ملاحظة 5S جديدة في ${note.place || 'مكان غير محدد'}`,
+                            `${note.department || 'قسم غير محدد'}\n${note.description || 'تم تسجيل ملاحظة جديدة'}`
+                        );
+                    }
+                });
+                this.fiveSKnownNoteIds = incomingIds;
+            }
             this.data.fiveS.notes = records;
             if (this.currentScreen === '5s') this.render5SNotes();
         });
@@ -1305,7 +1338,8 @@ const App = {
                 correctiveImagePath: corrective?.path || '',
                 correctiveImageUrl: corrective?.url || '',
                 createdAt: new Date().toISOString(),
-                updatedAtClient: new Date().toISOString()
+                updatedAtClient: new Date().toISOString(),
+                createdByClientId: this.fiveSClientId
             };
             await API.fiveS.saveNote(note);
             ['5s-observation-image', '5s-corrective-image'].forEach((id) => { const input = document.getElementById(id); if (input) input.value = ''; });
@@ -1318,6 +1352,22 @@ const App = {
         } finally {
             if (loader) loader.classList.remove('show');
             if (loaderText) loaderText.innerText = 'جاري المعالجة...';
+        }
+    },
+
+    async delete5SNote(noteId) {
+        const note = (this.data.fiveS.notes || []).find((item) => item.id === noteId);
+        if (!note) { this.showToast('تعذر العثور على الملاحظة', true); return; }
+        const locationLabel = [note.department, note.place].filter(Boolean).join(' · ');
+        const confirmed = window.confirm(`هل تريد حذف ملاحظة 5S هذه نهائياً؟\n${locationLabel ? `المكان: ${locationLabel}\n` : ''}سيتم حذف سجل الملاحظة من النظام ولا يمكن التراجع عن ذلك.`);
+        if (!confirmed) return;
+        if (!this.isOnline) { this.showToast('لا يوجد اتصال بالسحابة حالياً', true); return; }
+        try {
+            await API.fiveS.deleteNote(noteId);
+            this.showToast('تم حذف ملاحظة 5S بنجاح ✅');
+        } catch (error) {
+            console.error('5S delete error:', error);
+            this.showToast('تعذر حذف الملاحظة. تحقق من صلاحيات Firestore', true);
         }
     },
 
@@ -1358,9 +1408,9 @@ const App = {
                 const correctiveUrl = this.escapeHtml(this.get5SImageUrl(note.correctiveImageUrl || ''));
                 const noteId = this.escapeHtml(note.id || '');
                 const observationHtml = observationUrl ? `<div class="s5-image-frame"><img src="${observationUrl}" onclick="App.openImage(this.src)" alt="صورة الملاحظة"><span class="s5-image-label">صورة الملاحظة</span></div>` : '<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-image"></i><span>لا توجد صورة</span></div>';
-                const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" capture="environment" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
+                const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
                 const time = note.createdAt ? new Date(note.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
-                return `<div class="card s5-note-card"><div class="s5-note-images">${observationHtml}${correctiveHtml}</div><div class="s5-note-meta"><span><i class="fa-solid fa-clock"></i> ${this.escapeHtml(time)}</span><span class="defect-badge ${correctiveUrl ? 'fixed' : 'pending'}">${correctiveUrl ? 'تم التوثيق' : 'بانتظار الفعل التصحيحي'}</span></div><p class="s5-note-description">${this.escapeHtml(note.description)}</p></div>`;
+                return `<div class="card s5-note-card"><div class="s5-note-images">${observationHtml}${correctiveHtml}</div><div class="s5-note-meta"><span><i class="fa-solid fa-clock"></i> ${this.escapeHtml(time)}</span><span class="defect-badge ${correctiveUrl ? 'fixed' : 'pending'}">${correctiveUrl ? 'تم التوثيق' : 'بانتظار الفعل التصحيحي'}</span></div><p class="s5-note-description">${this.escapeHtml(note.description)}</p><div class="s5-note-footer"><span class="s5-note-id-label">${this.escapeHtml(note.id || '')}</span><button type="button" class="s5-delete-btn" onclick="App.delete5SNote('${noteId}')" title="حذف ملاحظة 5S"><i class="fa-solid fa-trash"></i><span>حذف الملاحظة</span></button></div></div>`;
             }).join('');
             return `<div class="card s5-location-group"><div class="s5-location-title"><h4><i class="fa-solid fa-location-dot text-teal"></i> ${this.escapeHtml(place)}</h4><span>${this.escapeHtml(department)} · ${group.length} ملاحظة · ${groupCorrective} مكتملة</span></div>${cards}</div>`;
         }).join('');
@@ -1406,6 +1456,101 @@ const App = {
         if (correctionChart) {
             if (this.charts.fiveSCorrections) this.charts.fiveSCorrections.destroy();
             this.charts.fiveSCorrections = new Chart(correctionChart.getContext('2d'), { type: 'bar', data: { labels: emptyLabels, datasets: [{ label: 'إجمالي الملاحظات', data: emptyTotals, backgroundColor: '#cbd5e1', borderRadius: 5 }, { label: 'بصورة فعل تصحيحي', data: labels.length ? corrections : [0], backgroundColor: '#0ab39c', borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } } } } });
+        }
+    },
+
+    async export5SReportPDF() {
+        const date = document.getElementById('global-date')?.value || '';
+        const notes = (this.data.fiveS.notes || []).filter((note) => note.date === date);
+        if (!notes.length) { this.showToast('لا توجد ملاحظات 5S لهذا التاريخ لتصديرها', true); return; }
+        if (typeof html2pdf === 'undefined') { this.showToast('مكتبة تصدير PDF غير متاحة حالياً', true); return; }
+
+        this.showToast('جاري تجهيز تقرير 5S... يرجى الانتظار');
+        const reportNotes = [...notes].sort((a, b) => {
+            const locationCompare = `${a.department || ''}${a.place || ''}`.localeCompare(`${b.department || ''}${b.place || ''}`, 'ar');
+            return locationCompare || String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+        });
+        const correctiveCount = reportNotes.filter((note) => note.correctiveImagePath || note.correctiveImageUrl).length;
+        const completionRate = Math.round((correctiveCount / reportNotes.length) * 100);
+        const generatedAt = new Date().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+        const report = document.createElement('div');
+        report.dir = 'rtl';
+        report.className = 's5-print-report';
+        report.style.cssText = 'position:relative;display:block;margin-left:-10000px;width:794px;background:#ffffff;color:#172033;padding:28px;font-family:Cairo,Arial,sans-serif;box-sizing:border-box;';
+
+        const locationTotals = {};
+        reportNotes.forEach((note) => {
+            const key = `${note.department || 'غير محدد'}|||${note.place || 'غير محدد'}`;
+            if (!locationTotals[key]) locationTotals[key] = { department: note.department || 'غير محدد', place: note.place || 'غير محدد', total: 0, corrective: 0 };
+            locationTotals[key].total++;
+            if (note.correctiveImagePath || note.correctiveImageUrl) locationTotals[key].corrective++;
+        });
+        const locationRows = Object.values(locationTotals).map((location) => `<tr><td>${this.escapeHtml(location.department)}</td><td>${this.escapeHtml(location.place)}</td><td>${location.total}</td><td>${location.corrective}</td></tr>`).join('');
+        const imageBlock = (url, label, emptyText) => url
+            ? `<div class="s5-report-image"><img src="${this.escapeHtml(url)}" crossorigin="anonymous" alt="${label}"><div class="s5-report-image-label">${label}</div></div>`
+            : `<div class="s5-report-image s5-report-empty-image"><span>${emptyText}</span></div>`;
+        const noteBlocks = reportNotes.map((note, index) => {
+            const observationUrl = this.get5SImageUrl(note.observationImageUrl || note.observationImagePath || '');
+            const correctiveUrl = this.get5SImageUrl(note.correctiveImageUrl || note.correctiveImagePath || '');
+            const noteTime = note.createdAt ? new Date(note.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+            const status = correctiveUrl ? 'تم توثيق الفعل التصحيحي' : 'بانتظار الفعل التصحيحي';
+            return `<article class="s5-report-note"><div class="s5-report-note-heading"><strong>ملاحظة ${index + 1}</strong><span>${this.escapeHtml(note.department || 'غير محدد')} · ${this.escapeHtml(note.place || 'غير محدد')} · ${this.escapeHtml(noteTime)}</span></div><div class="s5-report-images">${imageBlock(observationUrl, 'صورة الملاحظة', 'لا توجد صورة ملاحظة')}${imageBlock(correctiveUrl, 'الفعل التصحيحي', 'لم تُرفع صورة فعل تصحيحي')}</div><div class="s5-report-description"><strong>الوصف:</strong> ${this.escapeHtml(note.description || 'بدون وصف')}</div><div class="s5-report-status ${correctiveUrl ? 'done' : 'pending'}">${status}</div></article>`;
+        }).join('');
+
+        report.innerHTML = `<style>
+            .s5-report-title { margin: 0 0 4px; color: #0f766e; font-size: 24px; font-weight: 800; }
+            .s5-report-subtitle { margin: 0; color: #64748b; font-size: 12px; }
+            .s5-report-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; border-bottom: 3px solid #0ab39c; padding-bottom: 14px; margin-bottom: 16px; }
+            .s5-report-date { color: #334155; font-size: 13px; font-weight: 700; text-align: left; }
+            .s5-report-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+            .s5-report-stat { border: 1px solid #dbe4ee; border-radius: 8px; padding: 10px; text-align: center; background: #f8fafc; }
+            .s5-report-stat strong { display: block; color: #0f766e; font-size: 21px; }
+            .s5-report-stat span { color: #475569; font-size: 11px; font-weight: 700; }
+            .s5-report-section-title { color: #172033; font-size: 15px; margin: 16px 0 8px; border-right: 4px solid #0ab39c; padding-right: 8px; }
+            .s5-report-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px; }
+            .s5-report-table th, .s5-report-table td { border: 1px solid #dbe4ee; padding: 7px 8px; text-align: right; }
+            .s5-report-table th { background: #ecfeff; color: #115e59; font-weight: 800; }
+            .s5-report-note { border: 1px solid #dbe4ee; border-right: 4px solid #0ab39c; border-radius: 8px; padding: 11px; margin: 0 0 12px; page-break-inside: avoid; break-inside: avoid; }
+            .s5-report-note-heading { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 9px; color: #172033; font-size: 12px; }
+            .s5-report-note-heading span { color: #64748b; font-size: 10px; }
+            .s5-report-images { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+            .s5-report-image { position: relative; height: 210px; overflow: hidden; border-radius: 7px; background: #f1f5f9; border: 1px solid #e2e8f0; }
+            .s5-report-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+            .s5-report-image-label { position: absolute; right: 0; bottom: 0; left: 0; padding: 5px 7px; background: rgba(15, 23, 42, .72); color: #fff; font-size: 10px; font-weight: 800; }
+            .s5-report-empty-image { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 10px; font-weight: 700; }
+            .s5-report-description { margin-top: 9px; color: #334155; font-size: 11px; line-height: 1.8; white-space: pre-wrap; }
+            .s5-report-status { display: inline-block; margin-top: 8px; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+            .s5-report-status.done { background: #dcfce7; color: #15803d; }
+            .s5-report-status.pending { background: #fff7ed; color: #c2410c; }
+            .s5-report-footer { margin-top: 16px; padding-top: 9px; border-top: 1px solid #dbe4ee; color: #64748b; font-size: 10px; }
+        </style><header class="s5-report-header"><div><h1 class="s5-report-title">تقرير ملاحظات 5S</h1><p class="s5-report-subtitle">نظام الإنتاج الموحد - مجموعة العربي</p></div><div class="s5-report-date">التاريخ: ${this.escapeHtml(date)}<br>وقت التصدير: ${this.escapeHtml(generatedAt)}</div></header><div class="s5-report-summary"><div class="s5-report-stat"><strong>${reportNotes.length}</strong><span>إجمالي الملاحظات</span></div><div class="s5-report-stat"><strong>${correctiveCount}</strong><span>أفعال تصحيحية مصورة</span></div><div class="s5-report-stat"><strong>${completionRate}%</strong><span>نسبة الإغلاق</span></div></div><h2 class="s5-report-section-title">ملخص حسب المكان</h2><table class="s5-report-table"><thead><tr><th>القسم</th><th>المكان</th><th>الملاحظات</th><th>الأفعال التصحيحية</th></tr></thead><tbody>${locationRows}</tbody></table><h2 class="s5-report-section-title">تفاصيل الملاحظات والصور</h2>${noteBlocks}<div class="s5-report-footer">تم إنشاء التقرير من شاشة ملاحظات 5S. الصور محفوظة عبر Cloudinary والبيانات المعروضة تخص التاريخ المحدد.</div>`;
+        document.body.appendChild(report);
+
+        const images = [...report.querySelectorAll('img')];
+        await Promise.all(images.map((image) => new Promise((resolve) => {
+            let settled = false;
+            const finish = () => { if (!settled) { settled = true; resolve(); } };
+            image.addEventListener('load', finish, { once: true });
+            image.addEventListener('error', finish, { once: true });
+            if (image.complete) finish();
+            setTimeout(finish, 5000);
+        })));
+
+        try {
+            await html2pdf().set({
+                margin: 0.35,
+                filename: `5S_Report_${date || 'report'}.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+                pagebreak: { mode: ['css', 'legacy'] },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            }).from(report).save();
+            this.showToast('تم تصدير تقرير 5S بنجاح ✅');
+        } catch (error) {
+            console.error('5S PDF export error:', error);
+            this.showToast('تعذر تصدير تقرير 5S، حاول مرة أخرى', true);
+        } finally {
+            report.remove();
         }
     },
 
@@ -1499,7 +1644,54 @@ const App = {
         report += `\n*إجمالي الإنتاج: ${total}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     },
-async installPWA() {
+    update5SNotificationButton() {
+        const button = document.getElementById('5s-notification-toggle');
+        if (!button) return;
+        const label = button.querySelector('span');
+        const supported = 'Notification' in window;
+        const permission = supported ? Notification.permission : 'unsupported';
+        const enabled = supported && permission === 'granted' && this.fiveSNotificationsEnabled;
+        button.classList.toggle('is-enabled', enabled);
+        button.classList.toggle('is-disabled', !enabled && permission !== 'default');
+        button.setAttribute('aria-pressed', String(enabled));
+        if (label) {
+            label.textContent = !supported ? 'غير مدعومة' : enabled ? 'التنبيهات مفعلة' : permission === 'denied' ? 'الإذن مرفوض' : 'تفعيل التنبيهات';
+        }
+        button.title = !supported ? 'هذا المتصفح لا يدعم تنبيهات الويب' : enabled ? 'إيقاف تنبيهات ملاحظات 5S' : permission === 'denied' ? 'اسمح بالتنبيهات من إعدادات المتصفح' : 'تفعيل تنبيهات ملاحظات 5S';
+    },
+
+    async toggle5SNotifications() {
+        if (!('Notification' in window)) {
+            this.showToast('هذا المتصفح لا يدعم تنبيهات الويب', true);
+            this.update5SNotificationButton();
+            return;
+        }
+        const currentlyEnabled = Notification.permission === 'granted' && this.fiveSNotificationsEnabled;
+        if (currentlyEnabled) {
+            this.fiveSNotificationsEnabled = false;
+            try { localStorage.setItem('production_system_5s_notifications', 'off'); } catch (error) { /* التخزين المحلي اختياري */ }
+            this.showToast('تم إيقاف تنبيهات ملاحظات 5S');
+            this.update5SNotificationButton();
+            return;
+        }
+        if (Notification.permission === 'denied') {
+            this.showToast('الإذن مرفوض من المتصفح؛ اسمح بالتنبيهات من إعداداته أولاً', true);
+            this.update5SNotificationButton();
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            this.showToast('لم يتم تفعيل تنبيهات ملاحظات 5S', true);
+            this.update5SNotificationButton();
+            return;
+        }
+        this.fiveSNotificationsEnabled = true;
+        try { localStorage.setItem('production_system_5s_notifications', 'on'); } catch (error) { /* التخزين المحلي اختياري */ }
+        this.showToast('تم تفعيل تنبيهات ملاحظات 5S ✅');
+        this.update5SNotificationButton();
+    },
+
+    async installPWA() {
         if (this.deferredPrompt) {
             this.deferredPrompt.prompt();
             const { outcome } = await this.deferredPrompt.userChoice;
