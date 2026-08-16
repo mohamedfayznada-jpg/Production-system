@@ -922,17 +922,30 @@ const App = {
         return value;
     },
     async uploadToCloudinary(base64, folder = "ProductionSystem") {
-        const formData = new FormData();
-        formData.append("file", base64);
-        formData.append("upload_preset", CONFIG.CLOUDINARY_UPLOAD_PRESET);
-        formData.append("folder", folder);
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
-            method: "POST",
-            body: formData
-        });
-        if (!response.ok) throw new Error("Cloudinary upload failed");
-        const data = await response.json();
-        return data.secure_url;
+        try {
+            const formData = new FormData();
+            formData.append("file", base64);
+            // Ensure preset name is trimmed of whitespace
+            formData.append("upload_preset", String(CONFIG.CLOUDINARY_UPLOAD_PRESET || '').trim());
+            formData.append("folder", folder);
+            
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                method: "POST",
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Cloudinary Error Detail:", errorData);
+                throw new Error(errorData.error ? errorData.error.message : "Cloudinary upload failed");
+            }
+            
+            const data = await response.json();
+            return data.secure_url;
+        } catch (err) {
+            console.error("Cloudinary Catch Error:", err);
+            throw err;
+        }
     },
 
     // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
