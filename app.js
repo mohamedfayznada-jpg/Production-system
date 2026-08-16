@@ -16,6 +16,9 @@ const App = {
     masterTargetListener: null,
     masterDefectListener: null,
     currentInventoryListener: null,
+    fiveSLocationsListener: null,
+    fiveSNotesListener: null,
+    fiveSMonthlyListener: null,
     
     isOnline: true,
     saveTimers: {},
@@ -31,7 +34,8 @@ const App = {
         generatedHours: [],
         scratches: [],
         inventory: { models: [], cabinet: {}, door: {} },
-        master: { production: [], targets: [], scratches: [] }
+        master: { production: [], targets: [], scratches: [] },
+        fiveS: { locations: [], notes: [], monthlySummaries: [] }
     },
 
     async init() {
@@ -75,6 +79,8 @@ const App = {
             this.data.departments = depts;
             this.renderDepartmentSelector();
             this.renderSettingsDepartmentsList();
+            this.render5SDepartmentOptions();
+            this.render5SPlaceOptions();
             
             if(!this.data.currentDepartment && depts.length > 0) {
                 this.data.currentDepartment = depts[0];
@@ -83,6 +89,19 @@ const App = {
                 this.listenToCurrentDepartmentSettings();
             }
         });
+
+        this.fiveSLocationsListener = API.fiveS.listenToLocations((locations) => {
+            this.data.fiveS.locations = locations;
+            this.render5SPlaceOptions();
+            if (this.currentScreen === '5s') this.render5SNotes();
+        });
+        this.fiveSMonthlyListener = API.fiveS.listenToMonthlySummaries((summaries) => {
+            this.data.fiveS.monthlySummaries = summaries;
+            if (this.currentScreen === '5s') this.render5SArchive();
+        });
+
+        const fiveSDepartmentSelect = document.getElementById('5s-department');
+        if (fiveSDepartmentSelect) fiveSDepartmentSelect.addEventListener('change', () => this.render5SPlaceOptions());
 
         const deptSelect = document.getElementById('global-department');
         if (deptSelect) {
@@ -184,6 +203,7 @@ const App = {
         if(navBtn) navBtn.classList.add('active');
         
         if(screenId === 'analytics') this.renderAnalytics();
+        if(screenId === '5s') this.render5SNotes();
         if(screenId === 'home') this.renderMasterDashboard();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -313,6 +333,7 @@ const App = {
         if (this.masterTargetListener) this.masterTargetListener();
         if (this.masterDefectListener) this.masterDefectListener();
         if (this.currentInventoryListener) this.currentInventoryListener();
+        if (this.fiveSNotesListener) this.fiveSNotesListener();
 
         this.clearInputs();
 
@@ -381,6 +402,11 @@ const App = {
             this.data.inventory = invData;
             this.renderInventory();
             this.populateDefectModelsList(); // تحديث قائمة الموديلات في شاشة الجودة
+        });
+
+        this.fiveSNotesListener = API.fiveS.listenToNotes(date, (records) => {
+            this.data.fiveS.notes = records;
+            if (this.currentScreen === '5s') this.render5SNotes();
         });
     },
 
@@ -1064,6 +1090,254 @@ const App = {
                     options: { responsive: true, maintainAspectRatio: false }
                 });
             }
+        }
+    },
+
+    // ---------------- ملاحظات 5S ----------------
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    },
+
+    render5SDepartmentOptions() {
+        const select = document.getElementById('5s-department');
+        if (!select) return;
+        const selected = select.value || this.data.currentDepartment || '';
+        select.innerHTML = this.data.departments.length
+            ? this.data.departments.map((dept) => `<option value="${this.escapeHtml(dept)}">${this.escapeHtml(dept)}</option>`).join('')
+            : '<option value="">لا توجد أقسام</option>';
+        if (this.data.departments.includes(selected)) select.value = selected;
+    },
+
+    get5SPlacesForDepartment(department) {
+        return [...new Set(this.data.fiveS.locations.filter((item) => item.department === department).map((item) => item.place).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+    },
+
+    render5SPlaceOptions() {
+        const deptSelect = document.getElementById('5s-department');
+        const placeSelect = document.getElementById('5s-place');
+        if (!deptSelect || !placeSelect) return;
+        const department = deptSelect.value || this.data.currentDepartment || '';
+        const previous = placeSelect.value;
+        const places = this.get5SPlacesForDepartment(department);
+        placeSelect.innerHTML = places.length
+            ? `<option value="">-- اختر المكان --</option>${places.map((place) => `<option value="${this.escapeHtml(place)}">${this.escapeHtml(place)}</option>`).join('')}`
+            : '<option value="">أضف مكاناً جديداً أولاً</option>';
+        if (places.includes(previous)) placeSelect.value = previous;
+    },
+
+    async add5SPlace() {
+        const deptSelect = document.getElementById('5s-department');
+        const input = document.getElementById('5s-new-place');
+        const department = deptSelect ? deptSelect.value : '';
+        const place = input ? input.value.trim() : '';
+        if (!department || !place) { this.showToast('اختر القسم واكتب اسم المكان أولاً', true); return; }
+        if (this.get5SPlacesForDepartment(department).includes(place)) { this.showToast('هذا المكان مضاف بالفعل', true); return; }
+        const locations = [...this.data.fiveS.locations, { department, place, createdAt: new Date().toISOString() }];
+        try {
+            await API.fiveS.saveLocations(locations);
+            this.data.fiveS.locations = locations;
+            this.render5SPlaceOptions();
+            const placeSelect = document.getElementById('5s-place');
+            if (placeSelect) placeSelect.value = place;
+            if (input) input.value = '';
+            this.showToast('تم حفظ المكان بنجاح ✅');
+        } catch (error) { this.showToast('تعذر حفظ المكان، حاول مرة أخرى', true); }
+    },
+
+    compress5SImage(file) {
+        return new Promise((resolve, reject) => {
+            if (!file) return resolve(null);
+            if (!file.type || !file.type.startsWith('image/')) return reject(new Error('invalid_image'));
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('read_error'));
+            reader.onload = (event) => {
+                const image = new Image();
+                image.onerror = () => reject(new Error('image_error'));
+                image.onload = () => {
+                    let width = image.width;
+                    let height = image.height;
+                    if (width > height && width > CONFIG.IMAGE_MAX_WIDTH) {
+                        height *= CONFIG.IMAGE_MAX_WIDTH / width;
+                        width = CONFIG.IMAGE_MAX_WIDTH;
+                    } else if (height >= width && height > CONFIG.IMAGE_MAX_HEIGHT) {
+                        width *= CONFIG.IMAGE_MAX_HEIGHT / height;
+                        height = CONFIG.IMAGE_MAX_HEIGHT;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(width));
+                    canvas.height = Math.max(1, Math.round(height));
+                    const context = canvas.getContext('2d', { alpha: false });
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('compression_error')), 'image/webp', CONFIG.IMAGE_QUALITY);
+                };
+                image.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    },
+
+    async upload5SImage(file, noteId, date, kind) {
+        if (!file) return null;
+        const blob = await this.compress5SImage(file);
+        return API.fiveS.uploadImage(blob, `5s/${date}/${noteId}/${kind}.webp`);
+    },
+
+    async add5SCorrectiveImage(noteId, file) {
+        if (!file) return;
+        const note = (this.data.fiveS.notes || []).find((item) => item.id === noteId);
+        if (!note) { this.showToast('تعذر العثور على الملاحظة', true); return; }
+        const loader = document.getElementById('upload-loader');
+        const loaderText = document.getElementById('loader-text');
+        if (loader) loader.classList.add('show');
+        if (loaderText) loaderText.innerText = 'جاري رفع صورة الفعل التصحيحي...';
+        try {
+            const corrective = await this.upload5SImage(file, noteId, note.date, 'corrective');
+            await API.fiveS.saveNote({ id: noteId, correctiveImagePath: corrective.path, correctiveImageUrl: corrective.url, updatedAtClient: new Date().toISOString() });
+            this.showToast('تم توثيق الفعل التصحيحي ✅');
+        } catch (error) {
+            console.error('5S corrective upload error:', error);
+            this.showToast('تعذر رفع صورة الفعل التصحيحي', true);
+        } finally {
+            if (loader) loader.classList.remove('show');
+            if (loaderText) loaderText.innerText = 'جاري المعالجة...';
+        }
+    },
+
+    async add5SNote() {
+        if (!this.isOnline) { this.showToast('لا يوجد اتصال بالسحابة حالياً', true); return; }
+        const department = document.getElementById('5s-department')?.value || '';
+        const place = document.getElementById('5s-place')?.value || '';
+        const description = document.getElementById('5s-description')?.value.trim() || '';
+        const observationFile = document.getElementById('5s-observation-image')?.files?.[0];
+        const correctiveFile = document.getElementById('5s-corrective-image')?.files?.[0];
+        const date = document.getElementById('global-date')?.value || '';
+        if (!department || !place) { this.showToast('اختر القسم والمكان أولاً', true); return; }
+        if (!observationFile) { this.showToast('صورة الملاحظة مطلوبة', true); return; }
+        if (!description) { this.showToast('اكتب وصف الملاحظة أولاً', true); return; }
+
+        const noteId = `5s_${date}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const loader = document.getElementById('upload-loader');
+        const loaderText = document.getElementById('loader-text');
+        if (loader) loader.classList.add('show');
+        if (loaderText) loaderText.innerText = 'جاري ضغط ورفع صور 5S...';
+        try {
+            const [observation, corrective] = await Promise.all([
+                this.upload5SImage(observationFile, noteId, date, 'observation'),
+                this.upload5SImage(correctiveFile, noteId, date, 'corrective')
+            ]);
+            const note = {
+                id: noteId,
+                date,
+                monthKey: date.slice(0, 7),
+                department,
+                place,
+                description,
+                observationImagePath: observation?.path || '',
+                observationImageUrl: observation?.url || '',
+                correctiveImagePath: corrective?.path || '',
+                correctiveImageUrl: corrective?.url || '',
+                createdAt: new Date().toISOString(),
+                updatedAtClient: new Date().toISOString()
+            };
+            await API.fiveS.saveNote(note);
+            ['5s-observation-image', '5s-corrective-image'].forEach((id) => { const input = document.getElementById(id); if (input) input.value = ''; });
+            const descriptionInput = document.getElementById('5s-description');
+            if (descriptionInput) descriptionInput.value = '';
+            this.showToast('تم حفظ ملاحظة 5S بنجاح ✅');
+        } catch (error) {
+            console.error('5S upload error:', error);
+            this.showToast('تعذر حفظ الملاحظة أو الصور، راجع صلاحيات التخزين', true);
+        } finally {
+            if (loader) loader.classList.remove('show');
+            if (loaderText) loaderText.innerText = 'جاري المعالجة...';
+        }
+    },
+
+    render5SNotes() {
+        const container = document.getElementById('5s-notes-list');
+        if (!container) return;
+        const date = document.getElementById('global-date')?.value || '';
+        const dateLabel = document.getElementById('5s-selected-date-label');
+        if (dateLabel) dateLabel.innerText = date;
+        const notes = (this.data.fiveS.notes || []).filter((note) => note.date === date);
+        const total = notes.length;
+        const corrective = notes.filter((note) => note.correctiveImagePath || note.correctiveImageUrl).length;
+        const totalEl = document.getElementById('5s-total-notes');
+        const correctiveEl = document.getElementById('5s-total-corrective');
+        const rateEl = document.getElementById('5s-completion-rate');
+        if (totalEl) totalEl.innerText = total;
+        if (correctiveEl) correctiveEl.innerText = corrective;
+        if (rateEl) rateEl.innerText = `${total ? Math.round((corrective / total) * 100) : 0}%`;
+
+        if (!notes.length) {
+            container.innerHTML = '<div class="card s5-empty"><i class="fa-solid fa-clipboard-check text-teal" style="font-size:2rem; margin-bottom:10px;"></i><div>لا توجد ملاحظات 5S لهذا اليوم</div></div>';
+            this.render5SAnalytics(notes);
+            this.render5SArchive();
+            return;
+        }
+
+        const grouped = {};
+        notes.forEach((note) => {
+            const key = `${note.department}|||${note.place}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(note);
+        });
+        container.innerHTML = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b, 'ar')).map(([key, group]) => {
+            const [department, place] = key.split('|||');
+            const groupCorrective = group.filter((note) => note.correctiveImagePath || note.correctiveImageUrl).length;
+            const cards = group.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).map((note) => {
+                const observationUrl = this.escapeHtml(note.observationImageUrl || '');
+                const correctiveUrl = this.escapeHtml(note.correctiveImageUrl || '');
+                const noteId = this.escapeHtml(note.id || '');
+                const observationHtml = observationUrl ? `<div class="s5-image-frame"><img src="${observationUrl}" onclick="App.openImage(this.src)" alt="صورة الملاحظة"><span class="s5-image-label">صورة الملاحظة</span></div>` : '<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-image"></i><span>لا توجد صورة</span></div>';
+                const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" capture="environment" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
+                const time = note.createdAt ? new Date(note.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+                return `<div class="card s5-note-card"><div class="s5-note-images">${observationHtml}${correctiveHtml}</div><div class="s5-note-meta"><span><i class="fa-solid fa-clock"></i> ${this.escapeHtml(time)}</span><span class="defect-badge ${correctiveUrl ? 'fixed' : 'pending'}">${correctiveUrl ? 'تم التوثيق' : 'بانتظار الفعل التصحيحي'}</span></div><p class="s5-note-description">${this.escapeHtml(note.description)}</p></div>`;
+            }).join('');
+            return `<div class="card s5-location-group"><div class="s5-location-title"><h4><i class="fa-solid fa-location-dot text-teal"></i> ${this.escapeHtml(place)}</h4><span>${this.escapeHtml(department)} · ${group.length} ملاحظة · ${groupCorrective} مكتملة</span></div>${cards}</div>`;
+        }).join('');
+        this.render5SAnalytics(notes);
+        this.render5SArchive();
+    },
+
+    render5SArchive() {
+        const container = document.getElementById('5s-monthly-archive');
+        if (!container) return;
+        const summaries = [...(this.data.fiveS.monthlySummaries || [])].sort((a, b) => String(b.monthKey || b.id).localeCompare(String(a.monthKey || a.id)));
+        if (!summaries.length) {
+            container.innerHTML = '<div class="s5-empty">لا يوجد أرشيف شهري حتى الآن</div>';
+            return;
+        }
+        container.innerHTML = summaries.map((summary) => {
+            const locations = Array.isArray(summary.locations) ? summary.locations : [];
+            const rows = locations.length ? locations.map((location) => `<div class="s5-archive-row"><span><strong>${this.escapeHtml(location.place)}</strong><small>${this.escapeHtml(location.department)}</small></span><span>${Number(location.totalNotes) || 0} ملاحظة</span><span class="${Number(location.correctiveNotes) > 0 ? 'text-teal' : 'text-muted'}">${Number(location.correctiveNotes) || 0} فعل تصحيحي</span></div>`).join('') : '<div class="s5-empty">لا توجد تفاصيل للأماكن</div>';
+            return `<div class="s5-archive-month"><div class="s5-archive-header"><strong>${this.escapeHtml(summary.monthKey || summary.id)}</strong><span>${Number(summary.totalNotes) || 0} ملاحظة · ${Number(summary.correctiveNotes) || 0} مكتملة · ${Number(summary.completionRate) || 0}%</span></div>${rows}</div>`;
+        }).join('');
+    },
+
+    render5SAnalytics(notes) {
+        if (typeof Chart === 'undefined') return;
+        const grouped = {};
+        notes.forEach((note) => {
+            const label = `${note.department} - ${note.place}`;
+            if (!grouped[label]) grouped[label] = { total: 0, corrective: 0 };
+            grouped[label].total++;
+            if (note.correctiveImagePath || note.correctiveImageUrl) grouped[label].corrective++;
+        });
+        const labels = Object.keys(grouped);
+        const totals = labels.map((label) => grouped[label].total);
+        const corrections = labels.map((label) => grouped[label].corrective);
+        const emptyLabels = labels.length ? labels : ['لا توجد بيانات'];
+        const emptyTotals = totals.length ? totals : [0];
+        const placeChart = document.getElementById('5s-notes-by-place-chart');
+        if (placeChart) {
+            if (this.charts.fiveSPlaces) this.charts.fiveSPlaces.destroy();
+            this.charts.fiveSPlaces = new Chart(placeChart.getContext('2d'), { type: 'doughnut', data: { labels: emptyLabels, datasets: [{ data: emptyTotals, backgroundColor: labels.length ? ['#0ab39c', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#64748b'] : ['#e2e8f0'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom' } } } });
+        }
+        const correctionChart = document.getElementById('5s-correction-by-place-chart');
+        if (correctionChart) {
+            if (this.charts.fiveSCorrections) this.charts.fiveSCorrections.destroy();
+            this.charts.fiveSCorrections = new Chart(correctionChart.getContext('2d'), { type: 'bar', data: { labels: emptyLabels, datasets: [{ label: 'إجمالي الملاحظات', data: emptyTotals, backgroundColor: '#cbd5e1', borderRadius: 5 }, { label: 'بصورة فعل تصحيحي', data: labels.length ? corrections : [0], backgroundColor: '#0ab39c', borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } } } } });
         }
     },
 

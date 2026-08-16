@@ -152,6 +152,69 @@
             </div>
         </section>
 
+        <!-- 5. شاشة ملاحظات 5S -->
+        <section id="screen-5s" class="screen">
+            <div class="section-header">
+                <h3 class="section-title">ملاحظات 5S</h3>
+                <span class="view-all" id="5s-selected-date-label"></span>
+            </div>
+
+            <div class="qc-counters s5-counters">
+                <div class="qc-box"><div class="qc-icon text-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="qc-val text-main" id="5s-total-notes">0</div><div class="qc-lbl">إجمالي الملاحظات</div></div>
+                <div class="qc-box"><div class="qc-icon text-teal"><i class="fa-solid fa-image"></i></div><div class="qc-val text-teal" id="5s-total-corrective">0</div><div class="qc-lbl">أفعال تصحيحية مصورة</div></div>
+                <div class="qc-box highlight"><div class="qc-icon text-orange"><i class="fa-solid fa-chart-line"></i></div><div class="qc-val text-orange" id="5s-completion-rate">0%</div><div class="qc-lbl">نسبة الإغلاق</div></div>
+            </div>
+
+            <div class="card">
+                <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-plus-circle text-teal"></i> تسجيل ملاحظة جديدة</h4></div>
+                <p class="text-muted s5-help-text">اختر القسم والمكان، ثم ارفع صورة الملاحظة واكتب وصفها. صورة الفعل التصحيحي اختيارية ويمكن إضافتها الآن أو لاحقاً.</p>
+                <div class="input-group">
+                    <label>القسم</label>
+                    <select id="5s-department" class="modern-input"></select>
+                </div>
+                <div class="input-group">
+                    <label>المكان داخل القسم</label>
+                    <select id="5s-place" class="modern-input"></select>
+                </div>
+                <div class="flex-row s5-place-manager">
+                    <input type="text" id="5s-new-place" class="modern-input" placeholder="إضافة مكان جديد داخل القسم..."><button class="icon-btn primary-bg" onclick="App.add5SPlace()" title="إضافة المكان"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div class="s5-upload-grid">
+                    <div class="input-group mb-0">
+                        <label>صورة الملاحظة <span class="text-red">*</span></label>
+                        <input type="file" id="5s-observation-image" accept="image/*" capture="environment" class="modern-input file-input">
+                    </div>
+                    <div class="input-group mb-0">
+                        <label>صورة الفعل التصحيحي</label>
+                        <input type="file" id="5s-corrective-image" accept="image/*" capture="environment" class="modern-input file-input">
+                    </div>
+                </div>
+                <div class="input-group mt-4">
+                    <label>وصف الملاحظة</label>
+                    <textarea id="5s-description" class="modern-input s5-textarea" rows="3" placeholder="اكتب وصفاً واضحاً للملاحظة..."></textarea>
+                </div>
+                <button class="primary-btn gradient-bg" onclick="App.add5SNote()"><i class="fa-solid fa-cloud-arrow-up"></i> حفظ ملاحظة 5S</button>
+            </div>
+
+            <div class="section-header"><h4 class="section-title">ملاحظات اليوم</h4></div>
+            <div id="5s-notes-list"></div>
+
+            <div class="section-header mt-4"><h4 class="section-title">تحليل الأماكن</h4></div>
+            <div class="card">
+                <div class="section-header mb-0"><h4 class="card-title">عدد الملاحظات حسب المكان</h4></div>
+                <div class="chart-container"><canvas id="5s-notes-by-place-chart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="section-header mb-0"><h4 class="card-title">الملاحظات مقابل الأفعال التصحيحية</h4></div>
+                <div class="chart-container" style="height: 280px;"><canvas id="5s-correction-by-place-chart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-box-archive text-purple"></i> الأرشيف الشهري</h4></div>
+                <p class="text-muted s5-help-text">بعد نهاية كل شهر تُحذف الصور تلقائياً، وتبقى هذه الأرقام شاهداً على التحسينات التي تمت.</p>
+                <div id="5s-monthly-archive"></div>
+            </div>
+        </section>
+
         <section id="screen-defects_log" class="screen">
             <div class="section-header"><h3 class="section-title">سجل العيوب العام</h3></div>
             <div class="card text-center" style="padding: 40px 20px;">
@@ -333,6 +396,9 @@
         </div>
         <div class="nav-item" data-target="quality" onclick="App.navigate('quality')">
             <i class="fa-solid fa-shield-halved"></i><span>الجودة</span>
+        </div>
+        <div class="nav-item" data-target="5s" onclick="App.navigate('5s')">
+            <i class="fa-solid fa-list-check"></i><span>ملاحظات 5S</span>
         </div>
         <div class="nav-item" data-target="analytics" onclick="App.navigate('analytics')">
             <i class="fa-solid fa-chart-pie"></i><span>التقارير</span>

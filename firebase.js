@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 import { 
     initializeFirestore, 
     persistentLocalCache, 
@@ -24,5 +25,6 @@ const db = initializeFirestore(app, {
         tabManager: persistentMultipleTabManager()
     })
 });
+const storage = getStorage(app);
 
-export { db };
+export { db, storage };

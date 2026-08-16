@@ -1,7 +1,8 @@
-import { db } from "./firebase.js";
+import { db, storage } from "./firebase.js";
 import {
     collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, limit
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 
 export const API = {
     system: {
@@ -84,6 +85,39 @@ export const API = {
         }
     },
     // تم تعديل نظام العيوب ليجلب عيوب اليوم + العيوب القديمة التي لا تزال تحت الإصلاح
+    fiveS: {
+        listenToLocations(callback) {
+            const docRef = doc(db, "5s_settings", "locations");
+            return onSnapshot(docRef, (docSnap) => {
+                const locations = docSnap.exists() && Array.isArray(docSnap.data().locations) ? docSnap.data().locations : [];
+                callback(locations);
+            });
+        },
+        async saveLocations(locations) {
+            const docRef = doc(db, "5s_settings", "locations");
+            await setDoc(docRef, { locations, updatedAt: serverTimestamp() }, { merge: true });
+        },
+        listenToNotes(date, callback) {
+            const q = query(collection(db, "5s_notes"), where("date", "==", date));
+            return onSnapshot(q, (snapshot) => {
+                callback(snapshot.docs.map((noteDoc) => ({ id: noteDoc.id, ...noteDoc.data() })));
+            });
+        },
+        async saveNote(note) {
+            const docRef = doc(db, "5s_notes", note.id);
+            await setDoc(docRef, { ...note, updatedAt: serverTimestamp() }, { merge: true });
+        },
+        async uploadImage(file, storagePath) {
+            const storageRef = ref(storage, storagePath);
+            await uploadBytes(storageRef, file, { contentType: file.type || "image/webp", cacheControl: "public,max-age=31536000" });
+            return { path: storagePath, url: await getDownloadURL(storageRef) };
+        },
+        listenToMonthlySummaries(callback) {
+            return onSnapshot(collection(db, "5s_monthly_summaries"), (snapshot) => {
+                callback(snapshot.docs.map((summaryDoc) => ({ id: summaryDoc.id, ...summaryDoc.data() })));
+            });
+        }
+    },
     quality: {
         async saveDefect(department, defect) {
             const docRef = doc(db, "scratches_records", defect.id.toString());
