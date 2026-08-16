@@ -1,6 +1,6 @@
 import { db, storage } from "./firebase.js";
 import {
-    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, limit
+    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, limit, writeBatch
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 
@@ -107,10 +107,110 @@ export const API = {
             const docRef = doc(db, "5s_notes", note.id);
             await setDoc(docRef, { ...note, updatedAt: serverTimestamp() }, { merge: true });
         },
-        async uploadImage(file, storagePath) {
-            const storageRef = ref(storage, storagePath);
-            await uploadBytes(storageRef, file, { contentType: file.type || "image/webp", cacheControl: "public,max-age=31536000" });
-            return { path: storagePath, url: await getDownloadURL(storageRef) };
+        async uploadImage(file, storagePath, googleApiUrl) {
+            if (!file || !googleApiUrl) throw new Error('missing_drive_upload_configuration');
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('image_read_error'));
+                reader.readAsDataURL(file);
+            });
+            const pathParts = String(storagePath || '').split('/').filter(Boolean);
+            const date = pathParts[1] || new Date().toISOString().slice(0, 10);
+            const payload = {
+                type: 'IMAGE_UPLOAD',
+                payload: {
+                    filename: `5S_${date}_${pathParts[2] || Date.now()}_${pathParts[3] || 'image'}.webp`,
+                    mimeType: file.type || 'image/webp',
+                    base64: dataUrl,
+                    date,
+                    folderPath: `5S/${date.slice(0, 7)}/${date}`,
+                    source: '5S'
+                }
+            };
+            const response = await fetch(googleApiUrl, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            const raw = await response.text();
+            let result;
+            try { result = JSON.parse(raw); } catch (error) { throw new Error('invalid_drive_response'); }
+            if (!response.ok || result.status !== 'success' || !(result.url || result.webViewLink || result.downloadUrl)) {
+                throw new Error(result.message || 'drive_upload_failed');
+            }
+            return {
+                path: result.path || storagePath,
+                url: result.url || result.webViewLink || result.downloadUrl,
+                driveFileId: result.fileId || result.id || ''
+            };
+        },
+        async archivePreviousMonths(currentMonthKey) {
+            const oldQuery = query(collection(db, '5s_notes'), where('monthKey', '<', currentMonthKey));
+            const snapshot = await getDocs(oldQuery);
+            if (snapshot.empty) return { archivedMonths: 0, archivedNotes: 0 };
+
+            const grouped = new Map();
+            snapshot.docs.forEach((noteDoc) => {
+                const note = noteDoc.data();
+                const monthKey = note.monthKey || String(note.date || '').slice(0, 7);
+                if (!monthKey || monthKey >= currentMonthKey) return;
+                const key = `${monthKey}|||${note.department || 'غير محدد'}|||${note.place || 'غير محدد'}`;
+                const current = grouped.get(key) || {
+                    monthKey,
+                    department: note.department || 'غير محدد',
+                    place: note.place || 'غير محدد',
+                    totalNotes: 0,
+                    correctiveNotes: 0
+                };
+                current.totalNotes += 1;
+                if (note.correctiveImagePath || note.correctiveImageUrl) current.correctiveNotes += 1;
+                grouped.set(key, current);
+            });
+
+            const locationsByMonth = new Map();
+            const totalsByMonth = new Map();
+            grouped.forEach((item) => {
+                const location = {
+                    department: item.department,
+                    place: item.place,
+                    totalNotes: item.totalNotes,
+                    correctiveNotes: item.correctiveNotes,
+                    completionRate: item.totalNotes ? Math.round((item.correctiveNotes / item.totalNotes) * 100) : 0
+                };
+                if (!locationsByMonth.has(item.monthKey)) locationsByMonth.set(item.monthKey, []);
+                locationsByMonth.get(item.monthKey).push(location);
+                const totals = totalsByMonth.get(item.monthKey) || { totalNotes: 0, correctiveNotes: 0 };
+                totals.totalNotes += item.totalNotes;
+                totals.correctiveNotes += item.correctiveNotes;
+                totalsByMonth.set(item.monthKey, totals);
+            });
+
+            for (const [monthKey, totals] of totalsByMonth.entries()) {
+                const summaryRef = doc(db, '5s_monthly_summaries', monthKey);
+                await setDoc(summaryRef, {
+                    monthKey,
+                    totalNotes: totals.totalNotes,
+                    correctiveNotes: totals.correctiveNotes,
+                    completionRate: totals.totalNotes ? Math.round((totals.correctiveNotes / totals.totalNotes) * 100) : 0,
+                    locations: locationsByMonth.get(monthKey) || [],
+                    archivedAtClient: new Date().toISOString(),
+                    imageStorage: 'google_drive'
+                }, { merge: true });
+            }
+
+            const docs = snapshot.docs.filter((noteDoc) => {
+                const note = noteDoc.data();
+                const monthKey = note.monthKey || String(note.date || '').slice(0, 7);
+                return monthKey && monthKey < currentMonthKey;
+            });
+            for (let index = 0; index < docs.length; index += 450) {
+                const batch = writeBatch(db);
+                docs.slice(index, index + 450).forEach((noteDoc) => batch.delete(noteDoc.ref));
+                await batch.commit();
+            }
+            return { archivedMonths: totalsByMonth.size, archivedNotes: docs.length };
         },
         listenToMonthlySummaries(callback) {
             return onSnapshot(collection(db, "5s_monthly_summaries"), (snapshot) => {

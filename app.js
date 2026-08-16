@@ -19,6 +19,7 @@ const App = {
     fiveSLocationsListener: null,
     fiveSNotesListener: null,
     fiveSMonthlyListener: null,
+    fiveSArchiveCheckKey: null,
     
     isOnline: true,
     saveTimers: {},
@@ -326,6 +327,7 @@ const App = {
         if (!this.isOnline || !this.data.currentDepartment) return;
         const date = document.getElementById('global-date').value;
         const shift = document.getElementById('global-shift').value;
+        this.run5SClientArchiveIfNeeded();
 
         if (this.currentProdListener) this.currentProdListener();
         if (this.currentDefectListener) this.currentDefectListener();
@@ -408,6 +410,22 @@ const App = {
             this.data.fiveS.notes = records;
             if (this.currentScreen === '5s') this.render5SNotes();
         });
+    },
+
+    async run5SClientArchiveIfNeeded() {
+        const today = new Date();
+        const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if (this.fiveSArchiveCheckKey === currentMonthKey) return;
+        this.fiveSArchiveCheckKey = currentMonthKey;
+        try {
+            const result = await API.fiveS.archivePreviousMonths(currentMonthKey);
+            if (result.archivedNotes > 0) {
+                this.showToast(`تمت أرشفة ${result.archivedNotes} ملاحظة قديمة مجاناً ✅`);
+            }
+        } catch (error) {
+            console.warn('5S client archive skipped:', error);
+            this.fiveSArchiveCheckKey = null;
+        }
     },
 
     clearInputs() {
@@ -1179,7 +1197,7 @@ const App = {
     async upload5SImage(file, noteId, date, kind) {
         if (!file) return null;
         const blob = await this.compress5SImage(file);
-        return API.fiveS.uploadImage(blob, `5s/${date}/${noteId}/${kind}.webp`);
+        return API.fiveS.uploadImage(blob, `5s/${date}/${noteId}/${kind}.webp`, CONFIG.GOOGLE_API_URL);
     },
 
     async add5SCorrectiveImage(noteId, file) {
@@ -1246,7 +1264,7 @@ const App = {
             this.showToast('تم حفظ ملاحظة 5S بنجاح ✅');
         } catch (error) {
             console.error('5S upload error:', error);
-            this.showToast('تعذر حفظ الملاحظة أو الصور، راجع صلاحيات التخزين', true);
+            this.showToast('تعذر حفظ الملاحظة أو الصور، راجع إعدادات Google Drive', true);
         } finally {
             if (loader) loader.classList.remove('show');
             if (loaderText) loaderText.innerText = 'جاري المعالجة...';
