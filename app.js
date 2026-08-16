@@ -1176,10 +1176,46 @@ const App = {
         });
     },
 
+    blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('read_error'));
+            reader.readAsDataURL(blob);
+        });
+    },
+
+    get5SImageUrl(url) {
+        const value = String(url || '').trim();
+        if (!value) return '';
+        if (!value.includes('drive.google.com')) return value;
+        const match = value.match(/[?&]id=([^&]+)/i) || value.match(/\/file\/d\/([^/?#]+)/i) || value.match(/\/d\/([^/?#]+)/i);
+        return match && match[1] ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(match[1])}` : value;
+    },
+
     async upload5SImage(file, noteId, date, kind) {
         if (!file) return null;
+        if (!CONFIG.GOOGLE_API_URL) throw new Error('missing_upload_endpoint');
         const blob = await this.compress5SImage(file);
-        return API.fiveS.uploadImage(blob, `5s/${date}/${noteId}/${kind}.webp`);
+        const base64 = await this.blobToDataUrl(blob);
+        const uploadPayload = {
+            type: 'IMAGE_UPLOAD',
+            payload: {
+                filename: `5S_${kind}_${noteId}_${Date.now()}.webp`,
+                mimeType: 'image/webp',
+                base64,
+                date
+            }
+        };
+        const response = await fetch(CONFIG.GOOGLE_API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(uploadPayload)
+        });
+        const result = JSON.parse(await response.text());
+        if (result.status !== 'success' || !result.url) throw new Error(result.message || 'upload_failed');
+        return { path: result.fileId || result.url, url: result.url };
     },
 
     async add5SCorrectiveImage(noteId, file) {
@@ -1286,8 +1322,8 @@ const App = {
             const [department, place] = key.split('|||');
             const groupCorrective = group.filter((note) => note.correctiveImagePath || note.correctiveImageUrl).length;
             const cards = group.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).map((note) => {
-                const observationUrl = this.escapeHtml(note.observationImageUrl || '');
-                const correctiveUrl = this.escapeHtml(note.correctiveImageUrl || '');
+                const observationUrl = this.escapeHtml(this.get5SImageUrl(note.observationImageUrl || ''));
+                const correctiveUrl = this.escapeHtml(this.get5SImageUrl(note.correctiveImageUrl || ''));
                 const noteId = this.escapeHtml(note.id || '');
                 const observationHtml = observationUrl ? `<div class="s5-image-frame"><img src="${observationUrl}" onclick="App.openImage(this.src)" alt="صورة الملاحظة"><span class="s5-image-label">صورة الملاحظة</span></div>` : '<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-image"></i><span>لا توجد صورة</span></div>';
                 const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" capture="environment" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
