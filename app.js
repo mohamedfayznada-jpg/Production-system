@@ -1,4 +1,4 @@
-import { API } from './api.js?v=20260816-5s';
+import { API } from './api.js?v=20260816-auto-update-1';
 
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
@@ -45,10 +45,7 @@ const App = {
     },
 
     async init() {
-        // تفعيل ملف الخدمة لتثبيت التطبيق
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
-        }
+        // يتم تسجيل Service Worker ومراقبة تحديثاته بعد تعريف App بالأسفل.
 
         // إظهار رسالة التثبيت عند جاهزية المتصفح
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -1720,4 +1717,30 @@ const App = {
     }
 };
 
-window.App = App; document.addEventListener('DOMContentLoaded', () => App.init());
+window.App = App;
+
+function registerPwaAutoUpdate() {
+    if (!('serviceWorker' in navigator)) return;
+
+    let isReloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (isReloadingForUpdate) return;
+        isReloadingForUpdate = true;
+        window.location.reload();
+    });
+
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .then((registration) => {
+            const checkForUpdate = () => registration.update().catch((error) => {
+                console.debug('PWA update check skipped:', error);
+            });
+            checkForUpdate();
+            window.addEventListener('focus', checkForUpdate);
+            window.addEventListener('online', checkForUpdate);
+            window.setInterval(checkForUpdate, 5 * 60 * 1000);
+        })
+        .catch((error) => console.warn('PWA auto-update unavailable:', error));
+}
+
+registerPwaAutoUpdate();
+document.addEventListener('DOMContentLoaded', () => App.init());
