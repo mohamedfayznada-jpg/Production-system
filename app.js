@@ -3,7 +3,7 @@ import { API } from './api.js';
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
     CLOUDINARY_CLOUD_NAME: "us3eggqq",
-    CLOUDINARY_UPLOAD_PRESET: "Production system",
+    CLOUDINARY_UPLOAD_PRESET: "production_system",
     IMAGE_MAX_WIDTH: 800,
     IMAGE_MAX_HEIGHT: 800,
     IMAGE_QUALITY: 0.6
@@ -931,7 +931,8 @@ const App = {
             
             const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                mode: 'cors'
             });
             
             if (!response.ok) {
