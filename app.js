@@ -922,7 +922,21 @@ const App = {
     deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
     openImage(src) { const modalImg = document.getElementById('modal-image'); const modal = document.getElementById('image-modal'); if(modalImg && modal) { modalImg.src = src; modal.classList.add('show'); } },
     closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
-    getImageUrl(url) { if (!url) return ""; if (url.includes("drive.google.com")) { const match = url.match(/id=([^&]+)/); if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`; } return url; },
+    getImageUrl(url) {
+        const value = String(url || '').trim();
+        if (!value || !/^https?:\/\//i.test(value)) return '';
+        if (!/drive\.google\.com|googleusercontent\.com|drive\.usercontent\.google\.com/i.test(value)) return value;
+        const patterns = [
+            /[?&]id=([^&]+)/i,
+            /\/file\/d\/([^/?#]+)/i,
+            /\/d\/([^/?#]+)/i
+        ];
+        for (const pattern of patterns) {
+            const match = value.match(pattern);
+            if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(match[1])}`;
+        }
+        return value;
+    },
 
     // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
     switchAnalyticsMode(mode) {
@@ -1304,8 +1318,8 @@ const App = {
             const [department, place] = key.split('|||');
             const groupCorrective = group.filter((note) => note.correctiveImagePath || note.correctiveImageUrl).length;
             const cards = group.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).map((note) => {
-                const observationUrl = this.escapeHtml(note.observationImageUrl || '');
-                const correctiveUrl = this.escapeHtml(note.correctiveImageUrl || '');
+                const observationUrl = this.escapeHtml(this.getImageUrl(note.observationImageUrl || note.observationImagePath || ''));
+                const correctiveUrl = this.escapeHtml(this.getImageUrl(note.correctiveImageUrl || note.correctiveImagePath || ''));
                 const noteId = this.escapeHtml(note.id || '');
                 const observationHtml = observationUrl ? `<div class="s5-image-frame"><img src="${observationUrl}" onclick="App.openImage(this.src)" alt="صورة الملاحظة"><span class="s5-image-label">صورة الملاحظة</span></div>` : '<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-image"></i><span>لا توجد صورة</span></div>';
                 const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" capture="environment" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
