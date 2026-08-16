@@ -2,6 +2,8 @@ import { API } from './api.js';
 
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
+    CLOUDINARY_CLOUD_NAME: "us3eggqq",
+    CLOUDINARY_UPLOAD_PRESET: "Production system",
     IMAGE_MAX_WIDTH: 800,
     IMAGE_MAX_HEIGHT: 800,
     IMAGE_QUALITY: 0.6
@@ -837,17 +839,15 @@ const App = {
                 else { if (height > CONFIG.IMAGE_MAX_HEIGHT) { width *= CONFIG.IMAGE_MAX_HEIGHT / height; height = CONFIG.IMAGE_MAX_HEIGHT; } }
                 canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
                 const compressedBase64 = canvas.toDataURL('image/webp', CONFIG.IMAGE_QUALITY);
-                const uploadPayload = { type: "IMAGE_UPLOAD", payload: { filename: `Defect_${Date.now()}.webp`, mimeType: 'image/webp', base64: compressedBase64, date: date } };
-                
                 try {
-                    let response = await fetch(CONFIG.GOOGLE_API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(uploadPayload) });
-                    let result = JSON.parse(await response.text());
-                    if (result.status === 'success') {
-                        defectBase.image = result.url; await API.quality.saveDefect(this.data.currentDepartment, defectBase);
-                        if(notesEl) notesEl.value = ''; if(fileInput) fileInput.value = ''; App.showToast("تم الرفع والتسجيل بنجاح ✅");
-                    } else { App.showToast("فشل الرفع للصورة ❌", true); }
-                } catch (err) { App.showToast("خطأ شبكة أثناء الرفع ❌", true); } 
-                finally { if(loader) loader.classList.remove('show'); }
+                    const imageUrl = await App.uploadToCloudinary(compressedBase64, "QualityDefects");
+                    defectBase.image = imageUrl;
+                    await API.quality.saveDefect(this.data.currentDepartment, defectBase);
+                    if(notesEl) notesEl.value = ''; if(fileInput) fileInput.value = ''; App.showToast("تم الرفع والتسجيل بنجاح ✅");
+                } catch (err) {
+                    console.error("Upload error:", err);
+                    App.showToast("فشل الرفع لـ Cloudinary ❌", true);
+                } finally { if(loader) loader.classList.remove('show'); }
             }; img.src = e.target.result;
         }; reader.readAsDataURL(file);
     },
@@ -917,8 +917,22 @@ const App = {
     getImageUrl(url) {
         const value = String(url || '').trim();
         if (!value) return '';
+        if (value.includes('cloudinary.com')) return value; // Cloudinary links are direct
         if (value.includes('drive.google.com') || value.includes('googleusercontent.com')) return this.getDriveImageUrl(value);
         return value;
+    },
+    async uploadToCloudinary(base64, folder = "ProductionSystem") {
+        const formData = new FormData();
+        formData.append("file", base64);
+        formData.append("upload_preset", CONFIG.CLOUDINARY_UPLOAD_PRESET);
+        formData.append("folder", folder);
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: "POST",
+            body: formData
+        });
+        if (!response.ok) throw new Error("Cloudinary upload failed");
+        const data = await response.json();
+        return data.secure_url;
     },
 
     // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
@@ -1204,27 +1218,10 @@ const App = {
 
     async upload5SImage(file, noteId, date, kind) {
         if (!file) return null;
-        if (!CONFIG.GOOGLE_API_URL) throw new Error('missing_upload_endpoint');
         const blob = await this.compress5SImage(file);
         const base64 = await this.blobToDataUrl(blob);
-        const uploadPayload = {
-            type: 'IMAGE_UPLOAD',
-            payload: {
-                filename: `5S_${kind}_${noteId}_${Date.now()}.webp`,
-                mimeType: 'image/webp',
-                base64,
-                date
-            }
-        };
-        const response = await fetch(CONFIG.GOOGLE_API_URL, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(uploadPayload)
-        });
-        const result = JSON.parse(await response.text());
-        if (result.status !== 'success' || !result.url) throw new Error(result.message || 'upload_failed');
-        return { path: result.fileId || result.url, url: result.url };
+        const imageUrl = await this.uploadToCloudinary(base64, `5S/${date}`);
+        return { path: imageUrl, url: imageUrl };
     },
 
     async add5SCorrectiveImage(noteId, file) {
