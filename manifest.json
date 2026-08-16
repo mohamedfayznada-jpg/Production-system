@@ -1,7 +1,7 @@
 {
   "name": "نظام الإنتاج الموحد",
   "short_name": "نظام الإنتاج",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=20260816-5s",
   "display": "standalone",
   "background_color": "#f2f7f9",
   "theme_color": "#0ab39c",

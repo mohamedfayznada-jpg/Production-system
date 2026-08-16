@@ -1,4 +1,4 @@
-import { API } from './api.js';
+import { API } from './api.js?v=20260816-5s';
 
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
