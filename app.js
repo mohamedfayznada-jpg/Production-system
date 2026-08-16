@@ -904,7 +904,22 @@ const App = {
     deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
     openImage(src) { const modalImg = document.getElementById('modal-image'); const modal = document.getElementById('image-modal'); if(modalImg && modal) { modalImg.src = src; modal.classList.add('show'); } },
     closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
-    getImageUrl(url) { if (!url) return ""; if (url.includes("drive.google.com")) { const match = url.match(/id=([^&]+)/); if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`; } return url; },
+    extractDriveFileId(url) {
+        const value = String(url || '').trim();
+        if (!value) return '';
+        const match = value.match(/[?&]id=([^&]+)/i) || value.match(/googleusercontent\.com\/d\/([^/?#]+)/i) || value.match(/drive\.google\.com\/file\/d\/([^/?#]+)/i) || value.match(/drive\.google\.com\/d\/([^/?#]+)/i);
+        return match && match[1] ? decodeURIComponent(match[1]) : '';
+    },
+    getDriveImageUrl(url) {
+        const id = this.extractDriveFileId(url);
+        return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1600` : String(url || '');
+    },
+    getImageUrl(url) {
+        const value = String(url || '').trim();
+        if (!value) return '';
+        if (value.includes('drive.google.com') || value.includes('googleusercontent.com')) return this.getDriveImageUrl(value);
+        return value;
+    },
 
     // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
     switchAnalyticsMode(mode) {
@@ -1185,13 +1200,7 @@ const App = {
         });
     },
 
-    get5SImageUrl(url) {
-        const value = String(url || '').trim();
-        if (!value) return '';
-        if (!value.includes('drive.google.com')) return value;
-        const match = value.match(/[?&]id=([^&]+)/i) || value.match(/\/file\/d\/([^/?#]+)/i) || value.match(/\/d\/([^/?#]+)/i);
-        return match && match[1] ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(match[1])}` : value;
-    },
+    get5SImageUrl(url) { return this.getImageUrl(url); },
 
     async upload5SImage(file, noteId, date, kind) {
         if (!file) return null;
