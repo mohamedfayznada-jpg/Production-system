@@ -923,16 +923,28 @@ const App = {
     },
     async uploadToCloudinary(base64, folder = "ProductionSystem") {
         try {
+            // Convert base64 to Blob for better compatibility
+            const parts = base64.split(',');
+            const byteString = atob(parts[1]);
+            const mimeString = parts[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([ab], {type: mimeString});
+
             const formData = new FormData();
-            formData.append("file", base64);
-            // Ensure preset name is trimmed of whitespace
+            formData.append("file", blob);
             formData.append("upload_preset", String(CONFIG.CLOUDINARY_UPLOAD_PRESET || '').trim());
             formData.append("folder", folder);
             
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            // Using the generic upload endpoint which is often more stable
+            const url = `https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/upload`;
+            
+            const response = await fetch(url, {
                 method: "POST",
-                body: formData,
-                mode: 'cors'
+                body: formData
             });
             
             if (!response.ok) {
