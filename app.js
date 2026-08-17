@@ -1,4 +1,12 @@
-import { API } from './api.js?v=20260817-native-install-1';
+import { API } from './api.js?v=20260817-dept-rename-1';
+
+const DEPARTMENT_RENAME_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
+
+async function sha256Hex(value) {
+    const bytes = new TextEncoder().encode(String(value));
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
@@ -158,9 +166,50 @@ const App = {
         if (!container) return;
         container.innerHTML = '';
         this.data.departments.forEach((dept, index) => {
-            const deleteBtn = this.data.departments.length > 1 ? `<i class="fa-solid fa-xmark text-red" onclick="App.removeDepartment(${index})"></i>` : '';
-            container.innerHTML += `<div class="defect-badge-setting"><span>${dept}</span>${deleteBtn}</div>`;
+            const deleteBtn = this.data.departments.length > 1 ? `<i class="fa-solid fa-xmark text-red department-action-btn" title="حذف القسم" onclick="App.removeDepartment(${index})"></i>` : '';
+            const renameBtn = `<i class="fa-solid fa-pen-to-square text-blue department-action-btn" title="تغيير اسم القسم بكلمة مرور" onclick="App.renameDepartment(${index})"></i>`;
+            container.innerHTML += `<div class="defect-badge-setting"><span>${dept}</span><span class="department-setting-actions">${renameBtn}${deleteBtn}</span></div>`;
         });
+    },
+
+    async renameDepartment(index) {
+        const oldName = this.data.departments[index];
+        if (!oldName) return;
+
+        const password = prompt('أدخل كلمة المرور لتغيير اسم القسم:');
+        if (password === null) return;
+        if (await sha256Hex(password) !== DEPARTMENT_RENAME_PASSWORD_HASH) {
+            this.showToast('كلمة المرور غير صحيحة', true);
+            return;
+        }
+
+        const newName = prompt(`اكتب الاسم الجديد للقسم:\nالاسم الحالي: ${oldName}`, oldName);
+        if (newName === null) return;
+        const trimmedName = newName.trim();
+        if (!trimmedName || trimmedName === oldName) return;
+        if (this.data.departments.includes(trimmedName)) {
+            this.showToast('هذا الاسم موجود بالفعل', true);
+            return;
+        }
+        if (!confirm(`سيتم نقل بيانات القسم من «${oldName}» إلى «${trimmedName}». هل تريد المتابعة؟`)) return;
+
+        const nextDepartments = this.data.departments.map((department, departmentIndex) => departmentIndex === index ? trimmedName : department);
+        try {
+            await API.system.renameDepartment(oldName, trimmedName, nextDepartments);
+            this.data.departments = nextDepartments;
+            if (this.data.currentDepartment === oldName) {
+                this.data.currentDepartment = trimmedName;
+                this.listenToCurrentDepartmentSettings();
+            }
+            this.renderDepartmentSelector();
+            this.renderSettingsDepartmentsList();
+            this.render5SDepartmentOptions();
+            this.render5SPlaceOptions();
+            this.showToast('تم تغيير اسم القسم ونقل بياناته بنجاح');
+        } catch (error) {
+            console.error('Department rename failed:', error);
+            this.showToast('تعذر تغيير اسم القسم. لم يتم تعديل القائمة.', true);
+        }
     },
 
     addDepartment() {

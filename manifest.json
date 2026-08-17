@@ -5,7 +5,7 @@
   "description": "نظام الإنتاج الموحد لمتابعة الإنتاج والجودة وملاحظات 5S",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./?v=20260817-native-install-1",
+  "start_url": "./?v=20260817-dept-rename-1",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f2f7f9",

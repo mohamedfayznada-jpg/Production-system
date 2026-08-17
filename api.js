@@ -1,6 +1,6 @@
 import { db, storage } from "./firebase.js";
 import {
-    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, limit
+    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, limit
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 
@@ -16,6 +16,79 @@ export const API = {
         async saveDepartments(departments) {
             const docRef = doc(db, "app_settings", "global_system");
             await setDoc(docRef, { departments: departments }, { merge: true });
+        },
+        async renameDepartment(oldName, newName, departments) {
+            if (!oldName || !newName || oldName === newName) throw new Error('invalid_department_rename');
+
+            const operations = [];
+            const queueSet = (ref, data, options = {}) => operations.push({ type: 'set', ref, data, options });
+            const queueDelete = (ref) => operations.push({ type: 'delete', ref });
+            const nextProductionId = (data, fallbackId) => {
+                if (data.date && data.shift && data.hour) return `${newName}_${data.date}_${data.shift}_${data.hour}`;
+                return fallbackId;
+            };
+
+            const productionSnap = await getDocs(query(collection(db, 'production_records'), where('department', '==', oldName)));
+            productionSnap.forEach((recordDoc) => {
+                const data = recordDoc.data();
+                const newId = nextProductionId(data, recordDoc.id);
+                queueSet(doc(db, 'production_records', newId), { ...data, department: newName, recordId: newId });
+                if (newId !== recordDoc.id) queueDelete(recordDoc.ref);
+            });
+
+            const targetSnap = await getDocs(query(collection(db, 'shift_targets'), where('department', '==', oldName)));
+            targetSnap.forEach((targetDoc) => {
+                const data = targetDoc.data();
+                const newId = data.date && data.shift ? `${newName}_${data.date}_${data.shift}` : targetDoc.id;
+                queueSet(doc(db, 'shift_targets', newId), { ...data, department: newName });
+                if (newId !== targetDoc.id) queueDelete(targetDoc.ref);
+            });
+
+            const defectSnap = await getDocs(query(collection(db, 'scratches_records'), where('department', '==', oldName)));
+            defectSnap.forEach((defectDoc) => queueSet(defectDoc.ref, { ...defectDoc.data(), department: newName }, { merge: true }));
+
+            const noteSnap = await getDocs(query(collection(db, '5s_notes'), where('department', '==', oldName)));
+            noteSnap.forEach((noteDoc) => queueSet(noteDoc.ref, { ...noteDoc.data(), department: newName }, { merge: true }));
+
+            const oldSettingsRef = doc(db, 'app_settings', `dept_${oldName}`);
+            const oldSettingsSnap = await getDoc(oldSettingsRef);
+            if (oldSettingsSnap.exists()) {
+                queueSet(doc(db, 'app_settings', `dept_${newName}`), { ...oldSettingsSnap.data(), lineName: newName }, { merge: true });
+                queueDelete(oldSettingsRef);
+            }
+
+            const summariesSnap = await getDocs(collection(db, '5s_monthly_summaries'));
+            for (const summaryDoc of summariesSnap.docs) {
+                const data = summaryDoc.data();
+                if (Array.isArray(data.locations)) {
+                    let changed = false;
+                    const locations = data.locations.map((location) => {
+                        if (location && location.department === oldName) {
+                            changed = true;
+                            return { ...location, department: newName };
+                        }
+                        return location;
+                    });
+                    if (changed) queueSet(summaryDoc.ref, { locations }, { merge: true });
+                }
+
+                const locationSnap = await getDocs(query(
+                    collection(db, '5s_monthly_summaries', summaryDoc.id, 'locations'),
+                    where('department', '==', oldName)
+                ));
+                locationSnap.forEach((locationDoc) => queueSet(locationDoc.ref, { ...locationDoc.data(), department: newName }, { merge: true }));
+            }
+
+            queueSet(doc(db, 'app_settings', 'global_system'), { departments }, { merge: true });
+
+            for (let start = 0; start < operations.length; start += 450) {
+                const batch = writeBatch(db);
+                operations.slice(start, start + 450).forEach((operation) => {
+                    if (operation.type === 'delete') batch.delete(operation.ref);
+                    else batch.set(operation.ref, operation.data, operation.options);
+                });
+                await batch.commit();
+            }
         }
     },
     settings: {
