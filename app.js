@@ -1,6 +1,6 @@
-import { API } from './api.js?v=20260817-dept-rename-1';
+import { API } from './api.js?v=20260817-dept-management-1';
 
-const DEPARTMENT_RENAME_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
+const DEPARTMENT_MANAGEMENT_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
 
 async function sha256Hex(value) {
     const bytes = new TextEncoder().encode(String(value));
@@ -172,16 +172,21 @@ const App = {
         });
     },
 
+    async verifyDepartmentManagementPassword(actionLabel = 'إدارة الأقسام') {
+        const password = prompt(`أدخل كلمة المرور للسماح بعملية ${actionLabel}:`);
+        if (password === null) return false;
+        if (await sha256Hex(password) !== DEPARTMENT_MANAGEMENT_PASSWORD_HASH) {
+            this.showToast('كلمة المرور غير صحيحة', true);
+            return false;
+        }
+        return true;
+    },
+
     async renameDepartment(index) {
         const oldName = this.data.departments[index];
         if (!oldName) return;
 
-        const password = prompt('أدخل كلمة المرور لتغيير اسم القسم:');
-        if (password === null) return;
-        if (await sha256Hex(password) !== DEPARTMENT_RENAME_PASSWORD_HASH) {
-            this.showToast('كلمة المرور غير صحيحة', true);
-            return;
-        }
+        if (!await this.verifyDepartmentManagementPassword('تغيير اسم القسم')) return;
 
         const newName = prompt(`اكتب الاسم الجديد للقسم:\nالاسم الحالي: ${oldName}`, oldName);
         if (newName === null) return;
@@ -212,30 +217,46 @@ const App = {
         }
     },
 
-    addDepartment() {
+    async addDepartment() {
         const input = document.getElementById('new-department-name');
         if (!input) return;
         const val = input.value.trim();
-        if(val !== '' && !this.data.departments.includes(val)) {
-            this.data.departments.push(val);
-            API.system.saveDepartments(this.data.departments);
-            input.value = '';
-            this.showToast("تم إضافة القسم الجديد");
+        if (val === '') return;
+        if (this.data.departments.includes(val)) {
+            this.showToast('هذا القسم موجود بالفعل', true);
+            return;
         }
+        if (!await this.verifyDepartmentManagementPassword('إضافة قسم جديد')) return;
+
+        this.data.departments.push(val);
+        await API.system.saveDepartments(this.data.departments);
+        input.value = '';
+        this.renderDepartmentSelector();
+        this.renderSettingsDepartmentsList();
+        this.render5SDepartmentOptions();
+        this.render5SPlaceOptions();
+        this.showToast('تم إضافة القسم الجديد');
     },
 
-    removeDepartment(index) {
-        if(confirm("حذف هذا القسم سيمنع الوصول لبياناته السابقة. هل أنت متأكد؟")) {
-            const removedDept = this.data.departments[index];
-            this.data.departments.splice(index, 1);
-            API.system.saveDepartments(this.data.departments);
-            if(this.data.currentDepartment === removedDept) {
-                this.data.currentDepartment = this.data.departments[0];
-                const deptSelect = document.getElementById('global-department');
-                if (deptSelect) deptSelect.value = this.data.currentDepartment;
-                this.listenToCurrentDepartmentSettings();
-            }
+    async removeDepartment(index) {
+        const removedDept = this.data.departments[index];
+        if (!removedDept || this.data.departments.length <= 1) return;
+        if (!await this.verifyDepartmentManagementPassword('حذف القسم')) return;
+        if (!confirm(`حذف القسم «${removedDept}» سيمنع الوصول إليه من القائمة وقد يخفي بياناته السابقة. هل أنت متأكد؟`)) return;
+
+        this.data.departments.splice(index, 1);
+        await API.system.saveDepartments(this.data.departments);
+        if (this.data.currentDepartment === removedDept) {
+            this.data.currentDepartment = this.data.departments[0];
+            const deptSelect = document.getElementById('global-department');
+            if (deptSelect) deptSelect.value = this.data.currentDepartment;
+            this.listenToCurrentDepartmentSettings();
         }
+        this.renderDepartmentSelector();
+        this.renderSettingsDepartmentsList();
+        this.render5SDepartmentOptions();
+        this.render5SPlaceOptions();
+        this.showToast('تم حذف القسم من القائمة');
     },
 
     listenToCurrentDepartmentSettings() {
