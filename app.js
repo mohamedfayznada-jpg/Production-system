@@ -47,14 +47,18 @@ const App = {
     async init() {
         // يتم تسجيل Service Worker ومراقبة تحديثاته بعد تعريف App بالأسفل.
 
-        // إظهار رسالة التثبيت عند جاهزية المتصفح
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            App.deferredPrompt = e;
-            const installBanner = document.getElementById('install-banner');
-            if (installBanner) installBanner.style.display = 'flex';
-            if (manualBtn) manualBtn.style.display = 'block';
+        // تجهيز نافذة تثبيت التطبيق للمستخدمين غير المثبتين.
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            this.deferredPrompt = event;
+            this.showInstallPrompt();
         });
+        window.addEventListener('appinstalled', () => {
+            this.deferredPrompt = null;
+            this.hideInstallPrompt();
+            this.showToast('تم تثبيت نظام الإنتاج على جهازك بنجاح');
+        });
+        window.setTimeout(() => this.showInstallPrompt(), 2200);
         setTimeout(() => { 
             const splash = document.getElementById('cinematic-splash'); 
             if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
@@ -1688,15 +1692,97 @@ const App = {
         this.update5SNotificationButton();
     },
 
+    isPwaStandalone() {
+        return Boolean(
+            window.matchMedia?.('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true
+        );
+    },
+
+    getInstallDeviceContext() {
+        const userAgent = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/i.test(userAgent);
+        return { isIOS, isAndroid };
+    },
+
+    showInstallPrompt() {
+        if (this.isPwaStandalone()) return;
+        try {
+            if (sessionStorage.getItem('production_system_install_dismissed') === '1') return;
+        } catch (error) { /* التخزين المحلي اختياري */ }
+
+        const installBanner = document.getElementById('install-banner');
+        const installButton = document.getElementById('install-now-btn');
+        const installSteps = document.getElementById('install-steps');
+        const browserNote = document.getElementById('install-browser-note');
+        const manualButton = document.getElementById('manual-install-btn');
+        if (!installBanner) return;
+
+        const { isIOS, isAndroid } = this.getInstallDeviceContext();
+        if (manualButton) manualButton.style.display = 'block';
+
+        if (this.deferredPrompt) {
+            if (installButton) installButton.innerHTML = '<i class="fa-solid fa-download"></i> تثبيت التطبيق';
+            if (installSteps) {
+                installSteps.style.display = 'none';
+                installSteps.innerHTML = '';
+            }
+            if (browserNote) browserNote.textContent = 'سيظهر تأكيد التثبيت من المتصفح بعد الضغط على الزر.';
+        } else if (isIOS) {
+            if (installButton) installButton.innerHTML = '<i class="fa-solid fa-share-nodes"></i> عرض طريقة التثبيت';
+            if (installSteps) {
+                installSteps.style.display = 'block';
+                installSteps.innerHTML = '<strong>طريقة التثبيت على iPhone أو iPad:</strong><br>اضغط زر المشاركة في Safari ثم اختر <strong>إضافة إلى الشاشة الرئيسية</strong> ثم اضغط إضافة.';
+            }
+            if (browserNote) browserNote.textContent = 'افتح الرابط في Safari لإتمام التثبيت.';
+        } else {
+            if (installButton) installButton.innerHTML = '<i class="fa-solid fa-download"></i> إضافة للشاشة الرئيسية';
+            if (installSteps) {
+                installSteps.style.display = 'block';
+                installSteps.innerHTML = '<strong>إذا لم يظهر التثبيت تلقائياً:</strong><br>افتح قائمة المتصفح ⋮ ثم اختر <strong>إضافة إلى الشاشة الرئيسية</strong> أو <strong>تثبيت التطبيق</strong>.';
+            }
+            if (browserNote) browserNote.textContent = isAndroid ? 'يفضل استخدام Google Chrome على الهاتف.' : 'يمكن تثبيته من قائمة المتصفح إذا كان المتصفح يدعم تطبيقات PWA.';
+        }
+        installBanner.style.display = 'flex';
+    },
+
+    dismissInstallPrompt() {
+        const installBanner = document.getElementById('install-banner');
+        if (installBanner) installBanner.style.display = 'none';
+        try { sessionStorage.setItem('production_system_install_dismissed', '1'); } catch (error) { /* التخزين المحلي اختياري */ }
+    },
+
+    hideInstallPrompt() {
+        const installBanner = document.getElementById('install-banner');
+        if (installBanner) installBanner.style.display = 'none';
+    },
+
     async installPWA() {
+        if (this.isPwaStandalone()) {
+            this.hideInstallPrompt();
+            return;
+        }
         if (this.deferredPrompt) {
             this.deferredPrompt.prompt();
             const { outcome } = await this.deferredPrompt.userChoice;
             if (outcome === 'accepted') {
-                const installBanner = document.getElementById('install-banner');
-                if (installBanner) installBanner.style.display = 'none';
+                this.hideInstallPrompt();
+            } else {
+                this.showInstallPrompt();
             }
             this.deferredPrompt = null;
+            return;
+        }
+
+        const { isIOS } = this.getInstallDeviceContext();
+        if (isIOS) {
+            const installSteps = document.getElementById('install-steps');
+            if (installSteps) installSteps.style.display = 'block';
+            this.showToast('اضغط مشاركة في Safari ثم إضافة إلى الشاشة الرئيسية');
+        } else {
+            this.showToast('افتح قائمة المتصفح واختر إضافة إلى الشاشة الرئيسية أو تثبيت التطبيق');
         }
     },
     // --- دالة إطلاق الإشعارات الصوتية والنصية ---

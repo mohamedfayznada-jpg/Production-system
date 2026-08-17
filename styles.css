@@ -191,37 +191,94 @@ body { background-color: var(--bg-color); color: var(--text-main); padding-botto
 .check-container input:checked ~ .checkmark { background-color: var(--primary-color); }
 .checkmark:after { content: "\f00c"; font-family: "Font Awesome 6 Free"; font-weight: 900; color: white; display: none; font-size: 0.8rem; }
 .check-container input:checked ~ .checkmark:after { display: block; }
-/* رسالة تثبيت التطبيق */
-.install-banner {
+/* نافذة تثبيت التطبيق */
+.install-overlay {
     position: fixed;
-    bottom: 85px; /* لتكون فوق شريط التنقل السفلي */
-    left: 15px;
-    right: 15px;
-    background: var(--primary-color);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 12px;
+    inset: 0;
+    z-index: 10000;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    z-index: 9999;
-    box-shadow: 0 10px 20px rgba(10,179,156,0.4);
-    animation: slideUp 0.6s ease-out;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.68);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    animation: installFadeIn 0.28s ease-out;
 }
-.install-banner span { font-weight: 800; font-size: 1.1rem; }
-.install-banner button {
-    background: white;
-    color: var(--primary-color);
-    border: none;
-    padding: 8px 18px;
-    border-radius: 8px;
+.install-dialog {
+    position: relative;
+    width: min(100%, 440px);
+    padding: 34px 24px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 26px;
+    background: linear-gradient(145deg, #ffffff 0%, #f0fdfa 100%);
+    color: var(--text-main);
+    text-align: center;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.35);
+    animation: installPopIn 0.34s ease-out;
+}
+.install-close {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+    font-size: 1rem;
+}
+.install-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, var(--primary-color), #0ea5e9);
+    color: white;
+    font-size: 2rem;
+    box-shadow: 0 12px 24px rgba(10, 179, 156, 0.28);
+}
+.install-dialog h2 { margin: 0 0 8px; color: #0f766e; font-size: 1.35rem; font-weight: 900; }
+.install-dialog p { margin: 0 auto; max-width: 360px; color: #475569; line-height: 1.8; font-size: 0.92rem; font-weight: 600; }
+.install-steps {
+    margin: 18px 0 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #ecfeff;
+    color: #155e75;
+    text-align: right;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    font-weight: 700;
+}
+.install-steps strong { color: #0e7490; }
+.install-actions { display: flex; gap: 10px; margin-top: 22px; }
+.install-primary-btn,
+.install-later-btn {
+    flex: 1;
+    min-height: 46px;
+    border: 0;
+    border-radius: 13px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.9rem;
     font-weight: 800;
     cursor: pointer;
-    font-family: 'Cairo', sans-serif;
 }
-@keyframes slideUp {
-    from { transform: translateY(150px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+.install-primary-btn { background: linear-gradient(135deg, var(--primary-color), #0ea5e9); color: white; box-shadow: 0 8px 18px rgba(10, 179, 156, 0.24); }
+.install-later-btn { background: #e2e8f0; color: #475569; }
+.install-browser-note { min-height: 21px; margin-top: 12px; color: #64748b; font-size: 0.72rem; font-weight: 600; }
+@keyframes installFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes installPopIn { from { transform: translateY(18px) scale(0.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@media (max-width: 480px) {
+    .install-overlay { padding: 14px; align-items: flex-end; }
+    .install-dialog { padding: 30px 18px 18px; border-radius: 24px 24px 18px 18px; }
+    .install-actions { flex-direction: column; }
+    .install-primary-btn, .install-later-btn { width: 100%; }
 }
 
 /* 5S Notes */

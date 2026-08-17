@@ -9,7 +9,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260816-auto-update-1">
+    <link rel="stylesheet" href="styles.css?v=20260816-install-overlay-1">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -385,12 +385,23 @@
 
     </main>
 <!-- نافذة تثبيت التطبيق -->
-    <div id="install-banner" class="install-banner" style="display:none;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <i class="fa-solid fa-mobile-screen-button" style="font-size:1.8rem;"></i>
-            <span>تثبيت النظام على جهازك</span>
+    <div id="install-banner" class="install-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="install-title">
+        <div class="install-dialog">
+            <button class="install-close" type="button" onclick="App.dismissInstallPrompt()" aria-label="إغلاق نافذة التثبيت">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="install-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+            <h2 id="install-title">حوّل النظام إلى تطبيق</h2>
+            <p id="install-message">ثبّت نظام الإنتاج على هاتفك للوصول إليه بسرعة من الشاشة الرئيسية والعمل به مثل أي تطبيق.</p>
+            <div id="install-steps" class="install-steps" style="display:none;"></div>
+            <div class="install-actions">
+                <button id="install-now-btn" class="install-primary-btn" type="button" onclick="App.installPWA()">
+                    <i class="fa-solid fa-download"></i> تثبيت التطبيق
+                </button>
+                <button class="install-later-btn" type="button" onclick="App.dismissInstallPrompt()">ليس الآن</button>
+            </div>
+            <div id="install-browser-note" class="install-browser-note"></div>
         </div>
-        <button onclick="App.installPWA()">تثبيت الآن</button>
     </div>
     <nav class="bottom-nav">
         <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
@@ -426,6 +437,6 @@
         <div class="spinner"></div><h3 id="loader-text" class="text-teal">جاري المعالجة...</h3>
     </div>
 
-    <script type="module" src="app.js?v=20260816-auto-update-1"></script>
+    <script type="module" src="app.js?v=20260816-install-overlay-1"></script>
 </body>
 </html>
