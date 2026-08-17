@@ -1,4 +1,4 @@
-import { API } from './api.js?v=20260816-auto-update-1';
+import { API } from './api.js?v=20260817-native-install-1';
 
 const CONFIG = {
     GOOGLE_API_URL: "https://script.google.com/macros/s/AKfycbyVKapcO0hPx3j_d1HdHA6tOM8EX9etTzHmE9ZfvsldSI7lnFCMkuuSDdqH4mzr_HYecQ/exec",
@@ -52,6 +52,11 @@ const App = {
             event.preventDefault();
             this.deferredPrompt = event;
             this.showInstallPrompt();
+            if (this.installPromptResolver) {
+                const resolvePrompt = this.installPromptResolver;
+                this.installPromptResolver = null;
+                resolvePrompt(event);
+            }
         });
         window.addEventListener('appinstalled', () => {
             this.deferredPrompt = null;
@@ -1759,20 +1764,47 @@ const App = {
         if (installBanner) installBanner.style.display = 'none';
     },
 
+    waitForNativeInstallPrompt(timeoutMs = 3500) {
+        if (this.deferredPrompt) return Promise.resolve(this.deferredPrompt);
+        if (this.installPromptResolver) return Promise.resolve(null);
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (event) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                resolve(event || null);
+            };
+            const timer = window.setTimeout(() => {
+                if (this.installPromptResolver === finish) this.installPromptResolver = null;
+                finish(null);
+            }, timeoutMs);
+            this.installPromptResolver = finish;
+        });
+    },
+
     async installPWA() {
         if (this.isPwaStandalone()) {
             this.hideInstallPrompt();
             return;
         }
-        if (this.deferredPrompt) {
-            this.deferredPrompt.prompt();
-            const { outcome } = await this.deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                this.hideInstallPrompt();
-            } else {
+
+        const nativePrompt = this.deferredPrompt || await this.waitForNativeInstallPrompt();
+        if (nativePrompt) {
+            try {
+                nativePrompt.prompt();
+                const { outcome } = await nativePrompt.userChoice;
+                if (outcome === 'accepted') {
+                    this.hideInstallPrompt();
+                } else {
+                    this.showInstallPrompt();
+                }
+            } catch (error) {
+                console.debug('Native PWA install prompt was not available:', error);
                 this.showInstallPrompt();
+            } finally {
+                this.deferredPrompt = null;
             }
-            this.deferredPrompt = null;
             return;
         }
 
@@ -1780,9 +1812,9 @@ const App = {
         if (isIOS) {
             const installSteps = document.getElementById('install-steps');
             if (installSteps) installSteps.style.display = 'block';
-            this.showToast('اضغط مشاركة في Safari ثم إضافة إلى الشاشة الرئيسية');
+            this.showToast('لم يجهز Safari نافذة تلقائية؛ اضغط مشاركة ثم إضافة إلى الشاشة الرئيسية');
         } else {
-            this.showToast('افتح قائمة المتصفح واختر إضافة إلى الشاشة الرئيسية أو تثبيت التطبيق');
+            this.showToast('لم يجهز Chrome نافذة التثبيت بعد؛ افتح الموقع من Chrome وحدّث الصفحة ثم اضغط تثبيت مرة أخرى');
         }
     },
     // --- دالة إطلاق الإشعارات الصوتية والنصية ---

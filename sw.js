@@ -1,5 +1,5 @@
 // Change this release marker whenever the PWA is published.
-const SW_RELEASE = '20260816-install-overlay-1';
+const SW_RELEASE = '20260817-native-install-1';
 
 self.addEventListener('install', (event) => {
     // Activate the new worker without waiting for all old tabs to close.
