@@ -96,7 +96,13 @@ const App = {
         this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
             if (!firebaseUser) {
                 // Don't clear if we are in a master bypass session
-                if (this.currentUser?.isBypass) return;
+                if (this.currentUser?.isBypass) {
+                    if (this.sessionStartedForUid !== this.currentUser.uid) {
+                        this.sessionStartedForUid = this.currentUser.uid;
+                        await this.startAuthenticatedSession();
+                    }
+                    return;
+                }
                 
                 this.currentUser = null;
                 this.sessionStartedForUid = null;
