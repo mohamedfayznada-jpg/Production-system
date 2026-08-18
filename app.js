@@ -169,17 +169,23 @@ const App = {
         if (globalShift) globalShift.value = '1';
 
         this.systemListenerUnsubscribe = API.system.listenToDepartments((depts) => {
+            const oldDept = this.data.currentDepartment;
             this.data.departments = depts;
             const visible = this.visibleDepartments();
-            if (visible.length && !visible.includes(this.data.currentDepartment)) this.data.currentDepartment = visible[0];
+            
+            if (visible.length && (!this.data.currentDepartment || !visible.includes(this.data.currentDepartment))) {
+                this.data.currentDepartment = visible[0];
+            }
+            
             this.renderDepartmentSelector();
             this.renderSettingsDepartmentsList();
             this.render5SDepartmentOptions();
             this.render5SPlaceOptions();
             this.refreshPermissionedNavigation();
             this.applyPermissionedControls();
-            if (!this.data.currentDepartment && depts.length > 0) {
-                this.data.currentDepartment = depts[0];
+            
+            // Trigger data load if we have a department and it's the first time or it changed
+            if (this.data.currentDepartment && (this.data.currentDepartment !== oldDept || !this.currentSettingsListener)) {
                 const deptSelect = document.getElementById('global-department');
                 if (deptSelect) deptSelect.value = this.data.currentDepartment;
                 this.listenToCurrentDepartmentSettings();
@@ -235,6 +241,11 @@ const App = {
         this.renderDepartmentSelector();
         this.renderAdminPermissionControls();
         this.renderAdminUsersList();
+        
+        // Ensure data is loaded for the current session
+        if (this.data.currentDepartment) {
+            this.listenToCurrentDepartmentSettings();
+        }
     },
 
     visibleDepartments() {
