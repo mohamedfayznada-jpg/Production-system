@@ -84,6 +84,12 @@ const App = {
         if (loginForm) loginForm.addEventListener('submit', (event) => this.submitLogin(event));
         const forgotPasswordButton = document.getElementById('forgot-password-btn');
         if (forgotPasswordButton) forgotPasswordButton.addEventListener('click', () => this.requestPasswordReset());
+        const toggleSignupBtn = document.getElementById('toggle-signup-btn');
+        if (toggleSignupBtn) toggleSignupBtn.addEventListener('click', () => this.toggleAuthForms(true));
+        const toggleLoginBtn = document.getElementById('toggle-login-btn');
+        if (toggleLoginBtn) toggleLoginBtn.addEventListener('click', () => this.toggleAuthForms(false));
+        const signupForm = document.getElementById('signup-form');
+        if (signupForm) signupForm.addEventListener('submit', (event) => this.submitSignup(event));
         const logoutButton = document.getElementById('auth-logout-btn');
         if (logoutButton) logoutButton.addEventListener('click', () => this.logout());
 
@@ -366,6 +372,65 @@ const App = {
         element.classList.toggle('auth-success', !isError);
         element.classList.toggle('auth-error', isError);
         element.style.display = message ? 'block' : 'none';
+    },
+
+    toggleAuthForms(toSignup = true) {
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const title = document.querySelector('.auth-card h1');
+        const subtitle = document.querySelector('.auth-subtitle');
+        if (!loginForm || !signupForm) return;
+        
+        this.setLoginMessage('');
+        this.setSignupMessage('');
+        
+        if (toSignup) {
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'block';
+            if (title) title.textContent = 'إنشاء حساب جديد';
+            if (subtitle) subtitle.textContent = 'سجل بياناتك وسيتم تفعيل حسابك من قبل الإدارة فوراً.';
+        } else {
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+            if (title) title.textContent = 'تسجيل الدخول';
+            if (subtitle) subtitle.textContent = 'أدخل بيانات حسابك للوصول إلى النظام حسب الصلاحيات الممنوحة لك.';
+        }
+    },
+
+    setSignupMessage(message, isError = true) {
+        const element = document.getElementById('signup-error');
+        if (!element) return;
+        element.textContent = message || '';
+        element.classList.toggle('auth-success', !isError);
+        element.classList.toggle('auth-error', isError);
+        element.style.display = message ? 'block' : 'none';
+    },
+
+    async submitSignup(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const username = form.querySelector('[name="username"]')?.value || '';
+        const password = form.querySelector('[name="password"]')?.value || '';
+        const jobTitle = form.querySelector('[name="jobTitle"]')?.value || '';
+        const button = form.querySelector('button[type="submit"]');
+        
+        if (button) button.disabled = true;
+        this.setSignupMessage('');
+        
+        try {
+            await API.auth.signup(username, password, jobTitle);
+            this.setSignupMessage('تم إنشاء الحساب بنجاح! يرجى التواصل مع المدير لتفعيل حسابك.', false);
+            setTimeout(() => this.toggleAuthForms(false), 3000);
+        } catch (error) {
+            const messages = {
+                invalid_username: 'اسم المستخدم يجب أن يكون بالإنجليزية وبدون مسافات',
+                weak_password: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+                'auth/email-already-in-use': 'اسم المستخدم هذا مسجل بالفعل'
+            };
+            this.setSignupMessage(messages[error.message] || messages[error.code] || 'تعذر إنشاء الحساب. حاول لاحقاً.', true);
+        } finally {
+            if (button) button.disabled = false;
+        }
     },
 
     async submitLogin(event) {

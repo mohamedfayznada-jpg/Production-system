@@ -13,7 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/fireba
 
 const USER_EMAIL_DOMAIN = 'production-b0b2c.firebaseapp.com';
 const MASTER_USERNAME = 'mfayez';
-const MASTER_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
+const MASTER_PASSWORD_HASH = '499d33473ec8816779234cfef55e684a1f3774debc551e6fee8c7ecb69eb29de';
 const defaultPermissions = () => ({
     view: { production: true, quality: true, balances: true, fiveS: true, analytics: true, settings: true },
     edit: { production: true, quality: true, balances: true, fiveS: true, settings: true }
@@ -34,6 +34,7 @@ export const API = {
             } catch (error) {
                 const isMasterAttempt = normalized === MASTER_USERNAME && await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(buffer => Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('')) === MASTER_PASSWORD_HASH;
                 if (!isMasterAttempt || !['auth/user-not-found', 'auth/invalid-credential'].includes(error.code)) throw error;
+                // If master attempt but user not found, create it
                 credential = await createUserWithEmailAndPassword(auth, usernameEmail(normalized), password);
             }
 
@@ -66,6 +67,31 @@ export const API = {
             const normalized = String(username || '').trim().toLowerCase();
             if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
             await sendPasswordResetEmail(auth, usernameEmail(normalized));
+        },
+        async signup(username, password, jobTitle) {
+            const normalized = String(username || '').trim().toLowerCase();
+            if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
+            if (!password || password.length < 6) throw new Error('weak_password');
+            
+            const credential = await createUserWithEmailAndPassword(auth, usernameEmail(normalized), password);
+            const profile = {
+                uid: credential.user.uid,
+                username: normalized,
+                usernameLower: normalized,
+                role: 'technician',
+                jobTitle: jobTitle || 'فني',
+                active: false, // Default to inactive until admin approves
+                allowedDepartments: [],
+                permissions: { 
+                    view: { production: true, quality: true, balances: true, fiveS: true },
+                    edit: {} 
+                },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+            await setDoc(doc(db, 'app_users', credential.user.uid), profile);
+            await signOut(auth); // Sign out after signup, user needs activation
+            return profile;
         },
         async logout() { await signOut(auth); },
         async getProfile(uid) {

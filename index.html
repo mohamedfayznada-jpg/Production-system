@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260818-auth-rbac-final">
+    <link rel="manifest" href="manifest.json?v=20260818-auth-signup-v1">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,7 +43,19 @@
                 <div class="input-group"><label for="login-password">كلمة المرور</label><input id="login-password" name="password" type="password" class="modern-input" autocomplete="current-password" required placeholder="••••••••"></div>
                 <div id="login-error" class="auth-error" role="alert" style="display:none;"></div>
                 <button type="submit" class="primary-btn gradient-bg auth-submit"><i class="fa-solid fa-right-to-bracket"></i> دخول آمن</button>
-                <button type="button" id="forgot-password-btn" class="auth-link-btn">نسيت كلمة المرور؟</button>
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <button type="button" id="forgot-password-btn" class="auth-link-btn">نسيت كلمة المرور؟</button>
+                    <button type="button" id="toggle-signup-btn" class="auth-link-btn">إنشاء حساب جديد</button>
+                </div>
+            </form>
+
+            <form id="signup-form" style="display:none;" autocomplete="off">
+                <div class="input-group"><label for="signup-username">اسم المستخدم (بالإنجليزي)</label><input id="signup-username" name="username" class="modern-input" autocomplete="off" autocapitalize="none" required placeholder="مثال: ahmad_ali"></div>
+                <div class="input-group"><label for="signup-password">كلمة المرور (6 أرقام على الأقل)</label><input id="signup-password" name="password" type="password" class="modern-input" autocomplete="new-password" required placeholder="••••••••"></div>
+                <div class="input-group"><label for="signup-job">المسمى الوظيفي</label><input id="signup-job" name="jobTitle" class="modern-input" placeholder="مثال: فني إنتاج"></div>
+                <div id="signup-error" class="auth-error" role="alert" style="display:none;"></div>
+                <button type="submit" class="primary-btn gradient-bg auth-submit"><i class="fa-solid fa-user-plus"></i> تسجيل الحساب</button>
+                <button type="button" id="toggle-login-btn" class="auth-link-btn">العودة لتسجيل الدخول</button>
             </form>
             <small class="auth-security-note"><i class="fa-solid fa-shield-halved"></i> الوصول محمي بحسابات Firebase وصلاحيات فردية.</small>
         </div>
