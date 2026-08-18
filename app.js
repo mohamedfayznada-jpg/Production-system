@@ -227,10 +227,7 @@ const App = {
         const role = document.getElementById('auth-user-role');
         if (name) name.textContent = this.currentUser.username || '';
         if (role) role.textContent = this.currentUser.jobTitle || this.currentUser.role || '';
-        const sidebarName = document.getElementById('sidebar-user-name');
-        const sidebarRole = document.getElementById('sidebar-user-role');
-        if (sidebarName) sidebarName.textContent = this.currentUser.username || '';
-        if (sidebarRole) sidebarRole.textContent = this.currentUser.jobTitle || this.currentUser.role || '';
+        
         const adminNav = document.querySelectorAll('[data-admin-only]');
         adminNav.forEach(item => { item.style.display = this.currentUser.isMaster ? '' : 'none'; });
         this.refreshPermissionedNavigation();
@@ -241,9 +238,14 @@ const App = {
     },
 
     visibleDepartments() {
-        if (!this.currentUser || this.currentUser.isMaster) return [...this.data.departments];
-        const allowed = Array.isArray(this.currentUser.allowedDepartments) ? this.currentUser.allowedDepartments : [];
-        return allowed.includes('*') ? [...this.data.departments] : this.data.departments.filter(department => allowed.includes(department));
+        // Master admin always sees all departments
+        if (this.currentUser?.isMaster) return [...this.data.departments];
+        
+        const allowed = Array.isArray(this.currentUser?.allowedDepartments) ? this.currentUser.allowedDepartments : [];
+        if (allowed.includes('*')) return [...this.data.departments];
+        
+        // If no allowed departments defined but user is authenticated, default to none or check if it's a legacy account
+        return this.data.departments.filter(department => allowed.includes(department));
     },
 
     permissionKey(screenId) {
@@ -269,7 +271,7 @@ const App = {
 
     refreshPermissionedNavigation() {
         if (!this.currentUser) return;
-        document.querySelectorAll('.sidebar-nav-item[data-target], .bottom-nav .nav-item[data-target]').forEach((item) => {
+        document.querySelectorAll('.bottom-nav .nav-item[data-target]').forEach((item) => {
             const target = item.dataset.target;
             const allowed = target === 'admin'
                 ? this.currentUser.isMaster
@@ -521,13 +523,7 @@ const App = {
     },
 
     toggleSidebar(force) {
-        const sidebar = document.getElementById('app-sidebar');
-        const backdrop = document.getElementById('sidebar-backdrop');
-        if (!sidebar || !backdrop) return;
-        const shouldOpen = typeof force === 'boolean' ? force : !sidebar.classList.contains('is-open');
-        sidebar.classList.toggle('is-open', shouldOpen);
-        backdrop.classList.toggle('is-visible', shouldOpen);
-        document.body.classList.toggle('sidebar-open', shouldOpen);
+        // Sidebar removed as per user request to restore original look
     },
 
     renderAdminPermissionControls() {

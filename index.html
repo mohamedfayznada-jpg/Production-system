@@ -64,7 +64,7 @@
     <div id="app-shell" aria-hidden="true">
     <header class="app-header">
             <div class="header-top">
-                <div class="header-leading"><button class="sidebar-menu-toggle" type="button" onclick="App.toggleSidebar()" aria-label="فتح القائمة الجانبية"><i class="fa-solid fa-bars"></i></button><div class="dept-title">
+                <div class="header-leading"><div class="dept-title">
                 <div class="icon-wrapper"><i class="fa-solid fa-industry"></i></div>
                 <div>
                     <span class="greeting">القسم الحالي</span>
@@ -439,22 +439,7 @@
 
     </main>
 
-    <aside id="app-sidebar" class="app-sidebar" aria-label="القائمة الجانبية">
-        <div class="sidebar-brand"><div class="auth-brand-icon"><i class="fa-solid fa-industry"></i></div><div><strong>نظام الإنتاج</strong><small>مجموعة العربي</small></div><button type="button" class="sidebar-close" onclick="App.toggleSidebar()"><i class="fa-solid fa-xmark"></i></button></div>
-        <div class="sidebar-user"><div class="sidebar-user-avatar"><i class="fa-solid fa-user"></i></div><div><strong id="sidebar-user-name"></strong><small id="sidebar-user-role"></small></div></div>
-        <div class="sidebar-nav">
-            <button class="sidebar-nav-item" data-target="home" onclick="App.navigate('home');App.toggleSidebar()"><i class="fa-solid fa-house"></i><span>الرئيسية</span></button>
-            <button class="sidebar-nav-item" data-target="production" onclick="App.navigate('production');App.toggleSidebar()"><i class="fa-solid fa-calendar-check"></i><span>الإنتاج</span></button>
-            <button class="sidebar-nav-item" data-target="balances" onclick="App.navigate('balances');App.toggleSidebar()"><i class="fa-solid fa-boxes-stacked"></i><span>الأرصدة</span></button>
-            <button class="sidebar-nav-item" data-target="quality" onclick="App.navigate('quality');App.toggleSidebar()"><i class="fa-solid fa-shield-halved"></i><span>الجودة</span></button>
-            <button class="sidebar-nav-item" data-target="5s" onclick="App.navigate('5s');App.toggleSidebar()"><i class="fa-solid fa-list-check"></i><span>ملاحظات 5S</span></button>
-            <button class="sidebar-nav-item" data-target="analytics" onclick="App.navigate('analytics');App.toggleSidebar()"><i class="fa-solid fa-chart-pie"></i><span>التقارير</span></button>
-            <button class="sidebar-nav-item" data-target="admin" data-admin-only="true" onclick="App.navigate('admin');App.toggleSidebar()"><i class="fa-solid fa-user-shield"></i><span>إدارة المستخدمين</span></button>
-            <button class="sidebar-nav-item" data-target="settings" onclick="App.openSettings();App.toggleSidebar()"><i class="fa-solid fa-sliders"></i><span>الإعدادات</span></button>
-        </div>
-        <button class="sidebar-logout" onclick="App.logout()"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</button>
-    </aside>
-    <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="App.toggleSidebar()"></div>
+
 <!-- نافذة تثبيت التطبيق -->
     <div id="install-banner" class="install-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="install-title">
         <div class="install-dialog">
