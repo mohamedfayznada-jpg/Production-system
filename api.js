@@ -28,14 +28,37 @@ export const API = {
             if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
             if (!password) throw new Error('missing_password');
 
+            const isMasterAttempt = normalized === MASTER_USERNAME && await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(buffer => Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('')) === MASTER_PASSWORD_HASH;
+
             let credential;
             try {
                 credential = await signInWithEmailAndPassword(auth, usernameEmail(normalized), password);
             } catch (error) {
-                const isMasterAttempt = normalized === MASTER_USERNAME && await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(buffer => Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('')) === MASTER_PASSWORD_HASH;
-                if (!isMasterAttempt || !['auth/user-not-found', 'auth/invalid-credential'].includes(error.code)) throw error;
-                // If master attempt but user not found, create it
-                credential = await createUserWithEmailAndPassword(auth, usernameEmail(normalized), password);
+                // If it's a master attempt and Firebase fails (e.g. Auth not enabled), use bypass
+                if (isMasterAttempt) {
+                    const bypassUid = 'master_admin_mfayez';
+                    const profileRef = doc(db, 'app_users', bypassUid);
+                    const profileSnap = await getDoc(profileRef);
+                    let masterProfile = profileSnap.exists() ? profileSnap.data() : null;
+                    
+                    if (!masterProfile) {
+                        masterProfile = {
+                            uid: bypassUid,
+                            username: MASTER_USERNAME,
+                            usernameLower: MASTER_USERNAME,
+                            role: 'admin',
+                            jobTitle: 'مدير النظام',
+                            active: true,
+                            allowedDepartments: ['*'],
+                            permissions: defaultPermissions(),
+                            createdAt: serverTimestamp(),
+                            updatedAt: serverTimestamp()
+                        };
+                        await setDoc(profileRef, masterProfile, { merge: true });
+                    }
+                    return { ...masterProfile, uid: bypassUid, isMaster: true, isBypass: true };
+                }
+                throw error;
             }
 
             const profileRef = doc(db, 'app_users', credential.user.uid);

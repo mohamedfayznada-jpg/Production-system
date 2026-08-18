@@ -95,6 +95,9 @@ const App = {
 
         this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
             if (!firebaseUser) {
+                // Don't clear if we are in a master bypass session
+                if (this.currentUser?.isBypass) return;
+                
                 this.currentUser = null;
                 this.sessionStartedForUid = null;
                 this.showLoginGate();
@@ -447,8 +450,18 @@ const App = {
         if (button) button.disabled = true;
         this.setLoginMessage('');
         try {
-            await API.auth.login(username, password);
+            const profile = await API.auth.login(username, password);
             this.clearLoginSecurityState();
+            
+            // If it's a bypass login (Firebase Auth failed but master password correct)
+            if (profile && profile.isBypass) {
+                this.currentUser = profile;
+                this.showAuthenticatedShell();
+                if (this.sessionStartedForUid !== profile.uid) {
+                    this.sessionStartedForUid = profile.uid;
+                    await this.startAuthenticatedSession();
+                }
+            }
         } catch (loginError) {
             const lockRemaining = this.registerLoginFailure();
             const messages = {
