@@ -33,6 +33,10 @@ const App = {
     fiveSClientId: '',
     fiveSKnownNoteIds: new Set(),
     fiveSNotesSnapshotReady: false,
+    currentUser: null,
+    authStateUnsubscribe: null,
+    usersListener: null,
+    sessionStartedForUid: null,
     
     isOnline: true,
     saveTimers: {},
@@ -49,13 +53,12 @@ const App = {
         scratches: [],
         inventory: { models: [], cabinet: {}, door: {} },
         master: { production: [], targets: [], scratches: [] },
-        fiveS: { locations: [], notes: [], monthlySummaries: [] }
+        fiveS: { locations: [], notes: [], monthlySummaries: [] },
+        managedUsers: []
     },
 
     async init() {
-        // يتم تسجيل Service Worker ومراقبة تحديثاته بعد تعريف App بالأسفل.
-
-        // تجهيز نافذة تثبيت التطبيق للمستخدمين غير المثبتين.
+        // تسجيل أحداث التثبيت يمكن أن يعمل قبل تسجيل الدخول، لكن لا يتم تشغيل بيانات التطبيق قبل المصادقة.
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             this.deferredPrompt = event;
@@ -72,11 +75,47 @@ const App = {
             this.showToast('تم تثبيت نظام الإنتاج على جهازك بنجاح');
         });
         window.setTimeout(() => this.showInstallPrompt(), 2200);
-        setTimeout(() => { 
-            const splash = document.getElementById('cinematic-splash'); 
-            if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
+        setTimeout(() => {
+            const splash = document.getElementById('cinematic-splash');
+            if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
-        // --- تهيئة تنبيهات 5S على مستوى المتصفح فقط ---
+
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) loginForm.addEventListener('submit', (event) => this.submitLogin(event));
+        const forgotPasswordButton = document.getElementById('forgot-password-btn');
+        if (forgotPasswordButton) forgotPasswordButton.addEventListener('click', () => this.requestPasswordReset());
+        const logoutButton = document.getElementById('auth-logout-btn');
+        if (logoutButton) logoutButton.addEventListener('click', () => this.logout());
+
+        this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
+            if (!firebaseUser) {
+                this.currentUser = null;
+                this.sessionStartedForUid = null;
+                this.showLoginGate();
+                return;
+            }
+            try {
+                let profile = null;
+                for (let attempt = 0; attempt < 5 && !profile; attempt += 1) {
+                    profile = await API.auth.getProfile(firebaseUser.uid);
+                    if (!profile) await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                if (!profile || profile.active === false) throw new Error('account_not_configured');
+                this.currentUser = { ...profile, uid: firebaseUser.uid, isMaster: profile.role === 'admin' && profile.usernameLower === 'mfayez' };
+                this.showAuthenticatedShell();
+                if (this.sessionStartedForUid !== firebaseUser.uid) {
+                    this.sessionStartedForUid = firebaseUser.uid;
+                    await this.startAuthenticatedSession();
+                }
+            } catch (error) {
+                console.error('Authentication profile error:', error);
+                await API.auth.logout().catch(() => {});
+                this.showLoginGate(error.message === 'account_not_configured' ? 'الحساب غير مفعل أو لم يتم إعداد صلاحياته بعد' : 'تعذر تحميل صلاحيات الحساب');
+            }
+        });
+    },
+
+    async startAuthenticatedSession() {
         try {
             this.fiveSNotificationsEnabled = localStorage.getItem('production_system_5s_notifications') !== 'off';
         } catch (error) {
@@ -90,28 +129,41 @@ const App = {
         }
         this.lastNotificationId = Date.now();
         this.update5SNotificationButton();
-        // لا يتم طلب الإذن تلقائياً؛ المستخدم يفعّله من زر التنبيهات عند الحاجة.
-        // ------------------------------------------
+
+        if (this.usersListener) {
+            this.usersListener();
+            this.usersListener = null;
+        }
+        if (this.currentUser?.isMaster) {
+            this.usersListener = API.auth.listenToUsers((users) => {
+                this.data.managedUsers = users;
+                this.renderAdminUsersList();
+            });
+        }
+        this.renderAdminPermissionControls();
+        this.renderAdminUsersList();
+
         this.isOnline = await API.production.testConnection();
         this.updateConnectionStatus(this.isOnline);
 
         const today = new Date();
         const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-        
         const globalDate = document.getElementById('global-date');
         const globalShift = document.getElementById('global-shift');
-        
         if (globalDate) globalDate.value = dateString;
-        if (globalShift) globalShift.value = "1";
+        if (globalShift) globalShift.value = '1';
 
         this.systemListenerUnsubscribe = API.system.listenToDepartments((depts) => {
             this.data.departments = depts;
+            const visible = this.visibleDepartments();
+            if (visible.length && !visible.includes(this.data.currentDepartment)) this.data.currentDepartment = visible[0];
             this.renderDepartmentSelector();
             this.renderSettingsDepartmentsList();
             this.render5SDepartmentOptions();
             this.render5SPlaceOptions();
-            
-            if(!this.data.currentDepartment && depts.length > 0) {
+            this.refreshPermissionedNavigation();
+            this.applyPermissionedControls();
+            if (!this.data.currentDepartment && depts.length > 0) {
                 this.data.currentDepartment = depts[0];
                 const deptSelect = document.getElementById('global-department');
                 if (deptSelect) deptSelect.value = this.data.currentDepartment;
@@ -131,17 +183,352 @@ const App = {
 
         const fiveSDepartmentSelect = document.getElementById('5s-department');
         if (fiveSDepartmentSelect) fiveSDepartmentSelect.addEventListener('change', () => this.render5SPlaceOptions());
-
         const deptSelect = document.getElementById('global-department');
-        if (deptSelect) {
-            deptSelect.addEventListener('change', (e) => {
-                this.data.currentDepartment = e.target.value;
-                this.listenToCurrentDepartmentSettings(); 
-            });
-        }
-
+        if (deptSelect) deptSelect.addEventListener('change', (event) => {
+            this.data.currentDepartment = event.target.value;
+            this.listenToCurrentDepartmentSettings();
+        });
         if (globalDate) globalDate.addEventListener('change', () => this.loadDayData());
         if (globalShift) globalShift.addEventListener('change', () => this.loadDayData());
+    },
+
+    showLoginGate(message = '') {
+        const gate = document.getElementById('auth-gate');
+        const shell = document.getElementById('app-shell');
+        if (gate) gate.style.display = 'flex';
+        if (shell) shell.setAttribute('aria-hidden', 'true');
+        const error = document.getElementById('login-error');
+        if (error) { error.textContent = message; error.style.display = message ? 'block' : 'none'; }
+        const username = document.getElementById('login-username');
+        if (username) username.focus();
+    },
+
+    showAuthenticatedShell() {
+        const gate = document.getElementById('auth-gate');
+        const shell = document.getElementById('app-shell');
+        if (gate) gate.style.display = 'none';
+        if (shell) shell.setAttribute('aria-hidden', 'false');
+        const name = document.getElementById('auth-user-name');
+        const role = document.getElementById('auth-user-role');
+        if (name) name.textContent = this.currentUser.username || '';
+        if (role) role.textContent = this.currentUser.jobTitle || this.currentUser.role || '';
+        const sidebarName = document.getElementById('sidebar-user-name');
+        const sidebarRole = document.getElementById('sidebar-user-role');
+        if (sidebarName) sidebarName.textContent = this.currentUser.username || '';
+        if (sidebarRole) sidebarRole.textContent = this.currentUser.jobTitle || this.currentUser.role || '';
+        const adminNav = document.querySelectorAll('[data-admin-only]');
+        adminNav.forEach(item => { item.style.display = this.currentUser.isMaster ? '' : 'none'; });
+        this.refreshPermissionedNavigation();
+        this.applyPermissionedControls();
+        this.renderDepartmentSelector();
+        this.renderAdminPermissionControls();
+        this.renderAdminUsersList();
+    },
+
+    visibleDepartments() {
+        if (!this.currentUser || this.currentUser.isMaster) return [...this.data.departments];
+        const allowed = Array.isArray(this.currentUser.allowedDepartments) ? this.currentUser.allowedDepartments : [];
+        return allowed.includes('*') ? [...this.data.departments] : this.data.departments.filter(department => allowed.includes(department));
+    },
+
+    permissionKey(screenId) {
+        return screenId === '5s' ? 'fiveS' : screenId;
+    },
+
+    canView(screenId) {
+        if (!this.currentUser) return false;
+        if (this.currentUser.isMaster) return true;
+        const key = this.permissionKey(screenId);
+        return this.currentUser.permissions?.view?.[key] === true && this.visibleDepartments().length > 0;
+    },
+
+    canEdit(scope) {
+        if (!this.currentUser) return false;
+        if (this.currentUser.isMaster) return true;
+        return this.currentUser.permissions?.edit?.[scope] === true && this.visibleDepartments().length > 0;
+    },
+
+    hasAnyViewPermission() {
+        return ['production', 'balances', 'quality', 'fiveS', 'analytics', 'settings'].some((screen) => this.canView(screen));
+    },
+
+    refreshPermissionedNavigation() {
+        if (!this.currentUser) return;
+        document.querySelectorAll('.sidebar-nav-item[data-target], .bottom-nav .nav-item[data-target]').forEach((item) => {
+            const target = item.dataset.target;
+            const allowed = target === 'admin'
+                ? this.currentUser.isMaster
+                : target === 'home'
+                    ? this.currentUser.isMaster || this.hasAnyViewPermission()
+                    : target === 'settings'
+                        ? this.currentUser.isMaster || this.canView('settings')
+                        : this.canView(target);
+            item.style.display = allowed ? '' : 'none';
+            item.setAttribute('aria-hidden', allowed ? 'false' : 'true');
+        });
+        document.querySelectorAll('[data-factory-only="true"]').forEach((item) => {
+            item.style.display = this.currentUser.isMaster ? '' : 'none';
+        });
+    },
+
+    applyPermissionedControls() {
+        const qualityEditable = this.canEdit('quality');
+        const fiveSEditable = this.canEdit('fiveS');
+        const settingsEditable = this.canEdit('settings');
+        const balanceEditable = this.canEdit('balances');
+        const productionEditable = this.canEdit('production');
+        const masterOnly = this.currentUser?.isMaster === true;
+        const productionTarget = document.getElementById('prod-target');
+        if (productionTarget) productionTarget.readOnly = !productionEditable;
+        ['scratch-model', 'scratch-type', 'scratch-image', 'scratch-notes'].forEach((id) => {
+            const input = document.getElementById(id);
+            if (input) input.disabled = !qualityEditable;
+        });
+        const newDepartmentInput = document.getElementById('new-department-name');
+        if (newDepartmentInput) newDepartmentInput.disabled = !masterOnly;
+        const newDefectTypeInput = document.getElementById('new-defect-type');
+        if (newDefectTypeInput) newDefectTypeInput.disabled = !settingsEditable;
+        const fiveSEntry = document.getElementById('5s-entry-card');
+        if (fiveSEntry) fiveSEntry.style.display = fiveSEditable ? '' : 'none';
+        const qualityEntry = document.getElementById('quality-entry-card');
+        if (qualityEntry) qualityEntry.style.display = qualityEditable ? '' : 'none';
+        const addDefectTypeButton = document.getElementById('add-defect-type-btn');
+        if (addDefectTypeButton) addDefectTypeButton.disabled = !settingsEditable;
+        const departmentManagement = document.getElementById('department-management-card');
+        if (departmentManagement) departmentManagement.style.display = this.currentUser?.isMaster ? '' : 'none';
+        const resetCard = document.getElementById('settings-reset-card');
+        if (resetCard) resetCard.style.display = this.currentUser?.isMaster ? '' : 'none';
+        ['set-line-name', 'set-shift-start', 'set-shift-end', 'set-break-start', 'set-break-end'].forEach((id) => {
+            const input = document.getElementById(id);
+            if (input) input.readOnly = !settingsEditable;
+        });
+        const addModelCard = document.getElementById('add-model-card');
+        if (addModelCard && this.currentBalanceTab === 'cabinet') addModelCard.style.display = balanceEditable ? '' : 'none';
+    },
+
+    requireView(screenId) {
+        if (this.canView(screenId)) return true;
+        this.showToast('ليس لديك صلاحية عرض هذه الصفحة', true);
+        return false;
+    },
+
+    requireEdit(scope) {
+        if (this.canEdit(scope)) return true;
+        this.showToast('ليس لديك صلاحية تعديل هذه البيانات', true);
+        return false;
+    },
+
+    getLoginSecurityState() {
+        try {
+            const stored = JSON.parse(localStorage.getItem('production_system_login_security_v1') || '{}');
+            return {
+                failures: Number.isFinite(Number(stored.failures)) ? Math.max(0, Number(stored.failures)) : 0,
+                lockedUntil: Number.isFinite(Number(stored.lockedUntil)) ? Math.max(0, Number(stored.lockedUntil)) : 0
+            };
+        } catch (error) {
+            return { failures: 0, lockedUntil: 0 };
+        }
+    },
+
+    saveLoginSecurityState(state) {
+        try { localStorage.setItem('production_system_login_security_v1', JSON.stringify(state)); } catch (error) { /* لا نعتمد على التخزين المحلي كطبقة أمان وحيدة */ }
+    },
+
+    getLoginLockRemainingSeconds() {
+        const remaining = Math.ceil((this.getLoginSecurityState().lockedUntil - Date.now()) / 1000);
+        return Math.max(0, remaining);
+    },
+
+    registerLoginFailure() {
+        const state = this.getLoginSecurityState();
+        const now = Date.now();
+        if (state.lockedUntil && state.lockedUntil <= now) {
+            state.failures = 0;
+            state.lockedUntil = 0;
+        }
+        state.failures += 1;
+        if (state.failures >= 5) {
+            state.failures = 0;
+            state.lockedUntil = now + 30 * 1000;
+        }
+        this.saveLoginSecurityState(state);
+        return this.getLoginLockRemainingSeconds();
+    },
+
+    clearLoginSecurityState() {
+        this.saveLoginSecurityState({ failures: 0, lockedUntil: 0 });
+    },
+
+    setLoginMessage(message, isError = true) {
+        const element = document.getElementById('login-error');
+        if (!element) return;
+        element.textContent = message || '';
+        element.classList.toggle('auth-success', !isError);
+        element.classList.toggle('auth-error', isError);
+        element.style.display = message ? 'block' : 'none';
+    },
+
+    async submitLogin(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const username = form.querySelector('[name="username"]')?.value || '';
+        const password = form.querySelector('[name="password"]')?.value || '';
+        const button = form.querySelector('button[type="submit"]');
+        const remaining = this.getLoginLockRemainingSeconds();
+        if (remaining > 0) {
+            this.setLoginMessage(`تم إيقاف محاولات الدخول مؤقتاً. حاول بعد ${remaining} ثانية.`, true);
+            return;
+        }
+        if (button) button.disabled = true;
+        this.setLoginMessage('');
+        try {
+            await API.auth.login(username, password);
+            this.clearLoginSecurityState();
+        } catch (loginError) {
+            const lockRemaining = this.registerLoginFailure();
+            const messages = {
+                invalid_username: 'اكتب اسم مستخدم صحيحاً باللغة الإنجليزية',
+                missing_password: 'أدخل كلمة المرور',
+                account_not_configured: 'الحساب غير مفعل أو لم يمنحه المدير صلاحيات بعد',
+                'auth/invalid-credential': 'اسم المستخدم أو كلمة المرور غير صحيحة',
+                'auth/too-many-requests': 'تم إيقاف المحاولات مؤقتاً من Firebase. حاول لاحقاً'
+            };
+            const message = lockRemaining > 0
+                ? `تم إيقاف محاولات الدخول مؤقتاً. حاول بعد ${lockRemaining} ثانية.`
+                : (messages[loginError.message] || messages[loginError.code] || 'تعذر تسجيل الدخول');
+            this.setLoginMessage(message, true);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    },
+
+    async requestPasswordReset() {
+        const username = document.getElementById('login-username')?.value || '';
+        const button = document.getElementById('forgot-password-btn');
+        let cooldownUntil = 0;
+        try { cooldownUntil = Number(sessionStorage.getItem('production_system_reset_cooldown_until') || 0); } catch (error) { cooldownUntil = 0; }
+        const remaining = Math.ceil((cooldownUntil - Date.now()) / 1000);
+        if (remaining > 0) {
+            this.setLoginMessage(`تم إرسال طلب حديثاً. حاول بعد ${remaining} ثانية.`, true);
+            return;
+        }
+        if (!/^[a-z0-9._-]{3,40}$/i.test(String(username).trim())) {
+            this.setLoginMessage('اكتب اسم المستخدم أولاً ثم اضغط "نسيت كلمة المرور؟"', true);
+            return;
+        }
+        if (button) button.disabled = true;
+        this.setLoginMessage('');
+        try {
+            await API.auth.requestPasswordReset(username);
+            try { sessionStorage.setItem('production_system_reset_cooldown_until', String(Date.now() + 60 * 1000)); } catch (error) { /* اختياري */ }
+            this.setLoginMessage('إذا كان الحساب موجوداً، فسيتم إرسال رسالة إعادة تعيين كلمة المرور إلى البريد الإلكتروني المسجل للحساب.', false);
+        } catch (resetError) {
+            const knownError = ['auth/invalid-email', 'auth/user-not-found', 'auth/invalid-credential'].includes(resetError.code);
+            this.setLoginMessage(knownError ? 'تعذر إرسال رسالة الاستعادة. تأكد من اسم المستخدم أو تواصل مع المدير الرئيسي.' : 'تعذر إرسال رسالة إعادة تعيين كلمة المرور. حاول لاحقاً.', true);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    },
+
+    async logout() {
+        if (!confirm('هل تريد تسجيل الخروج من النظام؟')) return;
+        await API.auth.logout();
+        window.location.reload();
+    },
+
+    toggleSidebar(force) {
+        const sidebar = document.getElementById('app-sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar || !backdrop) return;
+        const shouldOpen = typeof force === 'boolean' ? force : !sidebar.classList.contains('is-open');
+        sidebar.classList.toggle('is-open', shouldOpen);
+        backdrop.classList.toggle('is-visible', shouldOpen);
+        document.body.classList.toggle('sidebar-open', shouldOpen);
+    },
+
+    renderAdminPermissionControls() {
+        if (!this.currentUser?.isMaster) return;
+        const departmentsContainer = document.getElementById('admin-department-permissions');
+        const screensContainer = document.getElementById('admin-screen-permissions');
+        if (departmentsContainer) {
+            const departments = this.data.departments.length ? this.data.departments : ['*'];
+            departmentsContainer.innerHTML = `
+                <label class="check-container admin-all-check"><input type="checkbox" data-admin-dept="*" checked><span class="checkmark"></span> كل الأقسام</label>
+                ${departments.filter(Boolean).map(department => `<label class="check-container"><input type="checkbox" data-admin-dept="${this.escapeHtml(department)}"><span class="checkmark"></span>${this.escapeHtml(department)}</label>`).join('')}
+            `;
+            const allBox = departmentsContainer.querySelector('[data-admin-dept="*"]');
+            const boxes = [...departmentsContainer.querySelectorAll('input[data-admin-dept]:not([data-admin-dept="*"])')];
+            allBox?.addEventListener('change', () => {
+                boxes.forEach(box => { box.checked = false; box.disabled = allBox.checked; });
+            });
+            boxes.forEach(box => box.addEventListener('change', () => {
+                if (box.checked) { allBox.checked = false; allBox.disabled = false; }
+                if (!boxes.some(item => item.checked)) { allBox.checked = true; allBox.disabled = false; boxes.forEach(item => { item.disabled = true; item.checked = false; }); }
+            }));
+            boxes.forEach(box => { box.disabled = true; });
+        }
+        if (screensContainer) {
+            const screens = [
+                ['production', 'الإنتاج'], ['quality', 'الجودة'], ['balances', 'الأرصدة'],
+                ['fiveS', 'ملاحظات 5S'], ['analytics', 'التقارير'], ['settings', 'الإعدادات']
+            ];
+            screensContainer.innerHTML = screens.map(([key, label]) => `
+                <div class="permission-row"><strong>${label}</strong><label class="check-container"><input type="checkbox" data-admin-view="${key}" checked><span class="checkmark"></span>عرض</label><label class="check-container"><input type="checkbox" data-admin-edit="${key}"><span class="checkmark"></span>تعديل</label></div>
+            `).join('');
+        }
+    },
+
+    renderAdminUsersList() {
+        const container = document.getElementById('admin-users-list');
+        if (!container || !this.currentUser?.isMaster) return;
+        const users = this.data.managedUsers || [];
+        if (!users.length) {
+            container.innerHTML = '<div class="empty-state">لا يوجد مستخدمون مُضافون بعد.</div>';
+            return;
+        }
+        container.innerHTML = users.map(user => {
+            const isMaster = user.usernameLower === 'mfayez';
+            const departments = Array.isArray(user.allowedDepartments) && user.allowedDepartments.includes('*') ? 'كل الأقسام' : (user.allowedDepartments || []).join('، ') || 'لا توجد أقسام';
+            const status = user.active === false ? 'موقوف' : 'نشط';
+            const action = isMaster ? '<span class="admin-master-badge">MASTER</span>' : `<button type="button" class="admin-user-action ${user.active === false ? 'is-active' : 'is-danger'}" onclick="App.toggleManagedUser('${user.uid}', ${user.active === false})">${user.active === false ? 'تفعيل' : 'إيقاف'}</button>`;
+            return `<article class="admin-user-card"><div class="admin-user-main"><div class="admin-user-avatar"><i class="fa-solid fa-user"></i></div><div><strong>${this.escapeHtml(user.username || '')}</strong><small>${this.escapeHtml(user.jobTitle || user.role || '')} · ${status}</small><span>${this.escapeHtml(departments)}</span></div></div><div class="admin-user-actions">${action}</div></article>`;
+        }).join('');
+    },
+
+    async createManagedUser() {
+        if (!this.currentUser?.isMaster) { this.showToast('هذه العملية متاحة للمدير الرئيسي فقط', true); return; }
+        const username = document.getElementById('admin-username')?.value.trim() || '';
+        const password = document.getElementById('admin-password')?.value || '';
+        const jobTitle = document.getElementById('admin-job-title')?.value || 'فني';
+        const role = document.getElementById('admin-role')?.value || 'viewer';
+        const departmentBoxes = [...document.querySelectorAll('#admin-department-permissions input[data-admin-dept]')];
+        const allDepartments = departmentBoxes.find(box => box.dataset.adminDept === '*')?.checked;
+        const allowedDepartments = allDepartments ? ['*'] : departmentBoxes.filter(box => box.checked).map(box => box.dataset.adminDept);
+        const view = {};
+        const edit = {};
+        document.querySelectorAll('#admin-screen-permissions input[data-admin-view]').forEach(box => { view[box.dataset.adminView] = box.checked; });
+        document.querySelectorAll('#admin-screen-permissions input[data-admin-edit]').forEach(box => { edit[box.dataset.adminEdit] = box.checked; });
+        if (!username || !password || !allowedDepartments.length) { this.showToast('أكمل اسم المستخدم وكلمة المرور والأقسام المسموح بها', true); return; }
+        if (!Object.values(view).some(Boolean)) { this.showToast('اختر صفحة واحدة على الأقل للعرض', true); return; }
+        try {
+            await API.auth.createUser({ username, password, role, jobTitle, allowedDepartments, permissions: { view, edit } });
+            this.showToast('تم إنشاء المستخدم وحفظ صلاحياته بنجاح');
+            ['admin-username', 'admin-password'].forEach(id => { const input = document.getElementById(id); if (input) input.value = ''; });
+        } catch (error) {
+            const messages = { username_exists: 'اسم المستخدم موجود بالفعل', weak_password: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل', invalid_username: 'اسم المستخدم يجب أن يكون باللغة الإنجليزية وبدون مسافات' };
+            this.showToast(messages[error.message] || 'تعذر إنشاء المستخدم', true);
+        }
+    },
+
+    async toggleManagedUser(uid, shouldActivate) {
+        if (!this.currentUser?.isMaster || !uid) return;
+        try {
+            if (shouldActivate) await API.auth.updateUser(uid, { active: true });
+            else if (confirm('هل تريد إيقاف هذا المستخدم ومنعه من الدخول؟')) await API.auth.deactivateUser(uid);
+            this.showToast(shouldActivate ? 'تم تفعيل المستخدم' : 'تم إيقاف المستخدم');
+        } catch (error) {
+            this.showToast('تعذر تحديث حالة المستخدم', true);
+        }
     },
 
     showToast(msg, isError = false) {
@@ -157,8 +544,8 @@ const App = {
         const select = document.getElementById('global-department');
         if (!select) return;
         select.innerHTML = '';
-        this.data.departments.forEach(dept => { select.innerHTML += `<option value="${dept}">${dept}</option>`; });
-        if(this.data.currentDepartment) select.value = this.data.currentDepartment;
+        this.visibleDepartments().forEach(dept => { select.innerHTML += `<option value="${dept}">${dept}</option>`; });
+        if(this.data.currentDepartment && this.visibleDepartments().includes(this.data.currentDepartment)) select.value = this.data.currentDepartment;
     },
 
     renderSettingsDepartmentsList() {
@@ -183,6 +570,7 @@ const App = {
     },
 
     async renameDepartment(index) {
+        if (!this.currentUser?.isMaster) { this.showToast('إدارة الأقسام متاحة للمدير الرئيسي فقط', true); return; }
         const oldName = this.data.departments[index];
         if (!oldName) return;
 
@@ -218,6 +606,7 @@ const App = {
     },
 
     async addDepartment() {
+        if (!this.currentUser?.isMaster) { this.showToast('إدارة الأقسام متاحة للمدير الرئيسي فقط', true); return; }
         const input = document.getElementById('new-department-name');
         if (!input) return;
         const val = input.value.trim();
@@ -239,6 +628,7 @@ const App = {
     },
 
     async removeDepartment(index) {
+        if (!this.currentUser?.isMaster) { this.showToast('إدارة الأقسام متاحة للمدير الرئيسي فقط', true); return; }
         const removedDept = this.data.departments[index];
         if (!removedDept || this.data.departments.length <= 1) return;
         if (!await this.verifyDepartmentManagementPassword('حذف القسم')) return;
@@ -266,7 +656,7 @@ const App = {
                 this.data.settings = cloudSettings;
             } else {
                 this.data.settings = { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: this.data.currentDepartment, defectTypes: ['خدش خفيف'] };
-                API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
+                if (this.canEdit('settings')) API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
             }
             this.applySettingsToFields();
             this.renderDefectTypesSettings();
@@ -283,15 +673,26 @@ const App = {
     },
 
     navigate(screenId) {
-        if (screenId === 'settings') return; 
+        if (screenId === 'settings') return;
+        const permissionScreen = ['defects_log', 'scratches'].includes(screenId) ? 'quality' : screenId;
+        const canOpenHome = screenId === 'home' && (this.currentUser?.isMaster || this.hasAnyViewPermission());
+        if (screenId !== 'admin' && screenId !== 'home' && !this.requireView(permissionScreen)) return;
+        if (screenId === 'home' && !canOpenHome) {
+            this.showToast('لا توجد صفحات متاحة لهذا الحساب', true);
+            return;
+        }
+        if (screenId === 'admin' && !this.currentUser?.isMaster) {
+            this.showToast('لوحة الإدارة متاحة للمدير الرئيسي فقط', true);
+            return;
+        }
         this.currentScreen = screenId;
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const targetScreen = document.getElementById('screen-' + screenId);
         if(targetScreen) targetScreen.classList.add('active');
         
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        const navBtn = document.querySelector(`.nav-item[data-target="${screenId === 'defects_log' || screenId === 'scratches' ? 'quality' : screenId}"]`);
-        if(navBtn) navBtn.classList.add('active');
+        document.querySelectorAll('.nav-item, .sidebar-nav-item').forEach(n => n.classList.remove('active'));
+        const navTarget = screenId === 'defects_log' || screenId === 'scratches' ? 'quality' : screenId;
+        document.querySelectorAll(`.nav-item[data-target="${navTarget}"], .sidebar-nav-item[data-target="${navTarget}"]`).forEach((navBtn) => navBtn.classList.add('active'));
         
         if(screenId === 'analytics') this.renderAnalytics();
         if(screenId === '5s') this.render5SNotes();
@@ -308,6 +709,11 @@ const App = {
     },
 
     openSettings() {
+        if (!this.currentUser) return this.showLoginGate();
+        if (!this.currentUser.isMaster && !this.canView('settings')) {
+            this.showToast('الإعدادات متاحة للمستخدمين المصرح لهم فقط', true);
+            return;
+        }
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
         const settingsScreen = document.getElementById('screen-settings');
@@ -345,6 +751,7 @@ const App = {
     },
 
     applySettings() {
+        if (!this.requireEdit('settings')) return;
         this.data.settings.start = document.getElementById('set-shift-start').value;
         this.data.settings.end = document.getElementById('set-shift-end').value;
         this.data.settings.bStart = document.getElementById('set-break-start').value;
@@ -393,6 +800,8 @@ const App = {
     buildProductionUI() {
         const container = document.getElementById('production-list');
         if (!container) return;
+        const productionEditable = this.canEdit('production');
+        const editAttribute = productionEditable ? '' : 'readonly aria-readonly="true"';
         container.innerHTML = '';
         this.data.generatedHours.forEach(timeSlot => {
             if (timeSlot.isBreak) {
@@ -402,10 +811,10 @@ const App = {
                     <div class="hour-row" id="row-${timeSlot.rawTime.replace(':','-')}" data-hour="${timeSlot.rawTime}">
                         <div class="hour-header">
                             <span class="time-label">${timeSlot.label}</span>
-                            <input type="number" class="actual-input" placeholder="0" 
+                            <input type="number" class="actual-input" placeholder="0" ${editAttribute}
                                 oninput="App.handleProdInput('${timeSlot.rawTime}')">
                         </div>
-                        <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." 
+                        <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." ${editAttribute}
                             oninput="App.handleProdInput('${timeSlot.rawTime}')">
                     </div>
                 `;
@@ -454,21 +863,22 @@ const App = {
             if(this.currentScreen === 'analytics') this.renderAnalytics();
         });
 
-        this.masterProdListener = API.master.listenToAllProduction(date, shift, (records) => {
+        const allowedMasterScope = this.currentUser?.isMaster ? ['*'] : this.visibleDepartments();
+        this.masterProdListener = API.master.listenToScopedProduction(allowedMasterScope, date, shift, (records) => {
             this.data.master.production = records;
             if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
                 this.renderMasterDashboard();
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             }
         });
-        this.masterTargetListener = API.master.listenToAllTargets(date, shift, (records) => {
+        this.masterTargetListener = API.master.listenToScopedTargets(allowedMasterScope, date, shift, (records) => {
             this.data.master.targets = records;
             if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
                 this.renderMasterDashboard();
                 if(this.currentScreen === 'analytics') this.renderAnalytics();
             }
         });
-      this.masterDefectListener = API.master.listenToAllScratches(date, (records) => {
+        this.masterDefectListener = API.master.listenToScopedScratches(allowedMasterScope, date, (records) => {
             this.data.master.scratches = records;
             if(this.currentScreen === 'home' || this.currentScreen === 'analytics') {
                 this.renderMasterDashboard();
@@ -536,6 +946,7 @@ const App = {
     },
 
     saveTarget() {
+        if (!this.requireEdit('production')) return;
         if (!this.isOnline) return;
         const date = document.getElementById('global-date').value;
         const shift = document.getElementById('global-shift').value;
@@ -548,6 +959,7 @@ const App = {
     },
 
     handleProdInput(hourStr) {
+        if (!this.requireEdit('production')) return;
         this.calculateLocalTotal();
         const safeId = hourStr.replace(':','-');
         if (this.saveTimers[safeId]) clearTimeout(this.saveTimers[safeId]);
@@ -580,19 +992,21 @@ const App = {
 
     // ---------------- Master Dashboard ----------------
     renderMasterDashboard() {
+        const dashboardDepartments = this.visibleDepartments();
+        const isMaster = this.currentUser?.isMaster === true;
         let factoryTotalActual = 0;
         let factoryTotalTarget = 0;
         let deptProd = {};
         let deptScratches = {};
 
-        this.data.departments.forEach(d => { 
-            deptProd[d] = {}; 
-            deptScratches[d] = 0; 
+        dashboardDepartments.forEach(d => {
+            deptProd[d] = {};
+            deptScratches[d] = 0;
         });
 
         if(this.data.master.production) {
             this.data.master.production.forEach(r => {
-                if(r.department && this.data.departments.includes(r.department)) {
+                if(r.department && dashboardDepartments.includes(r.department)) {
                     if(r.recordId && r.recordId.startsWith(r.department)) {
                         const val = Number(r.actual) || 0;
                         const hourPrefix = r.hour.split(':')[0]; 
@@ -609,13 +1023,15 @@ const App = {
         let validTargets = {};
         if(this.data.master.targets) {
             this.data.master.targets.forEach(r => {
-                if(r.department && this.data.departments.includes(r.department)) {
+                if(r.department && dashboardDepartments.includes(r.department)) {
                     validTargets[r.department] = Number(r.target) || 0;
                 }
             });
         }
         
-        factoryTotalTarget = validTargets['التجميع النهائي'] || 0;
+        factoryTotalTarget = isMaster
+            ? (validTargets['التجميع النهائي'] || 0)
+            : dashboardDepartments.reduce((sum, department) => sum + (validTargets[department] || 0), 0);
 
         if(this.data.master.scratches) {
             this.data.master.scratches.forEach(r => {
@@ -626,11 +1042,11 @@ const App = {
         }
 
         let finalDeptProdTotals = {};
-        this.data.departments.forEach(d => {
+        dashboardDepartments.forEach(d => {
             const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
             finalDeptProdTotals[d] = sum;
-            if (d === 'التجميع النهائي') {
-                factoryTotalActual += sum; 
+            if (isMaster ? d === 'التجميع النهائي' : true) {
+                factoryTotalActual += sum;
             }
         });
 
@@ -643,7 +1059,7 @@ const App = {
         const cardsContainer = document.getElementById('master-departments-cards');
         if(cardsContainer) {
             cardsContainer.innerHTML = '';
-            this.data.departments.forEach(dept => {
+            dashboardDepartments.forEach(dept => {
                 const prod = finalDeptProdTotals[dept];
                 const target = validTargets[dept] || 0;
                 const pct = target > 0 ? Math.round((prod / target) * 100) : 0;
@@ -670,7 +1086,7 @@ const App = {
         Chart.defaults.font.family = 'Cairo';
         Chart.defaults.color = '#94a3b8';
 
-        const depts = this.data.departments;
+        const depts = dashboardDepartments;
         const prodData = depts.map(d => finalDeptProdTotals[d]);
         const scratchData = depts.map(d => deptScratches[d]);
 
@@ -703,12 +1119,13 @@ const App = {
         if(activeBtn) activeBtn.classList.add('active');
         
         const addCard = document.getElementById('add-model-card');
-        if(addCard) addCard.style.display = tabId === 'final' ? 'none' : 'block';
+        if(addCard) addCard.style.display = tabId === 'final' || !this.canEdit('balances') ? 'none' : 'block';
         
         this.renderInventory();
     },
 
     addInventoryModel() {
+        if (!this.requireEdit('balances')) return;
         const nameInput = document.getElementById('inv-model-name');
         const colorInput = document.getElementById('inv-model-color');
         const is3DoorInput = document.getElementById('inv-is-3door');
@@ -735,6 +1152,7 @@ const App = {
     },
 
     deleteInventoryModel(modelId) {
+        if (!this.requireEdit('balances')) return;
         if(!confirm('هل أنت متأكد من حذف هذا الموديل بأرصدته؟')) return;
         
         this.data.inventory.models = this.data.inventory.models.filter(m => m.id !== modelId);
@@ -746,6 +1164,7 @@ const App = {
     },
 
     handleInventoryInput(modelId, part, field) {
+        if (!this.requireEdit('balances')) return;
         const inputEl = document.getElementById(`inv_${part}_${modelId}_${field}`);
         if(!inputEl) return;
         
@@ -765,6 +1184,8 @@ const App = {
         container.innerHTML = '';
 
         const models = this.data.inventory.models || [];
+        const balanceEditable = this.canEdit('balances');
+        const inventoryEditAttribute = balanceEditable ? '' : 'readonly aria-readonly="true"';
         if(models.length === 0) {
             container.innerHTML = `<div class="text-center text-muted" style="padding: 30px;">لا توجد موديلات في المخزون. أضف موديل للبدء.</div>`;
             return;
@@ -780,11 +1201,11 @@ const App = {
                     <div class="inv-inputs-grid">
                         <div class="inv-input-group">
                             <label>رصيد المقايسة</label>
-                            <input type="number" id="inv_cabinet_${model.id}_boq" class="inv-input" placeholder="0" value="${cabData.boq}" oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'boq')">
+                            <input type="number" id="inv_cabinet_${model.id}_boq" class="inv-input" placeholder="0" value="${cabData.boq}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'boq')">
                         </div>
                         <div class="inv-input-group">
                             <label>خارج المقايسة</label>
-                            <input type="number" id="inv_cabinet_${model.id}_out" class="inv-input" placeholder="0" value="${cabData.out}" oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'out')">
+                            <input type="number" id="inv_cabinet_${model.id}_out" class="inv-input" placeholder="0" value="${cabData.out}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'out')">
                         </div>
                     </div>
                 `;
@@ -795,18 +1216,18 @@ const App = {
                 const vInput = model.is3Door ? `
                     <div class="inv-input-group">
                         <label>باب V</label>
-                        <input type="number" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
+                        <input type="number" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
                     </div>` : '';
 
                 contentHtml = `
                     <div class="inv-inputs-grid" style="grid-template-columns: ${gridCols};">
                         <div class="inv-input-group">
                             <label>باب R</label>
-                            <input type="number" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
+                            <input type="number" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
                         </div>
                         <div class="inv-input-group">
                             <label>باب F</label>
-                            <input type="number" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
+                            <input type="number" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
                         </div>
                         ${vInput}
                     </div>
@@ -847,7 +1268,7 @@ const App = {
                         <div class="inv-title">${model.name} <span style="color:var(--text-muted); font-size:0.9rem;">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>
                             ${badgeHtml}
-                            <i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>
+                            ${balanceEditable ? `<i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>` : ''}
                         </div>
                     </div>
                     ${contentHtml}
@@ -874,9 +1295,11 @@ const App = {
         const selectMenu = document.getElementById('scratch-type');
         if(!container || !selectMenu) return;
         container.innerHTML = ''; selectMenu.innerHTML = '';
+        const settingsEditable = this.canEdit('settings');
         this.data.settings.defectTypes.forEach((type, index) => {
-            container.innerHTML += `<div class="defect-badge-setting"><span>${type}</span><i class="fa-solid fa-xmark text-red" onclick="App.removeDefectType(${index})"></i></div>`;
-            selectMenu.innerHTML += `<option value="${type}">${type}</option>`;
+            const deleteIcon = settingsEditable ? `<i class="fa-solid fa-xmark text-red" onclick="App.removeDefectType(${index})"></i>` : '';
+            container.innerHTML += `<div class="defect-badge-setting"><span>${this.escapeHtml(type)}</span>${deleteIcon}</div>`;
+            selectMenu.innerHTML += `<option value="${this.escapeHtml(type)}">${this.escapeHtml(type)}</option>`;
         });
     },
     
@@ -897,6 +1320,7 @@ const App = {
     },
 
     addDefectType() {
+        if (!this.requireEdit('settings')) return;
         const input = document.getElementById('new-defect-type'); 
         if(!input) return;
         const val = input.value.trim();
@@ -908,6 +1332,7 @@ const App = {
         }
     },
     removeDefectType(index) {
+        if (!this.requireEdit('settings')) return;
         if(confirm("حذف هذا التصنيف من القسم الحالي؟")) {
             this.data.settings.defectTypes.splice(index, 1); 
             API.settings.saveSettings(this.data.currentDepartment, this.data.settings);
@@ -915,6 +1340,7 @@ const App = {
     },
 
     addScratchDefect() {
+        if (!this.requireEdit('quality')) return;
         const modelEl = document.getElementById('scratch-model');
         const typeEl = document.getElementById('scratch-type');
         const notesEl = document.getElementById('scratch-notes');
@@ -966,6 +1392,7 @@ const App = {
         if(!container) return; container.innerHTML = '';
         
         let countToday = 0; let countFixed = 0; let countPending = 0;
+        const canEditQuality = this.canEdit('quality');
         const globalDate = document.getElementById('global-date').value;
         
         this.data.scratches.forEach(d => { 
@@ -989,6 +1416,10 @@ const App = {
             const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
             const dateText = defect.date === globalDate ? defect.time : `<span class="text-red">${defect.date}</span>`;
             const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
+            const statusHtml = canEditQuality
+                ? `<span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>`
+                : `<span class="defect-badge ${statusClass}">${statusText}</span>`;
+            const deleteHtml = canEditQuality ? `<i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>` : '';
 
             container.innerHTML += `
                 <div class="card defect-card" style="border-right-color: ${isPending ? 'var(--danger-color)' : 'var(--success-color)'};">
@@ -1000,8 +1431,8 @@ const App = {
                         </div>
                         <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>
-                            <i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>
+                            ${statusHtml}
+                            ${deleteHtml}
                         </div>
                     </div>
                 </div>
@@ -1009,8 +1440,8 @@ const App = {
         });
     },
 
-    toggleScratchStatus(id, currentStatus) { const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending'; API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus }); },
-    deleteScratch(id) { if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
+    toggleScratchStatus(id, currentStatus) { if (!this.requireEdit('quality')) return; const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending'; API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus }); },
+    deleteScratch(id) { if (!this.requireEdit('quality')) return; if(confirm("مسح السجل نهائياً؟")) API.quality.deleteDefect(id); },
     openImage(src) { const modalImg = document.getElementById('modal-image'); const modal = document.getElementById('image-modal'); if(modalImg && modal) { modalImg.src = src; modal.classList.add('show'); } },
     closeImageModal(e) { const modal = document.getElementById('image-modal'); if(modal && (e.target.id === 'image-modal' || e.target.classList.contains('fa-xmark') || e.target.classList.contains('close-modal-btn'))) { modal.classList.remove('show'); } },
     extractDriveFileId(url) {
@@ -1072,6 +1503,10 @@ const App = {
 
     // ---------------- التقارير والتحليلات الشاملة (مع باريتو) ----------------
     switchAnalyticsMode(mode) {
+        if (mode === 'factory' && !this.currentUser?.isMaster) {
+            this.showToast('تحليل المصنع متاح للمدير الرئيسي فقط', true);
+            mode = 'dept';
+        }
         this.analyticsMode = mode;
         const btnDept = document.getElementById('btn-analytics-dept');
         const btnFactory = document.getElementById('btn-analytics-factory');
@@ -1173,18 +1608,19 @@ const App = {
             }
         } 
         else {
-            // تحليلات المصنع بالكامل
+            // تحليلات المصنع بالكامل ضمن نطاق الأقسام المسموح بها
+            const analyticsDepartments = this.visibleDepartments();
             let factoryTotalActual = 0;
             let deptProd = {};
             let deptTargets = {};
             let globalScratches = {};
             let totalScratchesCount = 0;
 
-            this.data.departments.forEach(d => { deptProd[d] = {}; deptTargets[d] = 0; });
+            analyticsDepartments.forEach(d => { deptProd[d] = {}; deptTargets[d] = 0; });
 
             if(this.data.master.production) {
                 this.data.master.production.forEach(r => {
-                    if(r.department && this.data.departments.includes(r.department) && r.recordId && r.recordId.startsWith(r.department)) {
+                    if(r.department && analyticsDepartments.includes(r.department) && r.recordId && r.recordId.startsWith(r.department)) {
                         const val = Number(r.actual) || 0;
                         const hourPrefix = r.hour.split(':')[0]; 
                         deptProd[r.department][hourPrefix] = Math.max(deptProd[r.department][hourPrefix] || 0, val);
@@ -1194,7 +1630,7 @@ const App = {
 
             if(this.data.master.targets) {
                 this.data.master.targets.forEach(r => {
-                    if(r.department && this.data.departments.includes(r.department)) {
+                    if(r.department && analyticsDepartments.includes(r.department)) {
                         deptTargets[r.department] = Number(r.target) || 0;
                     }
                 });
@@ -1202,16 +1638,17 @@ const App = {
 
             if(this.data.master.scratches) {
                 this.data.master.scratches.forEach(r => {
+                    if (!r.department || !analyticsDepartments.includes(r.department)) return;
                     globalScratches[r.type] = (globalScratches[r.type] || 0) + 1;
                     totalScratchesCount++;
                 });
             }
 
             let finalDeptProdTotals = {};
-            this.data.departments.forEach(d => {
+            analyticsDepartments.forEach(d => {
                 const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
                 finalDeptProdTotals[d] = sum;
-                if(d === 'التجميع النهائي') factoryTotalActual += sum; 
+                factoryTotalActual += sum;
             });
 
             const facProdEl = document.getElementById('analytics-fac-prod');
@@ -1219,7 +1656,7 @@ const App = {
             if(facProdEl) facProdEl.innerText = factoryTotalActual;
             if(facDefectsEl) facDefectsEl.innerText = totalScratchesCount;
 
-            const depts = this.data.departments;
+            const depts = analyticsDepartments;
             const prodData = depts.map(d => finalDeptProdTotals[d]);
             const targetData = depts.map(d => deptTargets[d]);
 
@@ -1265,11 +1702,13 @@ const App = {
     render5SDepartmentOptions() {
         const select = document.getElementById('5s-department');
         if (!select) return;
+        const visibleDepartments = this.visibleDepartments();
         const selected = select.value || this.data.currentDepartment || '';
-        select.innerHTML = this.data.departments.length
-            ? this.data.departments.map((dept) => `<option value="${this.escapeHtml(dept)}">${this.escapeHtml(dept)}</option>`).join('')
+        select.innerHTML = visibleDepartments.length
+            ? visibleDepartments.map((dept) => `<option value="${this.escapeHtml(dept)}">${this.escapeHtml(dept)}</option>`).join('')
             : '<option value="">لا توجد أقسام</option>';
-        if (this.data.departments.includes(selected)) select.value = selected;
+        if (visibleDepartments.includes(selected)) select.value = selected;
+        else if (visibleDepartments.length) select.value = visibleDepartments[0];
     },
 
     get5SPlacesForDepartment(department) {
@@ -1290,6 +1729,7 @@ const App = {
     },
 
     async add5SPlace() {
+        if (!this.requireEdit('fiveS')) return;
         const deptSelect = document.getElementById('5s-department');
         const input = document.getElementById('5s-new-place');
         const department = deptSelect ? deptSelect.value : '';
@@ -1360,6 +1800,7 @@ const App = {
     },
 
     async add5SCorrectiveImage(noteId, file) {
+        if (!this.requireEdit('fiveS')) return;
         if (!file) return;
         const note = (this.data.fiveS.notes || []).find((item) => item.id === noteId);
         if (!note) { this.showToast('تعذر العثور على الملاحظة', true); return; }
@@ -1381,6 +1822,7 @@ const App = {
     },
 
     async add5SNote() {
+        if (!this.requireEdit('fiveS')) return;
         if (!this.isOnline) { this.showToast('لا يوجد اتصال بالسحابة حالياً', true); return; }
         const department = document.getElementById('5s-department')?.value || '';
         const place = document.getElementById('5s-place')?.value || '';
@@ -1432,6 +1874,7 @@ const App = {
     },
 
     async delete5SNote(noteId) {
+        if (!this.requireEdit('fiveS')) return;
         const note = (this.data.fiveS.notes || []).find((item) => item.id === noteId);
         if (!note) { this.showToast('تعذر العثور على الملاحظة', true); return; }
         const locationLabel = [note.department, note.place].filter(Boolean).join(' · ');
@@ -1484,9 +1927,14 @@ const App = {
                 const correctiveUrl = this.escapeHtml(this.get5SImageUrl(note.correctiveImageUrl || ''));
                 const noteId = this.escapeHtml(note.id || '');
                 const observationHtml = observationUrl ? `<div class="s5-image-frame"><img src="${observationUrl}" onclick="App.openImage(this.src)" alt="صورة الملاحظة"><span class="s5-image-label">صورة الملاحظة</span></div>` : '<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-image"></i><span>لا توجد صورة</span></div>';
-                const correctiveHtml = correctiveUrl ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>` : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`;
+                const correctiveHtml = correctiveUrl
+                    ? `<div class="s5-image-frame"><img src="${correctiveUrl}" onclick="App.openImage(this.src)" alt="صورة الفعل التصحيحي"><span class="s5-image-label">الفعل التصحيحي</span></div>`
+                    : this.canEdit('fiveS')
+                        ? `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><label class="s5-corrective-upload"><input type="file" accept="image/*" onchange="App.add5SCorrectiveImage('${noteId}', this.files[0])"><span>رفع الفعل التصحيحي</span></label></div>`
+                        : `<div class="s5-image-frame s5-no-image"><i class="fa-solid fa-hourglass-half"></i><span>بانتظار الفعل التصحيحي</span></div>`;
                 const time = note.createdAt ? new Date(note.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
-                return `<div class="card s5-note-card"><div class="s5-note-images">${observationHtml}${correctiveHtml}</div><div class="s5-note-meta"><span><i class="fa-solid fa-clock"></i> ${this.escapeHtml(time)}</span><span class="defect-badge ${correctiveUrl ? 'fixed' : 'pending'}">${correctiveUrl ? 'تم التوثيق' : 'بانتظار الفعل التصحيحي'}</span></div><p class="s5-note-description">${this.escapeHtml(note.description)}</p><div class="s5-note-footer"><span class="s5-note-id-label">${this.escapeHtml(note.id || '')}</span><button type="button" class="s5-delete-btn" onclick="App.delete5SNote('${noteId}')" title="حذف ملاحظة 5S"><i class="fa-solid fa-trash"></i><span>حذف الملاحظة</span></button></div></div>`;
+                const deleteHtml = this.canEdit('fiveS') ? `<button type="button" class="s5-delete-btn" onclick="App.delete5SNote('${noteId}')" title="حذف ملاحظة 5S"><i class="fa-solid fa-trash"></i><span>حذف الملاحظة</span></button>` : '';
+                return `<div class="card s5-note-card"><div class="s5-note-images">${observationHtml}${correctiveHtml}</div><div class="s5-note-meta"><span><i class="fa-solid fa-clock"></i> ${this.escapeHtml(time)}</span><span class="defect-badge ${correctiveUrl ? 'fixed' : 'pending'}">${correctiveUrl ? 'تم التوثيق' : 'بانتظار الفعل التصحيحي'}</span></div><p class="s5-note-description">${this.escapeHtml(note.description)}</p><div class="s5-note-footer"><span class="s5-note-id-label">${this.escapeHtml(note.id || '')}</span>${deleteHtml}</div></div>`;
             }).join('');
             return `<div class="card s5-location-group"><div class="s5-location-title"><h4><i class="fa-solid fa-location-dot text-teal"></i> ${this.escapeHtml(place)}</h4><span>${this.escapeHtml(department)} · ${group.length} ملاحظة · ${groupCorrective} مكتملة</span></div>${cards}</div>`;
         }).join('');
@@ -1901,6 +2349,7 @@ const App = {
         }
     },
     hardReset() {
+        if (!this.currentUser?.isMaster) { this.showToast('إعادة ضبط المصنع متاحة للمدير الرئيسي فقط', true); return; }
         if(confirm("تحذير: سيتم مسح الإعدادات المحلية! هل أنت متأكد؟")) { localStorage.removeItem(CONFIG.STORAGE_KEY); location.reload(); }
     }
 };

@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 import { 
     initializeFirestore, 
     persistentLocalCache, 
@@ -19,6 +20,10 @@ const firebaseConfig = {
 
 
 const app = initializeApp(firebaseConfig);
+const adminProvisioningApp = initializeApp(firebaseConfig, 'admin-provisioning');
+
+const auth = getAuth(app);
+const adminProvisioningAuth = getAuth(adminProvisioningApp);
 
 const db = initializeFirestore(app, {
     localCache: persistentLocalCache({
@@ -27,4 +32,4 @@ const db = initializeFirestore(app, {
 });
 const storage = getStorage(app);
 
-export { db, storage };
+export { db, storage, auth, adminProvisioningAuth, firebaseConfig };

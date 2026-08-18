@@ -1,10 +1,113 @@
-import { db, storage } from "./firebase.js";
+import { db, storage, auth, adminProvisioningAuth } from "./firebase.js";
 import {
     collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, limit
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    signOut,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 
+const USER_EMAIL_DOMAIN = 'production-b0b2c.firebaseapp.com';
+const MASTER_USERNAME = 'mfayez';
+const MASTER_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
+const defaultPermissions = () => ({
+    view: { production: true, quality: true, balances: true, fiveS: true, analytics: true, settings: true },
+    edit: { production: true, quality: true, balances: true, fiveS: true, settings: true }
+});
+const usernameEmail = (username) => `${String(username || '').trim().toLowerCase()}@${USER_EMAIL_DOMAIN}`;
+
 export const API = {
+    auth: {
+        onAuthStateChanged(callback) { return onAuthStateChanged(auth, callback); },
+        async login(username, password) {
+            const normalized = String(username || '').trim().toLowerCase();
+            if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
+            if (!password) throw new Error('missing_password');
+
+            let credential;
+            try {
+                credential = await signInWithEmailAndPassword(auth, usernameEmail(normalized), password);
+            } catch (error) {
+                const isMasterAttempt = normalized === MASTER_USERNAME && await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(buffer => Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('')) === MASTER_PASSWORD_HASH;
+                if (!isMasterAttempt || !['auth/user-not-found', 'auth/invalid-credential'].includes(error.code)) throw error;
+                credential = await createUserWithEmailAndPassword(auth, usernameEmail(normalized), password);
+            }
+
+            const profileRef = doc(db, 'app_users', credential.user.uid);
+            const profileSnap = await getDoc(profileRef);
+            const profile = profileSnap.exists() ? profileSnap.data() : null;
+            if (!profile && normalized === MASTER_USERNAME) {
+                const masterProfile = {
+                    uid: credential.user.uid,
+                    username: MASTER_USERNAME,
+                    usernameLower: MASTER_USERNAME,
+                    role: 'admin',
+                    jobTitle: 'مدير النظام',
+                    active: true,
+                    allowedDepartments: ['*'],
+                    permissions: defaultPermissions(),
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                await setDoc(profileRef, masterProfile, { merge: true });
+                return { uid: credential.user.uid, ...masterProfile, isMaster: true };
+            }
+            if (!profile || profile.active === false) {
+                await signOut(auth);
+                throw new Error('account_not_configured');
+            }
+            return { uid: credential.user.uid, ...profile, isMaster: profile.role === 'admin' && profile.usernameLower === MASTER_USERNAME };
+        },
+        async requestPasswordReset(username) {
+            const normalized = String(username || '').trim().toLowerCase();
+            if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
+            await sendPasswordResetEmail(auth, usernameEmail(normalized));
+        },
+        async logout() { await signOut(auth); },
+        async getProfile(uid) {
+            const snap = await getDoc(doc(db, 'app_users', uid));
+            return snap.exists() ? { uid, ...snap.data() } : null;
+        },
+        listenToUsers(callback) {
+            return onSnapshot(collection(db, 'app_users'), (snapshot) => {
+                const users = snapshot.docs.map(userDoc => ({ uid: userDoc.id, ...userDoc.data() }));
+                callback(users.sort((a, b) => String(a.username || '').localeCompare(String(b.username || ''), 'ar')));
+            });
+        },
+        async createUser({ username, password, role, jobTitle, allowedDepartments, permissions }) {
+            const normalized = String(username || '').trim().toLowerCase();
+            if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
+            if (!password || password.length < 6) throw new Error('weak_password');
+            const existing = await getDocs(query(collection(db, 'app_users'), where('usernameLower', '==', normalized), limit(1)));
+            if (!existing.empty) throw new Error('username_exists');
+            const credential = await createUserWithEmailAndPassword(adminProvisioningAuth, usernameEmail(normalized), password);
+            const profile = {
+                uid: credential.user.uid,
+                username: normalized,
+                usernameLower: normalized,
+                role: role || 'technician',
+                jobTitle: jobTitle || 'فني',
+                active: true,
+                allowedDepartments: Array.isArray(allowedDepartments) && allowedDepartments.length ? allowedDepartments : ['*'],
+                permissions: permissions || { view: {}, edit: {} },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+            await setDoc(doc(db, 'app_users', credential.user.uid), profile);
+            await signOut(adminProvisioningAuth);
+            return profile;
+        },
+        async updateUser(uid, changes) {
+            await setDoc(doc(db, 'app_users', uid), { ...changes, updatedAt: serverTimestamp() }, { merge: true });
+        },
+        async deactivateUser(uid) {
+            await setDoc(doc(db, 'app_users', uid), { active: false, updatedAt: serverTimestamp() }, { merge: true });
+        }
+    },
     system: {
         listenToDepartments(callback) {
             const docRef = doc(db, "app_settings", "global_system");
@@ -115,6 +218,30 @@ export const API = {
         },
         listenToAllScratches(date, callback) {
             const q = query(collection(db, "scratches_records"), where("date", "==", date));
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+        },
+        listenToScopedProduction(departments, date, shift, callback) {
+            const scope = [...new Set((departments || []).filter(Boolean))];
+            if (!scope.length) { callback([]); return () => {}; }
+            const filters = [where("date", "==", date), where("shift", "==", shift)];
+            if (!scope.includes('*')) filters.push(where("department", "in", scope.slice(0, 30)));
+            const q = query(collection(db, "production_records"), ...filters);
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+        },
+        listenToScopedTargets(departments, date, shift, callback) {
+            const scope = [...new Set((departments || []).filter(Boolean))];
+            if (!scope.length) { callback([]); return () => {}; }
+            const filters = [where("date", "==", date), where("shift", "==", shift)];
+            if (!scope.includes('*')) filters.push(where("department", "in", scope.slice(0, 30)));
+            const q = query(collection(db, "shift_targets"), ...filters);
+            return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
+        },
+        listenToScopedScratches(departments, date, callback) {
+            const scope = [...new Set((departments || []).filter(Boolean))];
+            if (!scope.length) { callback([]); return () => {}; }
+            const filters = [where("date", "==", date)];
+            if (!scope.includes('*')) filters.push(where("department", "in", scope.slice(0, 30)));
+            const q = query(collection(db, "scratches_records"), ...filters);
             return onSnapshot(q, (snapshot) => callback(snapshot.docs.map(doc => doc.data())));
         }
     },

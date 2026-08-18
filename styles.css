@@ -345,3 +345,62 @@ body { background-color: var(--bg-color); color: var(--text-main); padding-botto
 .s5-corrective-upload { cursor: pointer; text-align: center; color: var(--primary-color); font-size: 0.74rem; font-weight: 800; }
 .s5-corrective-upload input { display: none; }
 .s5-corrective-upload span { display: block; padding: 6px; }
+
+
+/* Authentication gate */
+.auth-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 8000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--bg-color);
+    direction: rtl;
+    overflow-y: auto;
+}
+.auth-gate[style*="display: flex"] { display: flex !important; }
+.auth-gate[aria-hidden="true"] { display: none !important; }
+.auth-card {
+    width: min(100%, 420px);
+    padding: 36px 28px;
+    background: #fff;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    text-align: center;
+    animation: fadeIn 0.35s ease;
+}
+.auth-brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 28px; text-align: right; }
+.auth-brand-icon { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 52px; color: var(--primary-color); background: var(--bg-color); border-radius: 14px; font-size: 1.45rem; }
+.auth-brand strong, .auth-brand span { display: block; }
+.auth-brand strong { color: var(--text-main); font-size: 1.15rem; font-weight: 800; }
+.auth-brand span { margin-top: 3px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
+.auth-card h1 { margin: 0 0 8px; color: var(--text-main); font-size: 1.8rem; }
+.auth-subtitle { margin: 0 0 26px; color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; }
+.auth-card .input-group { margin-bottom: 16px; text-align: right; }
+.auth-card .input-group label { display: block; margin: 0 0 7px; color: var(--text-main); font-size: 0.85rem; font-weight: 700; }
+.auth-card .modern-input { width: 100%; min-height: 50px; direction: ltr; text-align: left; }
+.auth-error, .auth-success { width: 100%; margin: 10px 0 16px; padding: 11px 12px; border: 1px solid; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 700; line-height: 1.6; text-align: right; word-break: break-word; }
+.auth-error { color: var(--danger-color); background: #fee2e2; border-color: #fecaca; }
+.auth-success { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+.auth-submit { width: 100%; min-height: 52px; }
+.auth-link-btn { display: block; margin: 12px auto 0; padding: 5px 8px; border: 0; border-radius: 8px; color: var(--primary-color); background: transparent; font-family: 'Cairo', sans-serif; font-size: 0.82rem; font-weight: 800; cursor: pointer; }
+.auth-link-btn:hover { color: var(--primary-hover); text-decoration: underline; text-underline-offset: 3px; }
+.auth-link-btn:disabled, .auth-submit:disabled { opacity: 0.6; cursor: wait; }
+.auth-security-note { display: block; margin-top: 24px; color: var(--text-muted); font-size: 0.72rem; line-height: 1.7; }
+.auth-link-btn:focus-visible, .auth-submit:focus-visible { outline: 3px solid rgba(10, 179, 156, 0.35); outline-offset: 3px; }
+@media (max-width: 480px) {
+    .auth-card { padding: 30px 20px; }
+    .auth-card h1 { font-size: 1.55rem; }
+}
+
+/* Keep the shell unavailable until Firebase authentication resolves. */
+#app-shell[aria-hidden="true"] { display: none !important; }
+#app-shell[aria-hidden="false"] { display: block; }
+
+/* View-only controls are still readable but cannot be submitted accidentally. */
+.auth-card button { font-family: 'Cairo', sans-serif; }
+.auth-card input { font-family: 'Cairo', sans-serif; }
+.auth-card .auth-error[style*="display: none"], .auth-card .auth-success[style*="display: none"] { display: none !important; }
+.auth-card .auth-error, .auth-card .auth-success { animation: fadeIn 0.2s ease; }

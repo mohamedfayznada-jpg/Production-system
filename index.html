@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260817-dept-management-1">
+    <link rel="manifest" href="manifest.json?v=20260818-auth-rbac-final">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260817-dept-management-1">
+    <link rel="stylesheet" href="styles.css?v=20260818-auth-rbac-2">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,17 +33,33 @@
         </div>
     </div>
 
+    <section id="auth-gate" class="auth-gate" style="display:flex;" aria-label="تسجيل الدخول">
+        <div class="auth-card">
+            <div class="auth-brand"><div class="auth-brand-icon"><i class="fa-solid fa-industry"></i></div><div><strong>مجموعة العربي</strong><span>نظام الإنتاج الموحد</span></div></div>
+            <h1>تسجيل الدخول</h1>
+            <p class="auth-subtitle">أدخل بيانات حسابك للوصول إلى النظام حسب الصلاحيات الممنوحة لك.</p>
+            <form id="login-form" autocomplete="on">
+                <div class="input-group"><label for="login-username">اسم المستخدم</label><input id="login-username" name="username" class="modern-input" autocomplete="username" autocapitalize="none" required placeholder="مثال: mfayez"></div>
+                <div class="input-group"><label for="login-password">كلمة المرور</label><input id="login-password" name="password" type="password" class="modern-input" autocomplete="current-password" required placeholder="••••••••"></div>
+                <div id="login-error" class="auth-error" role="alert" style="display:none;"></div>
+                <button type="submit" class="primary-btn gradient-bg auth-submit"><i class="fa-solid fa-right-to-bracket"></i> دخول آمن</button>
+                <button type="button" id="forgot-password-btn" class="auth-link-btn">نسيت كلمة المرور؟</button>
+            </form>
+            <small class="auth-security-note"><i class="fa-solid fa-shield-halved"></i> الوصول محمي بحسابات Firebase وصلاحيات فردية.</small>
+        </div>
+    </section>
+
+    <div id="app-shell" aria-hidden="true">
     <header class="app-header">
-        <div class="header-top">
-            <div class="dept-title">
+            <div class="header-top">
+                <div class="header-leading"><button class="sidebar-menu-toggle" type="button" onclick="App.toggleSidebar()" aria-label="فتح القائمة الجانبية"><i class="fa-solid fa-bars"></i></button><div class="dept-title">
                 <div class="icon-wrapper"><i class="fa-solid fa-industry"></i></div>
                 <div>
                     <span class="greeting">القسم الحالي</span>
                     <select id="global-department" class="dept-select"></select>
                 </div>
-                <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span>
-            </div>
-            <button class="icon-btn" onclick="App.openSettings()"><i class="fa-solid fa-sliders"></i></button>
+                <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span></div>
+                <div class="header-account"><div class="header-account-text"><strong id="auth-user-name"></strong><small id="auth-user-role"></small></div><button class="icon-btn" type="button" onclick="App.logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button><button class="icon-btn" type="button" onclick="App.openSettings()" title="الإعدادات"><i class="fa-solid fa-sliders"></i></button></div>
         </div>
         <div class="global-filters">
             <div class="filter-box">
@@ -177,7 +193,7 @@
                 <div class="qc-box highlight"><div class="qc-icon text-orange"><i class="fa-solid fa-chart-line"></i></div><div class="qc-val text-orange" id="5s-completion-rate">0%</div><div class="qc-lbl">نسبة الإغلاق</div></div>
             </div>
 
-            <div class="card">
+            <div class="card" id="5s-entry-card">
                 <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-plus-circle text-teal"></i> تسجيل ملاحظة جديدة</h4></div>
                 <p class="text-muted s5-help-text">اختر القسم والمكان، ثم ارفع صورة الملاحظة واكتب وصفها. صورة الفعل التصحيحي اختيارية ويمكن إضافتها الآن أو لاحقاً.</p>
                 <div class="input-group">
@@ -243,7 +259,7 @@
                 <div class="qc-box"><div class="qc-icon text-teal"><i class="fa-solid fa-check-double"></i></div><div class="qc-val text-main" id="qc-count-fixed">0</div><div class="qc-lbl">تم الإصلاح</div></div>
                 <div class="qc-box highlight"><div class="qc-icon text-red"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="qc-val text-red" id="qc-count-pending">0</div><div class="qc-lbl">تحت الإصلاح</div></div>
             </div>
-            <div class="card">
+            <div class="card" id="quality-entry-card">
                 <!-- ربط العيوب بالموديلات (جديد) -->
                 <div class="input-group">
                     <label>الموديل (من المخزون)</label>
@@ -282,7 +298,7 @@
             
             <div class="tabs-container mb-4">
                 <button class="tab-btn active" id="btn-analytics-dept" onclick="App.switchAnalyticsMode('dept')">القسم الحالي</button>
-                <button class="tab-btn" id="btn-analytics-factory" onclick="App.switchAnalyticsMode('factory')">المصنع بالكامل</button>
+                <button class="tab-btn" id="btn-analytics-factory" data-factory-only="true" onclick="App.switchAnalyticsMode('factory')">المصنع بالكامل</button>
             </div>
 
             <!-- تحليلات القسم الحالي -->
@@ -343,11 +359,33 @@
             </div>
         </section>
 
+        <!-- لوحة إدارة المستخدمين للمدير الرئيسي فقط -->
+        <section id="screen-admin" class="screen">
+            <div class="section-header"><div><span class="eyebrow">MASTER ADMIN</span><h3 class="section-title">إدارة المستخدمين والصلاحيات</h3></div><button class="secondary-btn" onclick="App.navigate('home')">العودة</button></div>
+            <div class="admin-grid">
+                <div class="card admin-form-card">
+                    <div class="card-title mb-4"><i class="fa-solid fa-user-plus text-teal"></i> إضافة مستخدم جديد</div>
+                    <div class="grid-actions admin-two-col">
+                        <div class="input-group"><label>اسم المستخدم</label><input id="admin-username" class="modern-input" autocomplete="off" placeholder="مثال: ahmed.samir"></div>
+                        <div class="input-group"><label>كلمة المرور</label><input id="admin-password" type="password" class="modern-input" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
+                    </div>
+                    <div class="grid-actions admin-two-col">
+                        <div class="input-group"><label>الفئة الوظيفية</label><select id="admin-job-title" class="modern-input"><option value="مهندس">مهندس</option><option value="فني" selected>فني</option><option value="مشرف">مشرف</option></select></div>
+                        <div class="input-group"><label>الدور التقني</label><select id="admin-role" class="modern-input"><option value="viewer">مشاهدة فقط</option><option value="editor">مستخدم معدل</option><option value="admin">مدير مساعد</option></select></div>
+                    </div>
+                    <div class="admin-permission-block"><h4>الأقسام المتاحة</h4><div id="admin-department-permissions" class="permission-check-grid"></div></div>
+                    <div class="admin-permission-block"><h4>صلاحيات العرض والتعديل</h4><div id="admin-screen-permissions" class="permission-check-grid"></div></div>
+                    <button class="primary-btn gradient-bg mt-4" onclick="App.createManagedUser()"><i class="fa-solid fa-user-check"></i> حفظ المستخدم والصلاحيات</button>
+                </div>
+                <div class="card"><div class="card-title mb-4"><i class="fa-solid fa-users text-purple"></i> المستخدمون الحاليون</div><div id="admin-users-list" class="admin-users-list"><div class="empty-state">جاري تحميل المستخدمين...</div></div></div>
+            </div>
+        </section>
+
         <!-- 6. شاشة الإعدادات -->
         <section id="screen-settings" class="screen">
             <div class="section-header"><h3 class="section-title" id="settings-title">الإعدادات</h3></div>
             <div id="settings-panel-home" class="settings-panel">
-                <div class="card">
+                <div class="card" id="department-management-card">
                     <div class="card-title mb-4">إدارة الأقسام بالمصنع</div>
                     <div class="flex-row">
                         <input type="text" id="new-department-name" class="modern-input" placeholder="اسم القسم الجديد...">
@@ -355,7 +393,7 @@
                     </div>
                     <div id="departments-list" class="mt-4"></div>
                 </div>
-                <div class="card text-center">
+                <div class="card text-center" id="settings-reset-card">
                     <div class="qc-icon text-red mx-auto mb-4" style="font-size: 2rem;"><i class="fa-solid fa-power-off"></i></div>
                     <button class="danger-btn" onclick="App.hardReset()">إعادة ضبط المصنع</button>
                 </div>
@@ -376,7 +414,7 @@
                     <div class="card-title mb-4">تخصيص أنواع العيوب</div>
                     <div class="flex-row">
                         <input type="text" id="new-defect-type" class="modern-input" placeholder="اسم العيب الجديد...">
-                        <button class="icon-btn primary-bg" onclick="App.addDefectType()"><i class="fa-solid fa-plus"></i></button>
+                        <button id="add-defect-type-btn" class="icon-btn primary-bg" onclick="App.addDefectType()"><i class="fa-solid fa-plus"></i></button>
                     </div>
                     <div id="defect-types-list" class="mt-4"></div>
                 </div>
@@ -388,6 +426,23 @@
         </section>
 
     </main>
+
+    <aside id="app-sidebar" class="app-sidebar" aria-label="القائمة الجانبية">
+        <div class="sidebar-brand"><div class="auth-brand-icon"><i class="fa-solid fa-industry"></i></div><div><strong>نظام الإنتاج</strong><small>مجموعة العربي</small></div><button type="button" class="sidebar-close" onclick="App.toggleSidebar()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="sidebar-user"><div class="sidebar-user-avatar"><i class="fa-solid fa-user"></i></div><div><strong id="sidebar-user-name"></strong><small id="sidebar-user-role"></small></div></div>
+        <div class="sidebar-nav">
+            <button class="sidebar-nav-item" data-target="home" onclick="App.navigate('home');App.toggleSidebar()"><i class="fa-solid fa-house"></i><span>الرئيسية</span></button>
+            <button class="sidebar-nav-item" data-target="production" onclick="App.navigate('production');App.toggleSidebar()"><i class="fa-solid fa-calendar-check"></i><span>الإنتاج</span></button>
+            <button class="sidebar-nav-item" data-target="balances" onclick="App.navigate('balances');App.toggleSidebar()"><i class="fa-solid fa-boxes-stacked"></i><span>الأرصدة</span></button>
+            <button class="sidebar-nav-item" data-target="quality" onclick="App.navigate('quality');App.toggleSidebar()"><i class="fa-solid fa-shield-halved"></i><span>الجودة</span></button>
+            <button class="sidebar-nav-item" data-target="5s" onclick="App.navigate('5s');App.toggleSidebar()"><i class="fa-solid fa-list-check"></i><span>ملاحظات 5S</span></button>
+            <button class="sidebar-nav-item" data-target="analytics" onclick="App.navigate('analytics');App.toggleSidebar()"><i class="fa-solid fa-chart-pie"></i><span>التقارير</span></button>
+            <button class="sidebar-nav-item" data-target="admin" data-admin-only="true" onclick="App.navigate('admin');App.toggleSidebar()"><i class="fa-solid fa-user-shield"></i><span>إدارة المستخدمين</span></button>
+            <button class="sidebar-nav-item" data-target="settings" onclick="App.openSettings();App.toggleSidebar()"><i class="fa-solid fa-sliders"></i><span>الإعدادات</span></button>
+        </div>
+        <button class="sidebar-logout" onclick="App.logout()"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</button>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="App.toggleSidebar()"></div>
 <!-- نافذة تثبيت التطبيق -->
     <div id="install-banner" class="install-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="install-title">
         <div class="install-dialog">
@@ -408,22 +463,22 @@
         </div>
     </div>
     <nav class="bottom-nav">
-        <div class="nav-item active" data-target="home" onclick="App.navigate('home')">
+        <div class="nav-item active" data-target="home" data-permission-screen="home" onclick="App.navigate('home')">
             <i class="fa-solid fa-house"></i><span>الرئيسية</span>
         </div>
-        <div class="nav-item" data-target="production" onclick="App.navigate('production')">
+        <div class="nav-item" data-target="production" data-permission-screen="production" onclick="App.navigate('production')">
             <i class="fa-solid fa-calendar-check"></i><span>الإنتاج</span>
         </div>
-        <div class="nav-item" data-target="balances" onclick="App.navigate('balances')">
+        <div class="nav-item" data-target="balances" data-permission-screen="balances" onclick="App.navigate('balances')">
             <i class="fa-solid fa-boxes-stacked"></i><span>الأرصدة</span>
         </div>
-        <div class="nav-item" data-target="quality" onclick="App.navigate('quality')">
+        <div class="nav-item" data-target="quality" data-permission-screen="quality" onclick="App.navigate('quality')">
             <i class="fa-solid fa-shield-halved"></i><span>الجودة</span>
         </div>
-        <div class="nav-item" data-target="5s" onclick="App.navigate('5s')">
+        <div class="nav-item" data-target="5s" data-permission-screen="fiveS" onclick="App.navigate('5s')">
             <i class="fa-solid fa-list-check"></i><span>ملاحظات 5S</span>
         </div>
-        <div class="nav-item" data-target="analytics" onclick="App.navigate('analytics')">
+        <div class="nav-item" data-target="analytics" data-permission-screen="analytics" onclick="App.navigate('analytics')">
             <i class="fa-solid fa-chart-pie"></i><span>التقارير</span>
         </div>
     </nav>
@@ -441,6 +496,7 @@
         <div class="spinner"></div><h3 id="loader-text" class="text-teal">جاري المعالجة...</h3>
     </div>
 
-    <script type="module" src="app.js?v=20260817-dept-management-1"></script>
+    </div>
+    <script type="module" src="app.js?v=20260818-auth-rbac-1"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Change this release marker whenever the PWA is published.
-const SW_RELEASE = '20260817-dept-management-1';
+const SW_RELEASE = '20260818-auth-rbac-final';
 
 self.addEventListener('install', (event) => {
     // Activate the new worker without waiting for all old tabs to close.
