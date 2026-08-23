@@ -1,5 +1,5 @@
 // Change this release marker whenever the PWA is published.
-const SW_RELEASE = '20260823-operations-5s-v1';
+const SW_RELEASE = '20260823-mobile-harmony-v1';
 
 self.addEventListener('install', (event) => {
     // Activate the new worker without waiting for all old tabs to close.

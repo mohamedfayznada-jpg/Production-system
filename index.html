@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260823-operations-5s-v1">
+    <link rel="manifest" href="manifest.json?v=20260823-mobile-harmony-v1">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260823-operations-5s-v1">
+    <link rel="stylesheet" href="styles.css?v=20260823-mobile-harmony-v1">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -196,7 +196,7 @@
         <section id="screen-5s" class="screen">
             <div class="s5-command-hero">
                 <div class="s5-hero-copy"><span class="eyebrow"><i class="fa-solid fa-shield-halved"></i> WORKPLACE EXCELLENCE / 5S</span><h3 class="section-title">مركز ملاحظات 5S</h3><p>سجّل الملاحظة بالدليل المصوّر، تابع الفعل التصحيحي، واقرأ مستوى الانضباط التشغيلي لكل مكان.</p></div>
-                <div class="s5-hero-actions"><span class="s5-date-pill"><i class="fa-regular fa-calendar"></i><span id="5s-selected-date-label"></span></span><button type="button" class="s5-header-btn s5-export-btn" onclick="App.export5SReportPDF()" title="تصدير تقرير 5S جاهز للطباعة"><i class="fa-solid fa-file-pdf"></i><span>تقرير PDF</span></button><button type="button" id="5s-notification-toggle" class="s5-header-btn s5-notification-btn" onclick="App.toggle5SNotifications()" title="تفعيل تنبيهات ملاحظات 5S" aria-pressed="false"><i class="fa-solid fa-bell"></i><span>التنبيهات</span></button></div>
+                <div class="s5-hero-actions"><span class="s5-date-pill"><i class="fa-regular fa-calendar"></i><span id="5s-selected-date-label"></span></span><button type="button" id="5s-export-btn" class="s5-header-btn s5-export-btn" onclick="App.export5SReportPDF()" title="تصدير تقرير 5S جاهز للطباعة"><i class="fa-solid fa-file-pdf"></i><span>تقرير PDF</span></button><button type="button" id="5s-notification-toggle" class="s5-header-btn s5-notification-btn" onclick="App.toggle5SNotifications()" title="تفعيل تنبيهات ملاحظات 5S" aria-pressed="false"><i class="fa-solid fa-bell"></i><span>التنبيهات</span></button></div>
             </div>
 
             <div class="s5-command-strip"><div><span class="s5-strip-label">حالة الجولة اليومية</span><strong id="5s-live-status">لا توجد ملاحظات مفتوحة</strong></div><div class="s5-strip-meta"><span><i class="fa-solid fa-location-dot"></i><strong id="5s-place-count">0</strong> أماكن</span><span><i class="fa-solid fa-hourglass-half"></i><strong id="5s-pending-count">0</strong> قيد الإغلاق</span></div></div>
@@ -450,6 +450,6 @@
     </div>
 
     </div>
-    <script type="module" src="app.js?v=20260823-operations-5s-v1"></script>
+    <script type="module" src="app.js?v=20260823-mobile-harmony-v1"></script>
 </body>
 </html>
