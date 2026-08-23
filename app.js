@@ -1324,6 +1324,16 @@ const App = {
                 else { availableSets = Math.min(cabTotal, r, f); }
 
                 const vBox = model.is3Door ? `<div class="inv-stat-box"><span class="inv-stat-lbl">باب V</span><span class="inv-stat-val">${v}</span></div>` : '';
+                const doorBalances = model.is3Door ? [['باب R', r], ['باب F', f], ['باب V', v]] : [['باب R', r], ['باب F', f]];
+                const missingDoors = doorBalances.filter(([, quantity]) => cabTotal > quantity).map(([label, quantity]) => ({ label, quantity: cabTotal - quantity }));
+                const coveredCabinets = Math.min(cabTotal, ...doorBalances.map(([, quantity]) => quantity));
+                const waitingCabinets = Math.max(0, cabTotal - coveredCabinets);
+                const readinessClass = waitingCabinets > 0 ? 'warning' : 'ready';
+                const readinessHtml = cabTotal === 0
+                    ? `<div class="inv-readiness neutral"><div class="inv-readiness-title"><i class="fa-solid fa-circle-info"></i><span>لا توجد كبائن مسجلة لهذا الموديل</span></div></div>`
+                    : waitingCabinets > 0
+                        ? `<div class="inv-readiness ${readinessClass}"><div class="inv-readiness-title"><i class="fa-solid fa-triangle-exclamation"></i><span>يحتاج استعواض أبواب قبل التجميع النهائي</span></div><div class="inv-readiness-summary">${waitingCabinets} كابينة غير مكتملة من إجمالي ${cabTotal} — المتاح حالياً للتجميع: ${availableSets}</div><div class="inv-shortage-list">${missingDoors.map(({ label, quantity }) => `<span class="inv-shortage-chip"><strong>${quantity}</strong> ${label}</span>`).join('')}</div></div>`
+                        : `<div class="inv-readiness ready"><div class="inv-readiness-title"><i class="fa-solid fa-circle-check"></i><span>كل الكبائن متاحة للتجميع النهائي</span></div><div class="inv-readiness-summary">تمت تغطية ${coveredCabinets} كابينة بالأبواب المطلوبة.</div></div>`;
                 
                 contentHtml = `
                     <div class="inv-final-grid" style="${model.is3Door ? 'grid-template-columns: repeat(4, 1fr);' : 'grid-template-columns: repeat(3, 1fr);'}">
@@ -1336,6 +1346,7 @@ const App = {
                         <span>متاح للتجميع النهائي:</span>
                         <span class="set-qty">${availableSets}</span>
                     </div>
+                    ${readinessHtml}
                 `;
             }
 

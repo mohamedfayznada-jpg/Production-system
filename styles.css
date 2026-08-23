@@ -767,3 +767,20 @@ input[readonly] { background:#f1f5f7; }
     .analytics-kpi-card small { font-size:.6rem; }
     .analytics-live-badge { max-width:calc(100% - 100px); overflow:hidden; text-overflow:ellipsis; }
 }
+
+/* Final assembly readiness and door replacement guidance */
+.inv-readiness { border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; border: 1px solid transparent; }
+.inv-readiness.warning { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+.inv-readiness.ready { background: #ecfdf5; border-color: #bbf7d0; color: #166534; }
+.inv-readiness.neutral { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
+.inv-readiness-title { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: .92rem; }
+.inv-readiness-title i { font-size: 1rem; }
+.inv-readiness-summary { font-size: .82rem; font-weight: 700; line-height: 1.7; }
+.inv-shortage-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.inv-shortage-chip { background: #fff; border: 1px solid #fdba74; border-radius: 999px; padding: 5px 10px; color: #9a3412; font-size: .78rem; font-weight: 800; }
+.inv-shortage-chip strong { font-size: .95rem; margin-left: 3px; }
+@media (max-width: 560px) {
+    .inv-final-grid { gap: 5px; padding: 10px 6px; }
+    .inv-stat-val { font-size: 1rem; }
+    .inv-readiness { padding: 12px; }
+}
