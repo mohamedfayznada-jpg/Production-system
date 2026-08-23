@@ -1,5 +1,5 @@
 // Change this release marker whenever the PWA is published.
-const SW_RELEASE = '20260823-open-app-v2';
+const SW_RELEASE = '20260823-professional-mes-v1';
 
 self.addEventListener('install', (event) => {
     // Activate the new worker without waiting for all old tabs to close.

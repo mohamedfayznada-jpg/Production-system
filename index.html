@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260823-data-visibility-fix-1">
+    <link rel="manifest" href="manifest.json?v=20260823-professional-mes-v1">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260823-data-visibility-fix-1">
+    <link rel="stylesheet" href="styles.css?v=20260823-professional-mes-v1">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -64,13 +64,19 @@
     <div id="app-shell" aria-hidden="false">
     <header class="app-header">
             <div class="header-top">
-                <div class="header-leading"><div class="dept-title">
+                <div class="header-leading">
+                    <div class="brand-lockup" aria-label="نظام الإنتاج الموحد">
+                        <div class="brand-mark"><i class="fa-solid fa-industry"></i></div>
+                        <div class="brand-copy"><strong>MES CORE</strong><span>نظام الإنتاج الموحد</span></div>
+                    </div>
+                    <div class="dept-title">
                 <div class="icon-wrapper"><i class="fa-solid fa-industry"></i></div>
                 <div>
                     <span class="greeting">القسم الحالي</span>
                     <select id="global-department" class="dept-select"></select>
                 </div>
                 <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span></div>
+                </div>
                 <div class="header-account"><div class="header-account-text"><strong id="auth-user-name"></strong><small id="auth-user-role"></small></div><button class="icon-btn" type="button" onclick="App.logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button><button class="icon-btn" type="button" onclick="App.openSettings()" title="الإعدادات"><i class="fa-solid fa-sliders"></i></button></div>
         </div>
         <div class="global-filters">
@@ -494,6 +500,6 @@
     </div>
 
     </div>
-    <script type="module" src="app.js?v=20260823-data-visibility-fix-1"></script>
+    <script type="module" src="app.js?v=20260823-professional-mes-v1"></script>
 </body>
 </html>
