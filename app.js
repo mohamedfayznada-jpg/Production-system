@@ -145,8 +145,8 @@ const App = {
 
         const today = new Date();
         const todayString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-        const latestDataDate = await API.production.getLatestDataDate();
-        const dateString = latestDataDate || todayString;
+        // يبدأ التطبيق دائماً على تاريخ اليوم، ويمكن تحميل أي يوم قديم فور اختياره من منتقي التاريخ.
+        const dateString = todayString;
         const globalDate = document.getElementById('global-date');
         const globalShift = document.getElementById('global-shift');
         if (globalDate) globalDate.value = dateString;
@@ -1268,6 +1268,25 @@ const App = {
         });
     },
 
+    renderDoorShortageAlert() {
+        const alert = document.getElementById('door-shortage-alert');
+        if (!alert) return;
+        const shortages = this.getMissingDoorsReportData().filter((row) => row.waitingCabinets > 0);
+        if (!shortages.length) {
+            alert.style.display = 'none';
+            alert.innerHTML = '';
+            return;
+        }
+        const totalWaiting = shortages.reduce((sum, row) => sum + row.waitingCabinets, 0);
+        const modelSummary = shortages.slice(0, 3).map((row) => {
+            const doors = row.missingDoors.map((door) => `${this.escapeHtml(door.label)}: ${door.quantity}`).join('، ');
+            return `<span class="door-alert-model"><strong>${this.escapeHtml(row.model.name)}</strong> — ${doors}</span>`;
+        }).join('');
+        const extra = shortages.length > 3 ? `<span class="door-alert-more">+ ${shortages.length - 3} موديلات أخرى</span>` : '';
+        alert.innerHTML = `<div class="door-alert-icon"><i class="fa-solid fa-door-open"></i></div><div class="door-alert-copy"><strong>تنبيه جاهزية التجميع النهائي</strong><span>${totalWaiting} كابينة متوقفة بسبب نقص الأبواب</span><div class="door-alert-models">${modelSummary}${extra}</div></div><button type="button" class="door-alert-action" onclick="App.navigate('balances'); App.switchBalanceTab('final');">مراجعة النواقص <i class="fa-solid fa-arrow-left"></i></button>`;
+        alert.style.display = 'flex';
+    },
+
     renderMissingDoorsReport() {
         const container = document.getElementById('missing-doors-report');
         if (!container) return;
@@ -1325,6 +1344,7 @@ const App = {
         if(!container) return;
         container.innerHTML = '';
         this.renderMissingDoorsReport();
+        this.renderDoorShortageAlert();
 
         const models = this.data.inventory.models || [];
         const balanceEditable = this.canEdit('balances');
@@ -2061,6 +2081,17 @@ const App = {
         if (totalEl) totalEl.innerText = total;
         if (correctiveEl) correctiveEl.innerText = corrective;
         if (rateEl) rateEl.innerText = `${total ? Math.round((corrective / total) * 100) : 0}%`;
+        const places = new Set(notes.map((note) => `${note.department || ''}|||${note.place || ''}`)).size;
+        const pending = Math.max(0, total - corrective);
+        const placeCountEl = document.getElementById('5s-place-count');
+        const pendingCountEl = document.getElementById('5s-pending-count');
+        const liveStatusEl = document.getElementById('5s-live-status');
+        if (placeCountEl) placeCountEl.innerText = places;
+        if (pendingCountEl) pendingCountEl.innerText = pending;
+        if (liveStatusEl) {
+            liveStatusEl.innerText = pending ? `${pending} ملاحظة تحتاج إلى فعل تصحيحي` : (total ? 'الجولة مكتملة — كل الملاحظات موثقة' : 'لا توجد ملاحظات مفتوحة');
+            liveStatusEl.className = pending ? 'status-warning' : 'status-ready';
+        }
 
         if (!notes.length) {
             container.innerHTML = '<div class="card s5-empty"><i class="fa-solid fa-clipboard-check text-teal" style="font-size:2rem; margin-bottom:10px;"></i><div>لا توجد ملاحظات 5S لهذا اليوم</div></div>';

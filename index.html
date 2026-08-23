@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260823-engineering-intelligence-v2">
+    <link rel="manifest" href="manifest.json?v=20260823-operations-5s-v1">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260823-engineering-intelligence-v2">
+    <link rel="stylesheet" href="styles.css?v=20260823-operations-5s-v1">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -93,6 +93,7 @@
                 </select>
             </div>
         </div>
+        <div id="door-shortage-alert" class="door-shortage-alert" role="status" aria-live="polite" style="display:none;"></div>
     </header>
 
     <main class="content-area" id="main-content-area">
@@ -193,73 +194,22 @@
 
         <!-- 5. شاشة ملاحظات 5S -->
         <section id="screen-5s" class="screen">
-            <div class="section-header s5-screen-header">
-                <h3 class="section-title">ملاحظات 5S</h3>
-                <div class="s5-header-actions">
-                    <span class="view-all" id="5s-selected-date-label"></span>
-                    <button type="button" class="s5-header-btn s5-export-btn" onclick="App.export5SReportPDF()" title="تصدير تقرير 5S جاهز للطباعة" aria-label="تصدير تقرير 5S جاهز للطباعة">
-                        <i class="fa-solid fa-file-pdf"></i><span>PDF</span>
-                    </button>
-                    <button type="button" id="5s-notification-toggle" class="s5-header-btn s5-notification-btn" onclick="App.toggle5SNotifications()" title="تفعيل تنبيهات ملاحظات 5S" aria-pressed="false">
-                        <i class="fa-solid fa-bell"></i><span>التنبيهات</span>
-                    </button>
-                </div>
+            <div class="s5-command-hero">
+                <div class="s5-hero-copy"><span class="eyebrow"><i class="fa-solid fa-shield-halved"></i> WORKPLACE EXCELLENCE / 5S</span><h3 class="section-title">مركز ملاحظات 5S</h3><p>سجّل الملاحظة بالدليل المصوّر، تابع الفعل التصحيحي، واقرأ مستوى الانضباط التشغيلي لكل مكان.</p></div>
+                <div class="s5-hero-actions"><span class="s5-date-pill"><i class="fa-regular fa-calendar"></i><span id="5s-selected-date-label"></span></span><button type="button" class="s5-header-btn s5-export-btn" onclick="App.export5SReportPDF()" title="تصدير تقرير 5S جاهز للطباعة"><i class="fa-solid fa-file-pdf"></i><span>تقرير PDF</span></button><button type="button" id="5s-notification-toggle" class="s5-header-btn s5-notification-btn" onclick="App.toggle5SNotifications()" title="تفعيل تنبيهات ملاحظات 5S" aria-pressed="false"><i class="fa-solid fa-bell"></i><span>التنبيهات</span></button></div>
             </div>
 
-            <div class="qc-counters s5-counters">
-                <div class="qc-box"><div class="qc-icon text-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="qc-val text-main" id="5s-total-notes">0</div><div class="qc-lbl">إجمالي الملاحظات</div></div>
-                <div class="qc-box"><div class="qc-icon text-teal"><i class="fa-solid fa-image"></i></div><div class="qc-val text-teal" id="5s-total-corrective">0</div><div class="qc-lbl">أفعال تصحيحية مصورة</div></div>
-                <div class="qc-box highlight"><div class="qc-icon text-orange"><i class="fa-solid fa-chart-line"></i></div><div class="qc-val text-orange" id="5s-completion-rate">0%</div><div class="qc-lbl">نسبة الإغلاق</div></div>
-            </div>
+            <div class="s5-command-strip"><div><span class="s5-strip-label">حالة الجولة اليومية</span><strong id="5s-live-status">لا توجد ملاحظات مفتوحة</strong></div><div class="s5-strip-meta"><span><i class="fa-solid fa-location-dot"></i><strong id="5s-place-count">0</strong> أماكن</span><span><i class="fa-solid fa-hourglass-half"></i><strong id="5s-pending-count">0</strong> قيد الإغلاق</span></div></div>
 
-            <div class="card" id="5s-entry-card">
-                <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-plus-circle text-teal"></i> تسجيل ملاحظة جديدة</h4></div>
-                <p class="text-muted s5-help-text">اختر القسم والمكان، ثم ارفع صورة الملاحظة واكتب وصفها. صورة الفعل التصحيحي اختيارية ويمكن إضافتها الآن أو لاحقاً.</p>
-                <div class="input-group">
-                    <label>القسم</label>
-                    <select id="5s-department" class="modern-input"></select>
-                </div>
-                <div class="input-group">
-                    <label>المكان داخل القسم</label>
-                    <select id="5s-place" class="modern-input"></select>
-                </div>
-                <div class="flex-row s5-place-manager">
-                    <input type="text" id="5s-new-place" class="modern-input" placeholder="إضافة مكان جديد داخل القسم..."><button class="icon-btn primary-bg" onclick="App.add5SPlace()" title="إضافة المكان"><i class="fa-solid fa-plus"></i></button>
-                </div>
-                <div class="s5-upload-grid">
-                    <div class="input-group mb-0">
-                        <label>صورة الملاحظة <span class="text-red">*</span></label>
-                        <input type="file" id="5s-observation-image" accept="image/*" class="modern-input file-input">
-                    </div>
-                    <div class="input-group mb-0">
-                        <label>صورة الفعل التصحيحي</label>
-                        <input type="file" id="5s-corrective-image" accept="image/*" class="modern-input file-input">
-                    </div>
-                </div>
-                <div class="input-group mt-4">
-                    <label>وصف الملاحظة</label>
-                    <textarea id="5s-description" class="modern-input s5-textarea" rows="3" placeholder="اكتب وصفاً واضحاً للملاحظة..."></textarea>
-                </div>
-                <button class="primary-btn gradient-bg" onclick="App.add5SNote()"><i class="fa-solid fa-cloud-arrow-up"></i> حفظ ملاحظة 5S</button>
-            </div>
+            <div class="qc-counters s5-counters s5-premium-counters"><div class="qc-box"><div class="qc-icon text-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="qc-val text-main" id="5s-total-notes">0</div><div class="qc-lbl">ملاحظات اليوم</div><small>كل الملاحظات المسجلة</small></div><div class="qc-box"><div class="qc-icon text-teal"><i class="fa-solid fa-circle-check"></i></div><div class="qc-val text-teal" id="5s-total-corrective">0</div><div class="qc-lbl">أفعال موثقة</div><small>بصورة تصحيحية</small></div><div class="qc-box highlight"><div class="qc-icon text-orange"><i class="fa-solid fa-chart-line"></i></div><div class="qc-val text-orange" id="5s-completion-rate">0%</div><div class="qc-lbl">نسبة الإغلاق</div><small>جاهزية المتابعة</small></div></div>
 
-            <div class="section-header"><h4 class="section-title">ملاحظات اليوم</h4></div>
-            <div id="5s-notes-list"></div>
+            <div class="s5-workbench" id="5s-entry-card"><div class="s5-workbench-heading"><div class="s5-step-marker">01</div><div><span class="analytics-chart-kicker">CAPTURE / CORRECT / CLOSE</span><h4 class="card-title">إضافة ملاحظة موثقة</h4><p class="text-muted s5-help-text">أكمل البيانات بالترتيب. صورة الملاحظة إلزامية، وصورة الفعل التصحيحي يمكن إضافتها الآن أو بعد التنفيذ.</p></div></div><div class="s5-form-grid"><div class="s5-form-column"><div class="s5-field-heading"><span>الموقع التشغيلي</span><small>أين تم رصد الملاحظة؟</small></div><div class="input-group"><label>القسم</label><select id="5s-department" class="modern-input"></select></div><div class="input-group"><label>المكان داخل القسم</label><select id="5s-place" class="modern-input"></select></div><div class="flex-row s5-place-manager"><input type="text" id="5s-new-place" class="modern-input" placeholder="إضافة مكان جديد داخل القسم..."><button class="icon-btn primary-bg" onclick="App.add5SPlace()" title="إضافة المكان"><i class="fa-solid fa-plus"></i></button></div></div><div class="s5-form-column"><div class="s5-field-heading"><span>الدليل والإجراء</span><small>ما الذي تم رصده وما الذي سيتم؟</small></div><div class="s5-upload-grid"><div class="input-group mb-0"><label>صورة الملاحظة <span class="text-red">*</span></label><input type="file" id="5s-observation-image" accept="image/*" class="modern-input file-input"><small class="s5-input-hint">صورة واضحة قبل التصحيح</small></div><div class="input-group mb-0"><label>صورة الفعل التصحيحي</label><input type="file" id="5s-corrective-image" accept="image/*" class="modern-input file-input"><small class="s5-input-hint">يمكن رفعها لاحقاً</small></div></div><div class="input-group mt-4"><label>وصف الملاحظة</label><textarea id="5s-description" class="modern-input s5-textarea" rows="3" placeholder="صف الحالة بدقة: ماذا حدث؟ وما التأثير التشغيلي؟"></textarea></div></div></div><button class="primary-btn gradient-bg s5-submit-btn" onclick="App.add5SNote()"><i class="fa-solid fa-cloud-arrow-up"></i> حفظ الملاحظة وبدء المتابعة</button></div>
 
-            <div class="section-header mt-4"><h4 class="section-title">تحليل الأماكن</h4></div>
-            <div class="card">
-                <div class="section-header mb-0"><h4 class="card-title">عدد الملاحظات حسب المكان</h4></div>
-                <div class="chart-container"><canvas id="5s-notes-by-place-chart"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="section-header mb-0"><h4 class="card-title">الملاحظات مقابل الأفعال التصحيحية</h4></div>
-                <div class="chart-container" style="height: 280px;"><canvas id="5s-correction-by-place-chart"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-box-archive text-purple"></i> الأرشيف الشهري</h4></div>
-                <p class="text-muted s5-help-text">بعد نهاية كل شهر تُحذف الصور تلقائياً، وتبقى هذه الأرقام شاهداً على التحسينات التي تمت.</p>
-                <div id="5s-monthly-archive"></div>
-            </div>
+            <div class="s5-section-heading"><div><span class="analytics-chart-kicker">DAILY FOLLOW-UP</span><h4 class="section-title">سجل الملاحظات اليومية</h4></div><span class="s5-section-note">كل سجل مرتبط بالقسم والمكان والتاريخ المحدد</span></div><div id="5s-notes-list"></div>
+
+            <div class="s5-section-heading mt-4"><div><span class="analytics-chart-kicker">LOCATION INTELLIGENCE</span><h4 class="section-title">تحليل الأداء ومناطق التركيز</h4></div><span class="s5-section-note">استخدم الرسوم لتحديد الأماكن الأعلى احتياجاً للتحسين</span></div><div class="s5-analytics-grid"><div class="card s5-chart-card"><div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-chart-pie text-teal"></i> كثافة الملاحظات حسب المكان</h4></div><div class="chart-container"><canvas id="5s-notes-by-place-chart"></canvas></div></div><div class="card s5-chart-card"><div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-chart-column text-orange"></i> الملاحظات مقابل الإغلاق</h4></div><div class="chart-container" style="height:280px;"><canvas id="5s-correction-by-place-chart"></canvas></div></div></div>
+
+            <div class="card s5-archive-card"><div class="section-header mb-0"><div><span class="analytics-chart-kicker">CONTINUOUS IMPROVEMENT</span><h4 class="card-title"><i class="fa-solid fa-box-archive text-purple"></i> الأرشيف الشهري</h4></div></div><p class="text-muted s5-help-text">بعد نهاية كل شهر تُحذف الصور تلقائياً، وتبقى المؤشرات الرقمية شاهداً على التحسينات التي تمت.</p><div id="5s-monthly-archive"></div></div>
         </section>
 
         <section id="screen-defects_log" class="screen">
@@ -500,6 +450,6 @@
     </div>
 
     </div>
-    <script type="module" src="app.js?v=20260823-engineering-intelligence-v2"></script>
+    <script type="module" src="app.js?v=20260823-operations-5s-v1"></script>
 </body>
 </html>
