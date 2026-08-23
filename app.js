@@ -1255,10 +1255,76 @@ const App = {
         }, 1000);
     },
 
+    getMissingDoorsReportData() {
+        const models = this.data.inventory.models || [];
+        return models.map((model) => {
+            const cabData = this.data.inventory.cabinet?.[model.id] || { boq: 0, out: 0 };
+            const doorData = this.data.inventory.door?.[model.id] || { r: 0, f: 0, v: 0 };
+            const cabinets = (Number(cabData.boq) || 0) + (Number(cabData.out) || 0);
+            const doorBalances = model.is3Door ? [['باب R', Number(doorData.r) || 0], ['باب F', Number(doorData.f) || 0], ['باب V', Number(doorData.v) || 0]] : [['باب R', Number(doorData.r) || 0], ['باب F', Number(doorData.f) || 0]];
+            const availableSets = cabinets ? Math.min(cabinets, ...doorBalances.map(([, quantity]) => quantity)) : 0;
+            const missingDoors = doorBalances.filter(([, quantity]) => cabinets > quantity).map(([label, quantity]) => ({ label, quantity: cabinets - quantity }));
+            return { model, cabinets, availableSets, waitingCabinets: Math.max(0, cabinets - availableSets), missingDoors, ready: cabinets > 0 && availableSets >= cabinets };
+        });
+    },
+
+    renderMissingDoorsReport() {
+        const container = document.getElementById('missing-doors-report');
+        if (!container) return;
+        if (this.currentBalanceTab !== 'final') { container.innerHTML = ''; return; }
+        const rows = this.getMissingDoorsReportData();
+        const esc = (value) => this.escapeHtml(value ?? '—');
+        const fmt = (value) => Number(value || 0).toLocaleString('ar-EG');
+        const shortages = rows.filter((row) => row.missingDoors.length);
+        const totalWaiting = rows.reduce((sum, row) => sum + row.waitingCabinets, 0);
+        const totalReady = rows.reduce((sum, row) => sum + row.availableSets, 0);
+        const totalMissing = shortages.reduce((sum, row) => sum + row.missingDoors.reduce((inner, item) => inner + item.quantity, 0), 0);
+        const reportRows = rows.map((row) => `<tr><td><strong>${esc(row.model.name)}</strong><small>${row.model.is3Door ? '3 أبواب' : '2 باب'}</small></td><td>${fmt(row.cabinets)}</td><td>${fmt(row.availableSets)}</td><td>${row.missingDoors.length ? row.missingDoors.map(({ label, quantity }) => `<span class="inv-shortage-chip"><strong>${fmt(quantity)}</strong> ${esc(label)}</span>`).join(' ') : '<span class="inv-report-ok">لا يوجد نقص</span>'}</td><td>${row.waitingCabinets ? `<span class="inv-report-warning">${fmt(row.waitingCabinets)} متوقف</span>` : '<span class="inv-report-ok">جاهز</span>'}</td></tr>`).join('');
+        container.innerHTML = `<section class="inv-report-card"><div class="inv-report-header"><div><span class="analytics-chart-kicker">FINAL ASSEMBLY / DOOR SHORTAGE REPORT</span><h4>تقرير الأبواب الناقصة لكل الموديلات</h4><p>ملخص جاهزية الكبائن للتجميع النهائي حسب الأرصدة الحالية.</p></div><div class="inv-report-actions"><button class="secondary-btn" onclick="App.shareMissingDoorsReport()"><i class="fa-solid fa-share-nodes"></i> مشاركة</button><button class="primary-btn" onclick="App.exportMissingDoorsReportPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button></div></div><div class="inv-report-summary"><div><span>الموديلات</span><strong>${fmt(rows.length)}</strong></div><div><span>كبائن جاهزة</span><strong>${fmt(totalReady)}</strong></div><div class="warning"><span>كبائن متوقفة</span><strong>${fmt(totalWaiting)}</strong></div><div class="warning"><span>إجمالي الأبواب المطلوبة</span><strong>${fmt(totalMissing)}</strong></div></div><div class="inv-report-table-wrap"><table class="inv-report-table"><thead><tr><th>الموديل</th><th>الكبائن</th><th>متاح للتجميع</th><th>الأبواب الناقصة للاستعواض</th><th>الحالة</th></tr></thead><tbody>${reportRows || '<tr><td colspan="5" class="empty-cell">لا توجد موديلات مسجلة</td></tr>'}</tbody></table></div></section>`;
+    },
+
+    getMissingDoorsReportText() {
+        const rows = this.getMissingDoorsReportData();
+        const date = new Date().toLocaleDateString('ar-EG');
+        const lines = rows.map((row) => {
+            const shortage = row.missingDoors.length ? row.missingDoors.map(({ label, quantity }) => `${quantity} ${label}`).join('، ') : 'لا يوجد نقص';
+            return `${row.model.name}: كبائن ${row.cabinets}، متاح للتجميع ${row.availableSets}، الأبواب الناقصة: ${shortage}`;
+        });
+        return `تقرير الأبواب الناقصة - ${date}\n\n${lines.join('\n') || 'لا توجد موديلات مسجلة.'}`;
+    },
+
+    async shareMissingDoorsReport() {
+        const text = this.getMissingDoorsReportText();
+        try {
+            if (navigator.share) await navigator.share({ title: 'تقرير الأبواب الناقصة', text });
+            else { await navigator.clipboard.writeText(text); this.showToast('تم نسخ التقرير للمشاركة ✅'); }
+        } catch (error) {
+            if (error?.name !== 'AbortError') this.showToast('تعذر مشاركة التقرير، يمكنك استخدام زر PDF', true);
+        }
+    },
+
+    async exportMissingDoorsReportPDF() {
+        if (typeof html2pdf === 'undefined') { this.showToast('مكتبة تصدير PDF غير متاحة حالياً', true); return; }
+        const rows = this.getMissingDoorsReportData();
+        if (!rows.length) { this.showToast('لا توجد موديلات لتصدير التقرير', true); return; }
+        const esc = (value) => this.escapeHtml(value ?? '—');
+        const fmt = (value) => Number(value || 0).toLocaleString('ar-EG');
+        const report = document.createElement('div');
+        report.dir = 'rtl';
+        report.style.cssText = 'position:relative;display:block;margin-left:-10000px;width:794px;background:#fff;color:#172033;padding:28px;font-family:Cairo,Arial,sans-serif;box-sizing:border-box;';
+        report.innerHTML = `<h1 style="margin:0 0 8px;color:#087f72;">تقرير الأبواب الناقصة</h1><p style="margin:0 0 18px;color:#64748b;">تاريخ التقرير: ${esc(new Date().toLocaleDateString('ar-EG'))}</p><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#e6f7f4;"><th style="padding:10px;border:1px solid #cbd5e1;">الموديل</th><th style="padding:10px;border:1px solid #cbd5e1;">الكبائن</th><th style="padding:10px;border:1px solid #cbd5e1;">المتاح</th><th style="padding:10px;border:1px solid #cbd5e1;">الأبواب الناقصة</th><th style="padding:10px;border:1px solid #cbd5e1;">الحالة</th></tr></thead><tbody>${rows.map((row) => `<tr><td style="padding:9px;border:1px solid #cbd5e1;">${esc(row.model.name)}</td><td style="padding:9px;border:1px solid #cbd5e1;">${fmt(row.cabinets)}</td><td style="padding:9px;border:1px solid #cbd5e1;">${fmt(row.availableSets)}</td><td style="padding:9px;border:1px solid #cbd5e1;">${row.missingDoors.length ? row.missingDoors.map(({ label, quantity }) => `${fmt(quantity)} ${esc(label)}`).join('، ') : 'لا يوجد نقص'}</td><td style="padding:9px;border:1px solid #cbd5e1;">${row.waitingCabinets ? `${fmt(row.waitingCabinets)} متوقف` : 'جاهز'}</td></tr>`).join('')}</tbody></table>`;
+        document.body.appendChild(report);
+        this.showToast('جاري تجهيز تقرير الأبواب الناقصة...');
+        try { await html2pdf().set({ margin: 0.35, filename: `Missing_Doors_Report_${new Date().toISOString().slice(0, 10)}.pdf`, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', logging: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(report).save(); this.showToast('تم تصدير تقرير الأبواب الناقصة ✅'); }
+        catch (error) { console.error('Missing doors PDF export error:', error); this.showToast('تعذر تصدير التقرير', true); }
+        finally { report.remove(); }
+    },
+
     renderInventory() {
         const container = document.getElementById('inventory-list');
         if(!container) return;
         container.innerHTML = '';
+        this.renderMissingDoorsReport();
 
         const models = this.data.inventory.models || [];
         const balanceEditable = this.canEdit('balances');
