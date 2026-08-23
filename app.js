@@ -59,7 +59,7 @@ const App = {
     },
 
     async init() {
-        // تسجيل أحداث التثبيت يمكن أن يعمل قبل تسجيل الدخول، لكن لا يتم تشغيل بيانات التطبيق قبل المصادقة.
+        // التطبيق مفتوح بدون بوابة تسجيل دخول؛ يبدأ تحميل البيانات مباشرة كما كان قبل إضافة المصادقة.
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             this.deferredPrompt = event;
@@ -81,50 +81,18 @@ const App = {
             if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
 
-        const loginForm = document.getElementById('login-form');
-        if (loginForm) loginForm.addEventListener('submit', (event) => this.submitLogin(event));
-        const forgotPasswordButton = document.getElementById('forgot-password-btn');
-        if (forgotPasswordButton) forgotPasswordButton.addEventListener('click', () => this.requestPasswordReset());
-        const toggleSignupBtn = document.getElementById('toggle-signup-btn');
-        if (toggleSignupBtn) toggleSignupBtn.addEventListener('click', () => this.toggleAuthForms(true));
-        const toggleLoginBtn = document.getElementById('toggle-login-btn');
-        if (toggleLoginBtn) toggleLoginBtn.addEventListener('click', () => this.toggleAuthForms(false));
-        const signupForm = document.getElementById('signup-form');
-        if (signupForm) signupForm.addEventListener('submit', (event) => this.submitSignup(event));
-        const logoutButton = document.getElementById('auth-logout-btn');
-        if (logoutButton) logoutButton.addEventListener('click', () => this.logout());
-
-        this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
-            if (!firebaseUser) {
-                // Don't clear if we are in a master bypass session
-                if (this.currentUser?.isBypass) {
-                    if (this.sessionStartedForUid !== this.currentUser.uid) {
-                        await this.ensureAuthenticatedSession(this.currentUser.uid);
-                    }
-                    return;
-                }
-                
-                this.currentUser = null;
-                this.sessionStartedForUid = null;
-                this.showLoginGate();
-                return;
-            }
-            try {
-                let profile = null;
-                for (let attempt = 0; attempt < 5 && !profile; attempt += 1) {
-                    profile = await API.auth.getProfile(firebaseUser.uid);
-                    if (!profile) await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                if (!profile || profile.active === false) throw new Error('account_not_configured');
-                this.currentUser = { ...profile, uid: firebaseUser.uid, isMaster: profile.role === 'admin' && profile.usernameLower === 'mfayez' };
-                await this.ensureAuthenticatedSession(firebaseUser.uid);
-                this.showAuthenticatedShell();
-            } catch (error) {
-                console.error('Authentication profile error:', error);
-                await API.auth.logout().catch(() => {});
-                this.showLoginGate(error.message === 'account_not_configured' ? 'الحساب غير مفعل أو لم يتم إعداد صلاحياته بعد' : 'تعذر تحميل صلاحيات الحساب');
-            }
-        });
+        const authGate = document.getElementById('auth-gate');
+        if (authGate) authGate.remove();
+        this.currentUser = {
+            uid: 'public_guest_session',
+            username: 'مستخدم التطبيق',
+            role: 'guest',
+            usernameLower: 'public',
+            isMaster: true,
+            isBypass: true
+        };
+        await this.ensureAuthenticatedSession(this.currentUser.uid);
+        this.showAuthenticatedShell();
     },
 
     async ensureAuthenticatedSession(uid) {
