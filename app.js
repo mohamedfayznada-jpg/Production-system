@@ -217,6 +217,10 @@ const App = {
         const role = document.getElementById('auth-user-role');
         if (name) name.textContent = this.currentUser.username || '';
         if (role) role.textContent = this.currentUser.jobTitle || this.currentUser.role || '';
+        const logoutButton = document.getElementById('auth-logout-btn');
+        if (logoutButton) logoutButton.style.display = 'none';
+        const authUserBadge = document.getElementById('auth-user-badge');
+        if (authUserBadge) authUserBadge.style.display = 'none';
         
         const adminNav = document.querySelectorAll('[data-admin-only]');
         adminNav.forEach(item => { item.style.display = this.currentUser.isMaster ? '' : 'none'; });
