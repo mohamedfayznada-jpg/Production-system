@@ -162,7 +162,7 @@ export const API = {
             const docRef = doc(db, "app_settings", "global_system");
             return onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists() && docSnap.data().departments) callback(docSnap.data().departments);
-                else callback(['التجميع النهائي']);
+                else callback(['التجميع النهائى']);
             });
         },
         async saveDepartments(departments) {
@@ -298,6 +298,27 @@ export const API = {
         async testConnection() {
             try { const q = query(collection(db, "production_records"), limit(1)); await getDocs(q); return true; } 
             catch (error) { return false; }
+        },
+        async getLatestDataDate() {
+            try {
+                const [productionSnapshot, targetSnapshot, scratchSnapshot, fiveSSnapshot] = await Promise.all([
+                    getDocs(query(collection(db, "production_records"), limit(500))),
+                    getDocs(query(collection(db, "shift_targets"), limit(500))),
+                    getDocs(query(collection(db, "scratches_records"), limit(500))),
+                    getDocs(query(collection(db, "5s_notes"), limit(500)))
+                ]);
+                const dates = [];
+                [productionSnapshot, targetSnapshot, scratchSnapshot, fiveSSnapshot].forEach((snapshot) => {
+                    snapshot.forEach((recordDoc) => {
+                        const value = recordDoc.data()?.date;
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) dates.push(String(value));
+                    });
+                });
+                return dates.sort().at(-1) || '';
+            } catch (error) {
+                console.warn('Unable to determine latest data date:', error);
+                return '';
+            }
         },
         async saveHour(department, record) {
             const docRef = doc(db, "production_records", record.recordId);

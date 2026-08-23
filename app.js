@@ -37,6 +37,7 @@ const App = {
     authStateUnsubscribe: null,
     usersListener: null,
     sessionStartedForUid: null,
+    sessionStartPromise: null,
     
     isOnline: true,
     saveTimers: {},
@@ -48,7 +49,7 @@ const App = {
     data: {
         departments: [],
         currentDepartment: '',
-        settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: 'التجميع النهائي', defectTypes: ['خدش خفيف'] },
+        settings: { start: '07:30', end: '16:00', bStart: '12:30', bEnd: '13:30', lineName: 'التجميع النهائى', defectTypes: ['خدش خفيف'] },
         generatedHours: [],
         scratches: [],
         inventory: { models: [], cabinet: {}, door: {} },
@@ -98,8 +99,7 @@ const App = {
                 // Don't clear if we are in a master bypass session
                 if (this.currentUser?.isBypass) {
                     if (this.sessionStartedForUid !== this.currentUser.uid) {
-                        this.sessionStartedForUid = this.currentUser.uid;
-                        await this.startAuthenticatedSession();
+                        await this.ensureAuthenticatedSession(this.currentUser.uid);
                     }
                     return;
                 }
@@ -117,17 +117,31 @@ const App = {
                 }
                 if (!profile || profile.active === false) throw new Error('account_not_configured');
                 this.currentUser = { ...profile, uid: firebaseUser.uid, isMaster: profile.role === 'admin' && profile.usernameLower === 'mfayez' };
+                await this.ensureAuthenticatedSession(firebaseUser.uid);
                 this.showAuthenticatedShell();
-                if (this.sessionStartedForUid !== firebaseUser.uid) {
-                    this.sessionStartedForUid = firebaseUser.uid;
-                    await this.startAuthenticatedSession();
-                }
             } catch (error) {
                 console.error('Authentication profile error:', error);
                 await API.auth.logout().catch(() => {});
                 this.showLoginGate(error.message === 'account_not_configured' ? 'الحساب غير مفعل أو لم يتم إعداد صلاحياته بعد' : 'تعذر تحميل صلاحيات الحساب');
             }
         });
+    },
+
+    async ensureAuthenticatedSession(uid) {
+        if (!uid || this.sessionStartedForUid === uid) return;
+        if (this.sessionStartPromise) return this.sessionStartPromise;
+        this.sessionStartPromise = (async () => {
+            await this.startAuthenticatedSession();
+            this.sessionStartedForUid = uid;
+        })();
+        try {
+            await this.sessionStartPromise;
+        } catch (error) {
+            this.sessionStartedForUid = null;
+            throw error;
+        } finally {
+            this.sessionStartPromise = null;
+        }
     },
 
     async startAuthenticatedSession() {
@@ -162,7 +176,9 @@ const App = {
         this.updateConnectionStatus(this.isOnline);
 
         const today = new Date();
-        const dateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        const todayString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        const latestDataDate = await API.production.getLatestDataDate();
+        const dateString = latestDataDate || todayString;
         const globalDate = document.getElementById('global-date');
         const globalShift = document.getElementById('global-shift');
         if (globalDate) globalDate.value = dateString;
@@ -475,11 +491,8 @@ const App = {
             // If it's a bypass login (Firebase Auth failed but master password correct)
             if (profile && profile.isBypass) {
                 this.currentUser = profile;
+                await this.ensureAuthenticatedSession(profile.uid);
                 this.showAuthenticatedShell();
-                if (this.sessionStartedForUid !== profile.uid) {
-                    this.sessionStartedForUid = profile.uid;
-                    await this.startAuthenticatedSession();
-                }
             }
         } catch (loginError) {
             const lockRemaining = this.registerLoginFailure();
@@ -1120,8 +1133,9 @@ const App = {
             });
         }
         
+        const primaryFactoryDepartment = dashboardDepartments[0] || '';
         factoryTotalTarget = isMaster
-            ? (validTargets['التجميع النهائي'] || 0)
+            ? (validTargets[primaryFactoryDepartment] || 0)
             : dashboardDepartments.reduce((sum, department) => sum + (validTargets[department] || 0), 0);
 
         if(this.data.master.scratches) {
@@ -1136,7 +1150,7 @@ const App = {
         dashboardDepartments.forEach(d => {
             const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
             finalDeptProdTotals[d] = sum;
-            if (isMaster ? d === 'التجميع النهائي' : true) {
+            if (isMaster ? d === primaryFactoryDepartment : true) {
                 factoryTotalActual += sum;
             }
         });
