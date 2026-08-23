@@ -1599,176 +1599,178 @@ const App = {
     },
 
     renderAnalytics() {
-        Chart.defaults.font.family = 'Cairo'; 
-        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Cairo';
+        Chart.defaults.color = '#64748b';
 
-        if(this.analyticsMode === 'dept') {
-            // تحليلات القسم الحالي
-            const liveTotalEl = document.getElementById('live-total');
-            let totalProd = Number(liveTotalEl ? liveTotalEl.innerText : 0) || 0; 
-            let activeHours = 0; let hourlyLabels = []; let hourlyData = [];
-            
-            document.querySelectorAll('.hour-row').forEach(row => {
-                if(!row.classList.contains('break-row')) {
-                    const actualInput = row.querySelector('.actual-input');
-                    const timeLabel = row.querySelector('.time-label');
-                    if (actualInput && timeLabel) {
-                        const act = Number(actualInput.value) || 0;
-                        activeHours += (act > 0 ? 1 : 0);
-                        hourlyLabels.push(timeLabel.innerText.replace(' ص', '').replace(' م', ''));
-                        hourlyData.push(act);
-                    }
-                }
+        const date = document.getElementById('global-date')?.value || '';
+        const shift = document.getElementById('global-shift')?.value || '1';
+        const currentDept = this.data.currentDepartment || '';
+        const visibleDepartments = this.visibleDepartments();
+        const fmt = (value, digits = 0) => Number(value || 0).toLocaleString('ar-EG', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+        const pct = (value) => `${Number(value || 0).toFixed(1)}%`;
+        const chartColors = ['#0a9f8c', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#0f766e', '#64748b'];
+        const destroyChart = (key) => { if (this.charts[key]) { this.charts[key].destroy(); this.charts[key] = null; } };
+        const safeRecords = (records) => Array.isArray(records) ? records : [];
+        const productionRows = safeRecords(this.data.master.production).filter((row) => row && row.date === date && String(row.shift) === String(shift));
+        const targetRows = safeRecords(this.data.master.targets).filter((row) => row && row.date === date && String(row.shift) === String(shift));
+        const defectRows = safeRecords(this.data.master.scratches).filter((row) => row && row.date === date);
+        const localDefectRows = safeRecords(this.data.scratches);
+
+        const aggregateProduction = (departments) => {
+            const result = {};
+            departments.forEach((dept) => { result[dept] = { byHour: {}, target: 0 }; });
+            productionRows.forEach((row, rowIndex) => {
+                if (!row.department || !result[row.department]) return;
+                const key = String(row.hour || '').trim() || `record-${row.id || row.recordId || rowIndex}`;
+                const value = Number(row.actual) || 0;
+                result[row.department].byHour[key] = Math.max(result[row.department].byHour[key] || 0, value);
             });
-
-            const avgProdEl = document.getElementById('analytics-avg-prod');
-            if(avgProdEl) avgProdEl.innerText = activeHours > 0 ? (totalProd / activeHours).toFixed(1) : 0; 
-            
-            const totalDefectsEl = document.getElementById('analytics-total-defects');
-            const todayScratches = this.data.scratches.filter(d => d.date === document.getElementById('global-date').value);
-            if(totalDefectsEl) totalDefectsEl.innerText = todayScratches.length;
-
-            const prodChartCanvas = document.getElementById('prodChart');
-            if (prodChartCanvas) {
-                if(this.charts.prod) this.charts.prod.destroy(); 
-                this.charts.prod = new Chart(prodChartCanvas.getContext('2d'), { type: 'line', data: { labels: hourlyLabels, datasets: [{ label: 'الإنتاج', data: hourlyData, backgroundColor: 'rgba(10, 179, 156, 0.2)', borderColor: '#0ab39c', borderWidth: 3, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
-            }
-
-            let defectCounts = {}; todayScratches.forEach(d => { defectCounts[d.type] = (defectCounts[d.type] || 0) + 1; });
-            
-            // ---------------- تحليل باريتو (جديد) ----------------
-            const paretoChartCanvas = document.getElementById('paretoChart');
-            if(paretoChartCanvas) {
-                if(this.charts.pareto) this.charts.pareto.destroy();
-                
-                // ترتيب العيوب من الأكبر للأصغر
-                let sortedDefects = Object.keys(defectCounts).map(k => ({ type: k, count: defectCounts[k] })).sort((a, b) => b.count - a.count);
-                let pLabels = sortedDefects.map(d => d.type);
-                let pData = sortedDefects.map(d => d.count);
-                
-                // حساب النسبة التراكمية الخطية
-                let cumulativePercent = [];
-                let totalDefectsCount = pData.reduce((a, b) => a + b, 0);
-                let currentSum = 0;
-                
-                if (totalDefectsCount > 0) {
-                    pData.forEach(d => {
-                        currentSum += d;
-                        cumulativePercent.push(Math.round((currentSum / totalDefectsCount) * 100));
-                    });
-                }
-
-                this.charts.pareto = new Chart(paretoChartCanvas.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: pLabels.length ? pLabels : ['لا يوجد عيوب'],
-                        datasets: [
-                            { type: 'line', label: 'النسبة التراكمية %', data: cumulativePercent.length ? cumulativePercent : [0], borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.1, yAxisID: 'y1' },
-                            { type: 'bar', label: 'تكرار العيب', data: pData.length ? pData : [0], backgroundColor: '#f59e0b', borderRadius: 4, yAxisID: 'y' }
-                        ]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        scales: {
-                            y: { type: 'linear', position: 'left', beginAtZero: true },
-                            y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
-                        }
-                    }
-                });
-            }
-
-            let defectLabels = Object.keys(defectCounts); let defectData = Object.values(defectCounts);
-            const defectsChartCanvas = document.getElementById('defectsChart');
-            if (defectsChartCanvas) {
-                if(this.charts.defects) this.charts.defects.destroy();
-                this.charts.defects = new Chart(defectsChartCanvas.getContext('2d'), { type: 'doughnut', data: { labels: defectLabels.length ? defectLabels : ['سجل نظيف'], datasets: [{ data: defectData.length ? defectData : [1], backgroundColor: defectData.length ? ['#f59e0b', '#0ab39c', '#8b5cf6', '#ef4444', '#3b82f6'] : ['#f1f5f9'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } } });
-            }
-        } 
-        else {
-            // تحليلات المصنع بالكامل ضمن نطاق الأقسام المسموح بها
-            const analyticsDepartments = this.visibleDepartments();
-            let factoryTotalActual = 0;
-            let deptProd = {};
-            let deptTargets = {};
-            let globalScratches = {};
-            let totalScratchesCount = 0;
-
-            analyticsDepartments.forEach(d => { deptProd[d] = {}; deptTargets[d] = 0; });
-
-            if(this.data.master.production) {
-                this.data.master.production.forEach(r => {
-                    if(r.department && analyticsDepartments.includes(r.department) && r.recordId && r.recordId.startsWith(r.department)) {
-                        const val = Number(r.actual) || 0;
-                        const hourPrefix = r.hour.split(':')[0]; 
-                        deptProd[r.department][hourPrefix] = Math.max(deptProd[r.department][hourPrefix] || 0, val);
-                    }
-                });
-            }
-
-            if(this.data.master.targets) {
-                this.data.master.targets.forEach(r => {
-                    if(r.department && analyticsDepartments.includes(r.department)) {
-                        deptTargets[r.department] = Number(r.target) || 0;
-                    }
-                });
-            }
-
-            if(this.data.master.scratches) {
-                this.data.master.scratches.forEach(r => {
-                    if (!r.department || !analyticsDepartments.includes(r.department)) return;
-                    globalScratches[r.type] = (globalScratches[r.type] || 0) + 1;
-                    totalScratchesCount++;
-                });
-            }
-
-            let finalDeptProdTotals = {};
-            analyticsDepartments.forEach(d => {
-                const sum = Object.values(deptProd[d]).reduce((acc, val) => acc + val, 0);
-                finalDeptProdTotals[d] = sum;
-                factoryTotalActual += sum;
+            targetRows.forEach((row) => {
+                if (row.department && result[row.department]) result[row.department].target = Number(row.target) || 0;
             });
+            return result;
+        };
+        const totalsFor = (dept, aggregate) => {
+            const byHour = aggregate[dept]?.byHour || {};
+            const values = Object.values(byHour).map(Number);
+            const actual = values.reduce((sum, value) => sum + value, 0);
+            const activeHours = values.filter((value) => value > 0).length;
+            const target = Number(aggregate[dept]?.target) || 0;
+            const records = defectRows.filter((row) => row.department === dept);
+            const defects = records.length;
+            const pending = localDefectRows.filter((row) => row.department === dept && row.status === 'pending').length;
+            const inspected = actual + defects;
+            return { dept, byHour, values, actual, activeHours, target, attainment: target > 0 ? (actual / target) * 100 : 0, defects, pending, defectRate: inspected > 0 ? (defects / inspected) * 100 : 0, records };
+        };
+        const insightFor = (metrics) => {
+            if (!metrics) return { title: 'قراءة هندسية', text: 'لا توجد بيانات كافية لبناء قراءة تشغيلية.' };
+            if (!metrics.target && !metrics.actual && !metrics.defects) return { title: 'لا توجد حركة مسجلة', text: 'لم يتم تسجيل إنتاج أو عيوب ضمن النطاق الحالي. راجع التاريخ والوردية والقسم قبل اتخاذ قرار تشغيلي.' };
+            if (metrics.attainment < 70 && metrics.target > 0) return { title: 'فجوة تحقيق تستحق التدخل', text: `تحقيق المستهدف ${pct(metrics.attainment)} فقط، مع متوسط ${fmt(metrics.activeHours ? metrics.actual / metrics.activeHours : 0, 1)} وحدة لكل ساعة فعالة. ابدأ بمراجعة ساعات التوقف وأسباب العجز المسجلة.` };
+            if (metrics.defectRate >= 5) return { title: 'إشارة جودة حرجة', text: `معدل العيوب ${pct(metrics.defectRate)} من إجمالي الوحدات المفحوصة. ركّز على أعلى نوع عيب في باريتو وافصل بين العيوب المفتوحة والمغلقة.` };
+            if (metrics.attainment >= 100 && metrics.defectRate < 2) return { title: 'أداء مستقر وقابل للتكرار', text: `القسم يحقق ${pct(metrics.attainment)} من المستهدف مع معدل عيوب ${pct(metrics.defectRate)}. حافظ على ظروف التشغيل الحالية ووثّق أفضل الممارسات.` };
+            return { title: 'أداء يحتاج ضبطاً مستهدفاً', text: `الإنتاج ${fmt(metrics.actual)} من ${fmt(metrics.target)}، ومعدل العيوب ${pct(metrics.defectRate)}. استخدم تفاصيل الساعة وباريتو لتحديد نقطة التحسين الأعلى أثراً.` };
+        };
+        const setText = (id, value) => { const el = document.getElementById(id); if (el) el.innerText = value; };
+        const setHtml = (id, value) => { const el = document.getElementById(id); if (el) el.innerHTML = value; };
+        const periodLabel = date ? new Date(`${date}T00:00:00`).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'اليوم';
+        setText('analytics-period-label', periodLabel);
+        setText('analytics-dept-period', periodLabel);
+        setText('analytics-dept-shift', shift);
+        setText('analytics-fac-period', periodLabel);
+        setText('analytics-dept-context', currentDept || 'القسم الحالي');
 
-            const facProdEl = document.getElementById('analytics-fac-prod');
-            const facDefectsEl = document.getElementById('analytics-fac-defects');
-            if(facProdEl) facProdEl.innerText = factoryTotalActual;
-            if(facDefectsEl) facDefectsEl.innerText = totalScratchesCount;
+        if (this.analyticsMode === 'dept') {
+            const aggregate = aggregateProduction([currentDept]);
+            const metrics = totalsFor(currentDept, aggregate);
+            const insight = insightFor(metrics);
+            const defectCounts = {};
+            metrics.records.forEach((row) => { const type = row.type || 'غير مصنف'; defectCounts[type] = (defectCounts[type] || 0) + 1; });
+            const sortedDefects = Object.entries(defectCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => ({ type, count }));
+            const hourlyKeys = Object.keys(metrics.byHour).sort((a, b) => a.localeCompare(b));
+            const hourlyLabels = hourlyKeys.map((key) => key || '—');
+            const hourlyData = hourlyKeys.map((key) => metrics.byHour[key]);
+            const plannedHours = Math.max(1, (this.data.generatedHours || []).filter((item) => !item.isBreak).length || hourlyKeys.length || 1);
+            const targetPerHour = metrics.target / plannedHours;
+            const hourlyTarget = hourlyKeys.map(() => Number(targetPerHour.toFixed(1)));
+            const cumulative = [];
+            let running = 0;
+            sortedDefects.forEach(({ count }) => { running += count; cumulative.push(metrics.defects ? Math.round((running / metrics.defects) * 100) : 0); });
 
-            const depts = analyticsDepartments;
-            const prodData = depts.map(d => finalDeptProdTotals[d]);
-            const targetData = depts.map(d => deptTargets[d]);
+            setText('analytics-dept-prod', fmt(metrics.actual));
+            setText('analytics-dept-target', fmt(metrics.target));
+            setText('analytics-dept-attainment', metrics.target ? pct(metrics.attainment) : 'غير متاح');
+            setText('analytics-total-defects', fmt(metrics.defects));
+            setText('analytics-defect-rate', `معدل ${pct(metrics.defectRate)}`);
+            setText('analytics-pending-defects', fmt(metrics.pending));
+            setText('analytics-avg-prod', fmt(metrics.activeHours ? metrics.actual / metrics.activeHours : 0, 1));
+            setText('analytics-active-hours', `${fmt(metrics.activeHours)} ساعات فعالة`);
+            setText('analytics-insight-title', insight.title);
+            setText('analytics-insight-text', insight.text);
 
-            const facTargetChartCanvas = document.getElementById('facTargetChart');
-            if(facTargetChartCanvas) {
-                if(this.charts.facTarget) this.charts.facTarget.destroy();
-                this.charts.facTarget = new Chart(facTargetChartCanvas.getContext('2d'), {
-                    type: 'bar',
-                    data: { labels: depts, datasets: [{ label: 'الفعلي', data: prodData, backgroundColor: '#0ab39c' }, { label: 'المستهدف', data: targetData, backgroundColor: '#cbd5e1' }] },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+            const tableRows = hourlyKeys.map((hour) => {
+                const actual = metrics.byHour[hour] || 0;
+                const gap = actual - targetPerHour;
+                const status = actual >= targetPerHour && targetPerHour > 0 ? '<span class="analytics-status good">ضمن الخطة</span>' : actual > 0 ? '<span class="analytics-status warn">دون الخطة</span>' : '<span class="analytics-status bad">بدون تسجيل</span>';
+                const source = productionRows.find((row) => row.department === currentDept && String(row.hour || '') === hour);
+                return `<tr><td>${this.escapeHtml(hour)}</td><td>${fmt(actual)}</td><td>${fmt(targetPerHour, 1)}</td><td class="${gap >= 0 ? 'positive' : 'negative'}">${gap >= 0 ? '+' : ''}${fmt(gap, 1)}</td><td>${status}</td><td>${this.escapeHtml(source?.shortfallReason || '—')}</td></tr>`;
+            }).join('');
+            setHtml('analytics-dept-breakdown', `<div class="analytics-table-scroll"><table><thead><tr><th>الساعة</th><th>الفعلي</th><th>المعدل المستهدف</th><th>الفجوة</th><th>الحالة</th><th>سبب العجز</th></tr></thead><tbody>${tableRows || '<tr><td colspan="6" class="empty-cell">لا توجد سجلات إنتاج ضمن النطاق الحالي</td></tr>'}</tbody></table></div>`);
+
+            this.analyticsContext = { mode: 'dept', date, shift, dept: currentDept, metrics, defectCounts, sortedDefects, hourlyKeys, hourlyTarget, productionRows, defects: metrics.records, insight };
+
+            const prodCanvas = document.getElementById('prodChart');
+            if (prodCanvas) {
+                destroyChart('prod');
+                this.charts.prod = new Chart(prodCanvas.getContext('2d'), { type: 'line', data: { labels: hourlyLabels.length ? hourlyLabels : ['لا توجد ساعات'], datasets: [{ label: 'الإنتاج الفعلي', data: hourlyData.length ? hourlyData : [0], borderColor: '#0a9f8c', backgroundColor: 'rgba(10,159,140,.15)', borderWidth: 3, tension: .35, fill: true }, { label: 'المعدل المستهدف', data: hourlyTarget.length ? hourlyTarget : [0], borderColor: '#94a3b8', borderDash: [6, 5], borderWidth: 2, pointRadius: 0, fill: false }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { color: '#edf2f5' } }, x: { grid: { display: false } } }, onClick: (event, elements) => { if (elements?.length && hourlyKeys[elements[0].index]) this.openAnalyticsDetail('hour', { hour: hourlyKeys[elements[0].index] }); } } });
             }
-
-            const facDeptChartCanvas = document.getElementById('facDeptShareChart');
-            if(facDeptChartCanvas) {
-                if(this.charts.facDept) this.charts.facDept.destroy();
-                this.charts.facDept = new Chart(facDeptChartCanvas.getContext('2d'), {
-                    type: 'doughnut',
-                    data: { labels: depts, datasets: [{ data: prodData, backgroundColor: ['#0ab39c', '#3b82f6', '#8b5cf6', '#f59e0b', '#64748b'] }] },
-                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
-                });
+            const paretoCanvas = document.getElementById('paretoChart');
+            if (paretoCanvas) {
+                destroyChart('pareto');
+                const labels = sortedDefects.length ? sortedDefects.map((item) => item.type) : ['لا يوجد عيوب'];
+                this.charts.pareto = new Chart(paretoCanvas.getContext('2d'), { type: 'bar', data: { labels, datasets: [{ type: 'bar', label: 'تكرار العيب', data: sortedDefects.length ? sortedDefects.map((item) => item.count) : [0], backgroundColor: '#f59e0b', borderRadius: 6, yAxisID: 'y' }, { type: 'line', label: 'النسبة التراكمية', data: cumulative.length ? cumulative : [0], borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, pointRadius: 3, tension: .2, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true }, y1: { beginAtZero: true, max: 100, position: 'right', grid: { drawOnChartArea: false } } }, onClick: (event, elements) => { if (elements?.length && sortedDefects[elements[0].index]) this.openAnalyticsDetail('pareto-item', { defectType: sortedDefects[elements[0].index].type }); } } });
             }
-
-            const facDefectChartCanvas = document.getElementById('facGlobalDefectsChart');
-            if(facDefectChartCanvas) {
-                const gDefectLabels = Object.keys(globalScratches);
-                const gDefectData = Object.values(globalScratches);
-                if(this.charts.facDefect) this.charts.facDefect.destroy();
-                this.charts.facDefect = new Chart(facDefectChartCanvas.getContext('2d'), {
-                    type: 'pie',
-                    data: { labels: gDefectLabels.length ? gDefectLabels : ['سجل نظيف'], datasets: [{ data: gDefectData.length ? gDefectData : [1], backgroundColor: gDefectData.length ? ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#0ab39c'] : ['#f1f5f9'] }] },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+            const defectCanvas = document.getElementById('defectsChart');
+            if (defectCanvas) {
+                destroyChart('defects');
+                const labels = sortedDefects.length ? sortedDefects.map((item) => item.type) : ['سجل نظيف'];
+                this.charts.defects = new Chart(defectCanvas.getContext('2d'), { type: 'doughnut', data: { labels, datasets: [{ data: sortedDefects.length ? sortedDefects.map((item) => item.count) : [1], backgroundColor: sortedDefects.length ? chartColors : ['#e2e8f0'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { position: 'right' } }, onClick: (event, elements) => { if (elements?.length && sortedDefects[elements[0].index]) this.openAnalyticsDetail('defect-type', { defectType: sortedDefects[elements[0].index].type }); } } });
             }
+        } else {
+            const aggregate = aggregateProduction(visibleDepartments);
+            const departmentMetrics = visibleDepartments.map((dept) => totalsFor(dept, aggregate));
+            const factory = { actual: departmentMetrics.reduce((sum, item) => sum + item.actual, 0), target: departmentMetrics.reduce((sum, item) => sum + item.target, 0), defects: defectRows.filter((row) => visibleDepartments.includes(row.department)), departments: departmentMetrics };
+            factory.attainment = factory.target > 0 ? (factory.actual / factory.target) * 100 : 0;
+            factory.defectRate = (factory.actual + factory.defects.length) > 0 ? (factory.defects.length / (factory.actual + factory.defects.length)) * 100 : 0;
+            const topDept = [...departmentMetrics].sort((a, b) => b.attainment - a.attainment)[0];
+            const lowDept = [...departmentMetrics].filter((item) => item.target > 0).sort((a, b) => a.attainment - b.attainment)[0];
+            const factoryInsight = !factory.actual && !factory.defects.length ? { title: 'لا توجد حركة على مستوى النطاق', text: 'لم تصل سجلات إنتاج أو جودة للنطاق المحدد في التاريخ والوردية الحاليين.' } : lowDept && lowDept.attainment < 80 ? { title: 'عنق الزجاجة يحتاج مالكاً واضحاً', text: `أدنى تحقيق في ${lowDept.dept} عند ${pct(lowDept.attainment)}. أعلى مساهمة إنتاجية حالياً من ${topDept?.dept || 'غير محدد'}. ابدأ بخطة إجراء للقسم الأقل تحقيقاً.` } : { title: 'قراءة المصنع متوازنة', text: `إجمالي التحقيق ${pct(factory.attainment)} ومعدل العيوب ${pct(factory.defectRate)} عبر ${fmt(visibleDepartments.length)} أقسام. راقب الفروقات بين الأقسام بدلاً من الاكتفاء بالمتوسط العام.` };
+            setText('analytics-fac-dept-count', fmt(visibleDepartments.length));
+            setText('analytics-fac-prod', fmt(factory.actual));
+            setText('analytics-fac-target', fmt(factory.target));
+            setText('analytics-fac-attainment', factory.target ? pct(factory.attainment) : 'غير متاح');
+            setText('analytics-fac-defects', fmt(factory.defects.length));
+            setText('analytics-fac-defect-rate', `معدل ${pct(factory.defectRate)}`);
+            setText('analytics-factory-insight-title', factoryInsight.title);
+            setText('analytics-factory-insight-text', factoryInsight.text);
+            const labels = visibleDepartments.length ? visibleDepartments : ['لا توجد أقسام'];
+            const prodData = departmentMetrics.map((item) => item.actual);
+            const targetData = departmentMetrics.map((item) => item.target);
+            const deptRows = [...departmentMetrics].sort((a, b) => b.attainment - a.attainment).map((item, index) => `<tr data-dept="${this.escapeHtml(item.dept)}" onclick="App.openAnalyticsDetail('factory-dept', {department: '${this.escapeHtml(item.dept).replace(/'/g, '&#39;')}'})"><td>${index + 1}</td><td>${this.escapeHtml(item.dept)}</td><td>${fmt(item.actual)}</td><td>${fmt(item.target)}</td><td class="${item.attainment >= 90 ? 'positive' : 'negative'}">${item.target ? pct(item.attainment) : '—'}</td><td>${fmt(item.defects)}</td><td>${fmt(item.pending)}</td></tr>`).join('');
+            setHtml('analytics-factory-breakdown', `<div class="analytics-table-scroll"><table><thead><tr><th>#</th><th>القسم</th><th>الإنتاج</th><th>المستهدف</th><th>التحقيق</th><th>العيوب</th><th>مفتوح</th></tr></thead><tbody>${deptRows || '<tr><td colspan="7" class="empty-cell">لا توجد بيانات</td></tr>'}</tbody></table></div>`);
+            const globalCounts = {};
+            factory.defects.forEach((row) => { const type = row.type || 'غير مصنف'; globalCounts[type] = (globalCounts[type] || 0) + 1; });
+            const globalDefects = Object.entries(globalCounts).sort((a, b) => b[1] - a[1]);
+            this.analyticsContext = { mode: 'factory', date, shift, visibleDepartments, factory, departmentMetrics, globalDefects, factoryInsight };
+            const facTargetCanvas = document.getElementById('facTargetChart');
+            if (facTargetCanvas) { destroyChart('facTarget'); this.charts.facTarget = new Chart(facTargetCanvas.getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'الفعلي', data: prodData, backgroundColor: '#0a9f8c', borderRadius: 6 }, { label: 'المستهدف', data: targetData, backgroundColor: '#cbd5e1', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, onClick: (event, elements) => { if (elements?.length && visibleDepartments[elements[0].index]) this.openAnalyticsDetail('factory-dept', { department: visibleDepartments[elements[0].index] }); } } }); }
+            const facShareCanvas = document.getElementById('facDeptShareChart');
+            if (facShareCanvas) { destroyChart('facDept'); this.charts.facDept = new Chart(facShareCanvas.getContext('2d'), { type: 'doughnut', data: { labels, datasets: [{ data: prodData.length ? prodData : [1], backgroundColor: chartColors, borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right' } }, onClick: (event, elements) => { if (elements?.length && visibleDepartments[elements[0].index]) this.openAnalyticsDetail('factory-dept', { department: visibleDepartments[elements[0].index] }); } } }); }
+            const facDefectCanvas = document.getElementById('facGlobalDefectsChart');
+            if (facDefectCanvas) { destroyChart('facDefect'); this.charts.facDefect = new Chart(facDefectCanvas.getContext('2d'), { type: 'pie', data: { labels: globalDefects.length ? globalDefects.map(([type]) => type) : ['سجل نظيف'], datasets: [{ data: globalDefects.length ? globalDefects.map(([, count]) => count) : [1], backgroundColor: globalDefects.length ? chartColors : ['#e2e8f0'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, onClick: (event, elements) => { if (elements?.length && globalDefects[elements[0].index]) this.openAnalyticsDetail('factory-defect-type', { defectType: globalDefects[elements[0].index][0] }); } } }); }
         }
+    },
+
+    openAnalyticsDetail(type, payload = {}) {
+        const context = this.analyticsContext || {};
+        const panel = document.getElementById('analytics-detail-panel');
+        if (!panel) return;
+        const esc = (value) => this.escapeHtml(value ?? '—');
+        const pct = (value) => `${Number(value || 0).toFixed(1)}%`;
+        const list = (title, rows, columns, empty = 'لا توجد سجلات مطابقة') => `<div class="analytics-detail-heading"><div><span class="analytics-chart-kicker">DRILL-DOWN / RECORDS</span><h4>${esc(title)}</h4></div><span class="analytics-detail-count">${fmtDetail(rows.length)} سجل</span></div><div class="analytics-table-scroll"><table><thead><tr>${columns.map((column) => `<th>${esc(column)}</th>`).join('')}</tr></thead><tbody>${rows.length ? rows.map((row) => `<tr>${row}</tr>`).join('') : `<tr><td colspan="${columns.length}" class="empty-cell">${esc(empty)}</td></tr>`}</tbody></table></div>`;
+        const fmtDetail = (value) => Number(value || 0).toLocaleString('ar-EG');
+        let title = 'تفاصيل التحليل';
+        let body = '';
+        if (type === 'insight' || type === 'factory-insight') { const insight = type === 'insight' ? context.insight : context.factoryInsight; title = insight?.title || 'القراءة الهندسية'; body = `<div class="analytics-detail-callout"><strong>${esc(insight?.text || 'لا توجد قراءة متاحة')}</strong><p>تم بناء هذه القراءة من الإنتاج، المستهدف، العيوب، وساعات التشغيل المسجلة ضمن التاريخ والوردية الظاهرين أعلى الصفحة.</p></div>`; }
+        else if (type === 'hour' || type === 'hourly') { title = type === 'hour' ? `تفاصيل الساعة ${payload.hour || '—'}` : 'سجل الإنتاج بالساعة'; const rows = (context.productionRows || []).filter((row) => row.department === context.dept && (type === 'hourly' || String(row.hour || '') === String(payload.hour))).map((row) => [`<td>${esc(row.hour)}</td>`, `<td>${fmtDetail(row.actual)}</td>`, `<td>${esc(row.shortfallReason || '—')}</td>`, `<td>${esc(row.updatedAt ? 'مسجل' : '—')}</td>`].join('')); body = list(title, rows, ['الساعة', 'الإنتاج', 'سبب العجز', 'الحالة']); }
+        else if (type === 'pareto' || type === 'defects') { title = 'تفاصيل باريتو ومزيج العيوب'; const rows = (context.sortedDefects || []).map((item, index) => { const records = (context.defects || []).filter((row) => (row.type || 'غير مصنف') === item.type); return [`<td>${index + 1}</td>`, `<td>${esc(item.type)}</td>`, `<td>${fmtDetail(item.count)}</td>`, `<td>${fmtDetail(records.filter((row) => row.status === 'pending').length)}</td>`, `<td>${fmtDetail(records.filter((row) => row.status !== 'pending').length)}</td>`].join(''); }); body = list(title, rows, ['#', 'نوع العيب', 'التكرار', 'مفتوح', 'مغلق']); }
+        else if (type === 'pareto-item' || type === 'defect-type') { title = `سجلات العيب: ${payload.defectType || '—'}`; const rows = (context.defects || []).filter((row) => (row.type || 'غير مصنف') === payload.defectType).map((row) => [`<td>${esc(row.time || '—')}</td>`, `<td>${esc(row.notes || '—')}</td>`, `<td>${row.status === 'pending' ? '<span class="analytics-status bad">قيد الإصلاح</span>' : '<span class="analytics-status good">مغلق</span>'}</td>`, `<td>${row.image ? '<span class="analytics-status good">صورة</span>' : '—'}</td>`].join('')); body = list(title, rows, ['الوقت', 'الوصف', 'الحالة', 'الدليل']); }
+        else if (type === 'dept-production' || type === 'dept-target' || type === 'dept-attainment' || type === 'dept-defects' || type === 'dept-pending' || type === 'dept-throughput' || type === 'table') { title = 'مؤشرات القسم بالتفصيل'; const m = context.metrics || {}; const rows = [[`<td>${esc(context.dept)}</td>`, `<td>${fmtDetail(m.actual)}</td>`, `<td>${fmtDetail(m.target)}</td>`, `<td>${m.target ? pct(m.attainment) : '—'}</td>`, `<td>${fmtDetail(m.defects)}</td>`, `<td>${fmtDetail(m.pending)}</td>`].join('')]; body = list(title, rows, ['القسم', 'الإنتاج', 'المستهدف', 'التحقيق', 'العيوب', 'مفتوح']); }
+        else if (type === 'factory-production' || type === 'factory-target' || type === 'factory-attainment' || type === 'factory-defects' || type === 'factory-table' || type === 'factory-target-chart' || type === 'factory-share') { title = 'تفاصيل أداء الأقسام'; const rows = (context.departmentMetrics || []).map((m) => [`<td>${esc(m.dept)}</td>`, `<td>${fmtDetail(m.actual)}</td>`, `<td>${fmtDetail(m.target)}</td>`, `<td>${m.target ? pct(m.attainment) : '—'}</td>`, `<td>${fmtDetail(m.defects)}</td>`, `<td>${fmtDetail(m.pending)}</td>`].join('')); body = list(title, rows, ['القسم', 'الإنتاج', 'المستهدف', 'التحقيق', 'العيوب', 'مفتوح']); }
+        else if (type === 'factory-dept') { const m = (context.departmentMetrics || []).find((item) => item.dept === payload.department); title = `تحليل القسم ${payload.department || '—'}`; body = `<div class="analytics-detail-callout"><strong>${esc(m ? `تحقيق ${pct(m.attainment)} بإنتاج ${fmtDetail(m.actual)} من مستهدف ${fmtDetail(m.target)}.` : 'لا توجد بيانات للقسم')}</strong><p>يمكنك فتح صفحة التحليلات التفصيلية للقسم من خلال الزر التالي.</p><button class="primary-btn" onclick="App.switchToDepartmentAndGo('${esc(payload.department).replace(/'/g, '&#39;')}', 'analytics')">فتح تحليل القسم</button></div>`; }
+        else if (type === 'factory-defect-type' || type === 'factory-defects-chart') { const defects = context.factory?.defects || []; const rows = type === 'factory-defects-chart' ? (context.globalDefects || []).map(([defectType, count]) => [`<td>${esc(defectType)}</td>`, `<td>${fmtDetail(count)}</td>`, `<td>اضغط على النوع من الرسم لرؤية السجلات</td>`].join('')) : defects.filter((row) => (row.type || 'غير مصنف') === payload.defectType).map((row) => [`<td>${esc(row.department)}</td>`, `<td>${esc(row.type)}</td>`, `<td>${esc(row.notes || '—')}</td>`, `<td>${row.status === 'pending' ? '<span class="analytics-status bad">مفتوح</span>' : '<span class="analytics-status good">مغلق</span>'}</td>`].join('')); title = type === 'factory-defects-chart' ? 'تركيبة عيوب المصنع' : `انتشار العيب: ${payload.defectType || '—'}`; body = type === 'factory-defects-chart' ? list(title, rows, ['نوع العيب', 'التكرار', 'الإجراء']) : list(title, rows, ['القسم', 'النوع', 'الوصف', 'الحالة']); }
+        panel.innerHTML = `<div class="analytics-detail-content"><div class="analytics-detail-top"><span class="eyebrow">LIVE ENGINEERING READOUT</span><button class="chart-more-btn" onclick="document.getElementById('analytics-detail-panel').scrollIntoView({behavior:'smooth', block:'center'})">تثبيت القراءة <i class="fa-solid fa-thumbtack"></i></button></div>${body}</div>`;
+        panel.classList.add('has-content');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
 
     // ---------------- ملاحظات 5S ----------------

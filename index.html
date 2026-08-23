@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20260823-professional-mes-v1">
+    <link rel="manifest" href="manifest.json?v=20260823-engineering-intelligence-v2">
     <meta name="theme-color" content="#0ab39c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
     <title>نظام الإنتاج الموحد</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260823-professional-mes-v1">
+    <link rel="stylesheet" href="styles.css?v=20260823-engineering-intelligence-v2">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -302,78 +302,77 @@
             <div id="scratches-list"></div>
         </section>
 
-        <!-- 5. شاشة التحليلات والتقارير المتقدمة (تحديث) -->
+        <!-- 5. شاشة التحليلات والتقارير الهندسية -->
         <section id="screen-analytics" class="screen">
-            <div class="section-header" style="display:flex; justify-content:space-between;">
-                <h3 class="section-title">مركز التحليلات المتقدمة</h3>
-                
-                <!-- أزرار التصدير (جديد) -->
-                <div style="display:flex; gap:8px;">
-                    <button class="icon-btn" onclick="App.exportToExcel()" style="background:#10b981; color:white; width:35px; height:35px; font-size:0.9rem;" title="تصدير Excel"><i class="fa-solid fa-file-excel"></i></button>
-                    <button class="icon-btn" onclick="App.exportToPDF()" style="background:#ef4444; color:white; width:35px; height:35px; font-size:0.9rem;" title="تصدير PDF"><i class="fa-solid fa-file-pdf"></i></button>
+            <div class="analytics-hero">
+                <div>
+                    <span class="eyebrow"><i class="fa-solid fa-microchip"></i> ENGINEERING INTELLIGENCE</span>
+                    <h3 class="section-title">مركز التحليلات الهندسية</h3>
+                    <p class="analytics-hero-subtitle">حوّل سجلات التشغيل إلى قرارات: اضغط على أي عمود أو نقطة أو شريحة لفتح التفاصيل.</p>
+                </div>
+                <div class="analytics-actions">
+                    <div class="analytics-live-badge"><span class="analytics-live-dot"></span><span id="analytics-period-label">بيانات اليوم</span></div>
+                    <button class="icon-btn analytics-export-btn excel" onclick="App.exportToExcel()" title="تصدير Excel"><i class="fa-solid fa-file-excel"></i></button>
+                    <button class="icon-btn analytics-export-btn pdf" onclick="App.exportToPDF()" title="تصدير PDF"><i class="fa-solid fa-file-pdf"></i></button>
                 </div>
             </div>
-            
-            <div class="tabs-container mb-4">
-                <button class="tab-btn active" id="btn-analytics-dept" onclick="App.switchAnalyticsMode('dept')">القسم الحالي</button>
-                <button class="tab-btn" id="btn-analytics-factory" data-factory-only="true" onclick="App.switchAnalyticsMode('factory')">المصنع بالكامل</button>
+
+            <div class="tabs-container mb-4 analytics-mode-tabs">
+                <button class="tab-btn active" id="btn-analytics-dept" onclick="App.switchAnalyticsMode('dept')"><i class="fa-solid fa-layer-group"></i> القسم الحالي</button>
+                <button class="tab-btn" id="btn-analytics-factory" data-factory-only="true" onclick="App.switchAnalyticsMode('factory')"><i class="fa-solid fa-industry"></i> المصنع بالكامل</button>
             </div>
 
             <!-- تحليلات القسم الحالي -->
             <div id="analytics-dept-view">
-                <div class="grid-actions mb-4">
-                    <div class="card text-center mb-0">
-                        <div class="card-icon-top text-purple"><i class="fa-solid fa-bug"></i></div>
-                        <div class="card-subtitle">عيوب القسم (اليوم)</div>
-                        <div class="total-number text-main" style="font-size: 2.2rem;" id="analytics-total-defects">0</div>
-                    </div>
-                    <div class="card text-center mb-0">
-                        <div class="card-icon-top text-teal"><i class="fa-solid fa-gauge-high"></i></div>
-                        <div class="card-subtitle">متوسط الإنتاج/ساعة</div>
-                        <div class="total-number text-main" style="font-size: 2.2rem;" id="analytics-avg-prod">0</div>
-                    </div>
-                </div>
-                
-                <!-- تحليل باريتو (جديد) -->
-                <div class="card" style="border: 2px solid var(--warning-color);">
-                    <div class="section-header mb-0"><h4 class="card-title"><i class="fa-solid fa-chart-bar text-orange"></i> تحليل باريتو 80/20 (أخطر العيوب)</h4></div>
-                    <div class="chart-container"><canvas id="paretoChart"></canvas></div>
+                <div class="analytics-context-bar"><div><span class="context-label">نطاق التحليل</span><strong id="analytics-dept-context">القسم الحالي</strong></div><div><span class="context-label">الفترة</span><strong id="analytics-dept-period">اليوم</strong></div><div><span class="context-label">الوردية</span><strong id="analytics-dept-shift">1</strong></div></div>
+                <div class="analytics-kpi-grid analytics-kpi-grid-dept">
+                    <button class="analytics-kpi-card teal" onclick="App.openAnalyticsDetail('dept-production')"><span class="kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></span><span class="kpi-label">الإنتاج الفعلي</span><strong id="analytics-dept-prod">0</strong><small>وحدة مسجلة</small></button>
+                    <button class="analytics-kpi-card blue" onclick="App.openAnalyticsDetail('dept-target')"><span class="kpi-icon"><i class="fa-solid fa-bullseye"></i></span><span class="kpi-label">المستهدف</span><strong id="analytics-dept-target">0</strong><small>للوحدة / الوردية</small></button>
+                    <button class="analytics-kpi-card purple" onclick="App.openAnalyticsDetail('dept-attainment')"><span class="kpi-icon"><i class="fa-solid fa-chart-line"></i></span><span class="kpi-label">تحقيق المستهدف</span><strong id="analytics-dept-attainment">0%</strong><small>الفعلي ÷ المستهدف</small></button>
+                    <button class="analytics-kpi-card orange" onclick="App.openAnalyticsDetail('dept-defects')"><span class="kpi-icon"><i class="fa-solid fa-bug"></i></span><span class="kpi-label">عيوب اليوم</span><strong id="analytics-total-defects">0</strong><small id="analytics-defect-rate">معدل 0%</small></button>
+                    <button class="analytics-kpi-card red" onclick="App.openAnalyticsDetail('dept-pending')"><span class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></span><span class="kpi-label">عيوب قيد الإصلاح</span><strong id="analytics-pending-defects">0</strong><small>تحتاج متابعة</small></button>
+                    <button class="analytics-kpi-card slate" onclick="App.openAnalyticsDetail('dept-throughput')"><span class="kpi-icon"><i class="fa-solid fa-gauge-high"></i></span><span class="kpi-label">متوسط الإنتاج/ساعة</span><strong id="analytics-avg-prod">0</strong><small id="analytics-active-hours">0 ساعات فعالة</small></button>
                 </div>
 
-                <div class="card">
-                    <div class="section-header mb-0"><h4 class="card-title">مسار الإنتاج الزمني</h4></div>
-                    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+                <div id="analytics-insight-banner" class="analytics-insight-banner"><span class="insight-icon"><i class="fa-solid fa-lightbulb"></i></span><div><strong id="analytics-insight-title">قراءة هندسية</strong><p id="analytics-insight-text">جاري تحليل البيانات...</p></div><button class="insight-detail-btn" onclick="App.openAnalyticsDetail('insight')">عرض التفاصيل <i class="fa-solid fa-arrow-left"></i></button></div>
+
+                <div class="analytics-chart-grid">
+                    <div class="card analytics-chart-card analytics-chart-wide" data-analytics-card="hourly">
+                        <div class="analytics-card-heading"><div><span class="analytics-chart-kicker">FLOW / TARGET</span><h4 class="card-title"><i class="fa-solid fa-wave-square text-teal"></i> الإنتاج مقابل المستهدف بالساعة</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('hourly')">تفاصيل <i class="fa-solid fa-chevron-left"></i></button></div>
+                        <p class="analytics-chart-note">اضغط على أي ساعة لمعرفة الإنتاج والسبب المسجل عند وجود عجز.</p><div class="chart-container"><canvas id="prodChart"></canvas></div>
+                    </div>
+                    <div class="card analytics-chart-card" data-analytics-card="pareto">
+                        <div class="analytics-card-heading"><div><span class="analytics-chart-kicker">QUALITY / PRIORITY</span><h4 class="card-title"><i class="fa-solid fa-chart-bar text-orange"></i> باريتو العيوب</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('pareto')">تحليل <i class="fa-solid fa-chevron-left"></i></button></div>
+                        <p class="analytics-chart-note">الأعمدة الأعلى هي أولويات التحسين وفق قاعدة 80/20.</p><div class="chart-container"><canvas id="paretoChart"></canvas></div>
+                    </div>
+                    <div class="card analytics-chart-card" data-analytics-card="defects">
+                        <div class="analytics-card-heading"><div><span class="analytics-chart-kicker">QUALITY / MIX</span><h4 class="card-title"><i class="fa-solid fa-chart-pie text-purple"></i> مزيج عيوب القسم</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('defects')">تفاصيل <i class="fa-solid fa-chevron-left"></i></button></div>
+                        <p class="analytics-chart-note">اضغط على الشريحة لرؤية السجلات والحالات المرتبطة بنوع العيب.</p><div class="chart-container"><canvas id="defectsChart"></canvas></div>
+                    </div>
                 </div>
-                <div class="card">
-                    <div class="section-header mb-0"><h4 class="card-title">توزيع عيوب القسم</h4></div>
-                    <div class="chart-container"><canvas id="defectsChart"></canvas></div>
-                </div>
+                <div class="card analytics-table-card"><div class="analytics-card-heading"><div><span class="analytics-chart-kicker">OPERATIONAL LOG</span><h4 class="card-title">جدول الأداء التشغيلي</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('table')">فتح التقرير <i class="fa-solid fa-chevron-left"></i></button></div><div id="analytics-dept-breakdown" class="analytics-breakdown-table"></div></div>
             </div>
 
             <!-- تحليلات المصنع بالكامل -->
             <div id="analytics-factory-view" style="display:none;">
-                <div class="grid-actions mb-4">
-                    <div class="card text-center mb-0 gradient-bg">
-                        <div class="card-subtitle text-white">الإنتاج الفعلي للمصنع</div>
-                        <div class="total-number text-white" style="font-size: 2.2rem;" id="analytics-fac-prod">0</div>
-                    </div>
-                    <div class="card text-center mb-0" style="border: 2px solid var(--danger-color);">
-                        <div class="card-subtitle text-red">إجمالي عيوب المصنع</div>
-                        <div class="total-number text-red" style="font-size: 2.2rem;" id="analytics-fac-defects">0</div>
-                    </div>
+                <div class="analytics-context-bar factory"><div><span class="context-label">نطاق التحليل</span><strong>الأقسام المسموح بها</strong></div><div><span class="context-label">الفترة</span><strong id="analytics-fac-period">اليوم</strong></div><div><span class="context-label">عدد الأقسام</span><strong id="analytics-fac-dept-count">0</strong></div></div>
+                <div class="analytics-kpi-grid analytics-kpi-grid-factory">
+                    <button class="analytics-kpi-card teal" onclick="App.openAnalyticsDetail('factory-production')"><span class="kpi-icon"><i class="fa-solid fa-industry"></i></span><span class="kpi-label">إنتاج المصنع</span><strong id="analytics-fac-prod">0</strong><small>إجمالي الوحدات</small></button>
+                    <button class="analytics-kpi-card blue" onclick="App.openAnalyticsDetail('factory-target')"><span class="kpi-icon"><i class="fa-solid fa-bullseye"></i></span><span class="kpi-label">مستهدف المصنع</span><strong id="analytics-fac-target">0</strong><small>مجموع المستهدفات</small></button>
+                    <button class="analytics-kpi-card purple" onclick="App.openAnalyticsDetail('factory-attainment')"><span class="kpi-icon"><i class="fa-solid fa-ranking-star"></i></span><span class="kpi-label">تحقيق المصنع</span><strong id="analytics-fac-attainment">0%</strong><small>مقارنة بالمستهدف</small></button>
+                    <button class="analytics-kpi-card red" onclick="App.openAnalyticsDetail('factory-defects')"><span class="kpi-icon"><i class="fa-solid fa-bug"></i></span><span class="kpi-label">عيوب المصنع</span><strong id="analytics-fac-defects">0</strong><small id="analytics-fac-defect-rate">معدل 0%</small></button>
                 </div>
-                <div class="card">
-                    <div class="section-header mb-0"><h4 class="card-title">مقارنة الإنتاج مقابل المستهدف</h4></div>
-                    <div class="chart-container" style="height: 280px;"><canvas id="facTargetChart"></canvas></div>
+                <div id="analytics-factory-insight" class="analytics-insight-banner factory"><span class="insight-icon"><i class="fa-solid fa-compass-drafting"></i></span><div><strong id="analytics-factory-insight-title">قراءة المصنع</strong><p id="analytics-factory-insight-text">جاري تحليل الأقسام...</p></div><button class="insight-detail-btn" onclick="App.openAnalyticsDetail('factory-insight')">عرض التفاصيل <i class="fa-solid fa-arrow-left"></i></button></div>
+                <div class="analytics-chart-grid factory-charts">
+                    <div class="card analytics-chart-card analytics-chart-wide"><div class="analytics-card-heading"><div><span class="analytics-chart-kicker">PERFORMANCE / DEPARTMENT</span><h4 class="card-title">الإنتاج مقابل المستهدف لكل قسم</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('factory-target-chart')">تفاصيل <i class="fa-solid fa-chevron-left"></i></button></div><p class="analytics-chart-note">اضغط على أي قسم للانتقال إلى تحليله التفصيلي.</p><div class="chart-container"><canvas id="facTargetChart"></canvas></div></div>
+                    <div class="card analytics-chart-card"><div class="analytics-card-heading"><div><span class="analytics-chart-kicker">CONTRIBUTION / MIX</span><h4 class="card-title">مساهمة الأقسام في الإنتاج</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('factory-share')">تفاصيل <i class="fa-solid fa-chevron-left"></i></button></div><p class="analytics-chart-note">توزيع إجمالي الإنتاج بين الأقسام المسموح بها.</p><div class="chart-container"><canvas id="facDeptShareChart"></canvas></div></div>
+                    <div class="card analytics-chart-card"><div class="analytics-card-heading"><div><span class="analytics-chart-kicker">QUALITY / GLOBAL</span><h4 class="card-title">تركيبة عيوب المصنع</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('factory-defects-chart')">تفاصيل <i class="fa-solid fa-chevron-left"></i></button></div><p class="analytics-chart-note">اضغط على نوع العيب لمعرفة انتشاره وحالته.</p><div class="chart-container"><canvas id="facGlobalDefectsChart"></canvas></div></div>
                 </div>
-                <div class="card">
-                    <div class="section-header mb-0"><h4 class="card-title">نسبة مساهمة الأقسام بالإنتاج</h4></div>
-                    <div class="chart-container"><canvas id="facDeptShareChart"></canvas></div>
-                </div>
-                <div class="card">
-                    <div class="section-header mb-0"><h4 class="card-title">التوزيع الكلي لعيوب المصنع</h4></div>
-                    <div class="chart-container"><canvas id="facGlobalDefectsChart"></canvas></div>
-                </div>
+                <div class="card analytics-table-card"><div class="analytics-card-heading"><div><span class="analytics-chart-kicker">DEPARTMENT RANKING</span><h4 class="card-title">ترتيب الأقسام حسب الأداء</h4></div><button class="chart-more-btn" onclick="App.openAnalyticsDetail('factory-table')">فتح التقرير <i class="fa-solid fa-chevron-left"></i></button></div><div id="analytics-factory-breakdown" class="analytics-breakdown-table"></div></div>
+            </div>
+
+            <div id="analytics-detail-panel" class="analytics-detail-panel" aria-live="polite">
+                <div class="analytics-detail-placeholder"><i class="fa-solid fa-hand-pointer"></i><strong>التفاصيل التفاعلية</strong><span>اضغط على أي بطاقة أو عنصر داخل الرسوم البيانية لتظهر القراءة الهندسية هنا.</span></div>
             </div>
         </section>
 
@@ -500,6 +499,6 @@
     </div>
 
     </div>
-    <script type="module" src="app.js?v=20260823-professional-mes-v1"></script>
+    <script type="module" src="app.js?v=20260823-engineering-intelligence-v2"></script>
 </body>
 </html>
