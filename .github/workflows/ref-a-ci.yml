@@ -1,0 +1,22 @@
+name: REF-A Operations Hub CI
+
+on:
+  push:
+    branches: [main, 'feat/ref-a-operations-hub']
+  pull_request:
+    branches: [main]
+
+jobs:
+  repository-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify REF-A foundation
+        run: |
+          test -f REF-A-OPERATIONS-HUB.md
+          test -f docs/data-model.sql
+          test -f docs/roadmap-ref-a.md
+          test -f docs/implementation-contract.md
+          test -f ref-a-hub/README.md
+          echo 'REF-A foundation files verified.'
