@@ -1,0 +1,47 @@
+name: Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+      - audit/**
+      - feature/**
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in app.js api.js firebase.js main.js; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
+          node --check functions/index.js
+      - name: Guard against client-side authentication bypass regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En 'isBypass|MASTER_PASSWORD_HASH|public_guest_session|master_admin_mfayez' app.js api.js; then
+            echo "Unexpected client-side authentication bypass pattern detected."
+            exit 1
+          fi
+          if grep -En 'intentionally public|legacy login markup inert|#auth-gate \{ display:none !important; \}' styles.css; then
+            echo "Unexpected CSS override disables the login gate."
+            exit 1
+          fi
+          grep -q "API.auth.onAuthStateChanged" app.js
+          grep -q "aria-hidden=\"true\"" index.html
