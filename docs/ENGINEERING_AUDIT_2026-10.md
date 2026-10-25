@@ -26,6 +26,13 @@ The application already contains useful production workflows (hourly production 
 
 **Remediation implemented on this branch:** extracted a pure interval generator that advances on absolute elapsed minutes and added unit tests for day shifts, midnight-ending shifts, overnight breaks, and invalid times.
 
+### P1 — Quality defect rendering trusts stored text and URL values
+- The defect list interpolated defect type, notes, date, image URL, status, and ID directly into HTML and inline event-handler attributes.
+- User-controlled or malformed stored values could break markup or execute unintended script in another user's browser.
+- Rendering also rebuilt the list by repeated string concatenation.
+
+**Remediation implemented on this branch:** escape displayed text, accept only HTTP(S) image URLs, replace interpolated inline handlers with delegated click handling, validate numeric record IDs, and render the card list in one pass.
+
 ## P1 — Monolithic client module
 - `app.js` is approximately 2,570 lines and coordinates session lifecycle, permissions, navigation, production, inventory, quality, 5S, reporting, and PWA UI.
 - This increases regression risk and makes focused testing difficult.
@@ -41,10 +48,10 @@ Repository metadata shows several large PNGs:
 
 **Remediation:** establish whether these images are required at full resolution; convert decorative banners to optimized WebP/AVIF with responsive dimensions, use lazy loading, and verify visual parity on mobile. Keep originals until the optimized assets are approved.
 
-### P1 — No obvious root-level automated test setup
-The repository tree has no root `package.json` or visible test suite. The Cloud Functions package has dependencies but no test script.
+### P1 — Automated test coverage remains narrow
+A root Node test runner and GitHub Actions quality gate now exist on this branch. The automated unit suite currently covers the extracted shift-interval logic; production data flows, UI behavior, and Firebase integration still need additional tests.
 
-**Remediation:** add lightweight checks that can run in GitHub Actions: JavaScript syntax/module checks, unit tests for pure production/shift/defect calculations, and a smoke checklist for critical UI workflows. Do not claim end-to-end coverage until a browser test runner actually runs.
+**Next step:** add characterization tests around production save/reload, target updates, quality defect lifecycle, inventory calculations, 5S image upload, exports, and department rename. Do not claim end-to-end coverage until a browser test runner actually runs.
 
 ### P2 — PWA release and cache behavior
 The service worker currently revalidates local HTML/JS/CSS/manifest assets with `fetch(..., { cache: 'no-store' })`, and the app also checks for updates periodically. This favors freshness but should be tested under weak connectivity and offline conditions; the current fetch handler does not provide an offline fallback for those assets.
@@ -70,6 +77,6 @@ The service worker currently revalidates local HTML/JS/CSS/manifest assets with 
 ## Current limitations of this review
 
 - This is a static source review of repository files; no live browser session or Firebase data was accessed.
-- No automated test suite has yet been run.
-- No application code or production data has been changed by this audit document.
+- JavaScript syntax checks, authentication-bypass regression guards, and four shift-interval unit tests have passed in GitHub Actions on the working branch.
+- The branch contains code changes, but no production deployment or live database data was changed.
 - The next implementation step should address the authentication/session lifecycle on this branch, then add tests before broader refactoring.
