@@ -34,14 +34,14 @@ export const API = {
 
             // Never grant administrator privileges automatically on the client.
             // Every account, including the master administrator, must have a provisioned profile.
-            if (!profile || profile.active === false) {
+            if (!profile || profile.active !== true) {
                 await signOut(auth);
                 throw new Error('account_not_configured');
             }
 
             return {
-                uid: credential.user.uid,
                 ...profile,
+                uid: credential.user.uid,
                 isMaster: profile.role === 'admin' && profile.usernameLower === MASTER_USERNAME
             };
         },
@@ -79,7 +79,7 @@ export const API = {
         async logout() { await signOut(auth); },
         async getProfile(uid) {
             const snap = await getDoc(doc(db, 'app_users', uid));
-            return snap.exists() ? { uid, ...snap.data() } : null;
+            return snap.exists() ? { ...snap.data(), uid } : null;
         },
         listenToUsers(callback) {
             return onSnapshot(collection(db, 'app_users'), (snapshot) => {
