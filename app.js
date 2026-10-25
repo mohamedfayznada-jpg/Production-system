@@ -1595,8 +1595,31 @@ const App = {
     },
 
     renderScratchesList() {
-        const container = document.getElementById('scratches-list'); 
-        if(!container) return; container.innerHTML = '';
+        const container = document.getElementById('scratches-list');
+        if (!container) return;
+
+        if (container.dataset.actionsBound !== 'true') {
+            container.addEventListener('click', (event) => {
+                const imageTarget = event.target.closest('[data-defect-image]');
+                if (imageTarget && container.contains(imageTarget)) {
+                    this.openImage(imageTarget.dataset.defectImage);
+                    return;
+                }
+
+                const actionTarget = event.target.closest('[data-defect-action]');
+                if (!actionTarget || !container.contains(actionTarget)) return;
+                const defectId = Number(actionTarget.dataset.defectId);
+                if (!Number.isSafeInteger(defectId)) return;
+                if (actionTarget.dataset.defectAction === 'toggle') {
+                    this.toggleScratchStatus(defectId, actionTarget.dataset.currentStatus);
+                } else if (actionTarget.dataset.defectAction === 'delete') {
+                    this.deleteScratch(defectId);
+                }
+            });
+            container.dataset.actionsBound = 'true';
+        }
+
+        container.innerHTML = '';
         
         let countToday = 0; let countFixed = 0; let countPending = 0;
         const canEditQuality = this.canEdit('quality');
@@ -1617,26 +1640,38 @@ const App = {
 
         if(this.data.scratches.length === 0) { container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; }
         
-        this.data.scratches.forEach(defect => {
+        const cards = this.data.scratches.map((defect) => {
             const isPending = defect.status === 'pending';
             const statusClass = isPending ? 'pending' : 'fixed';
             const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
-            const dateText = defect.date === globalDate ? defect.time : `<span class="text-red">${defect.date}</span>`;
-            const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
-            const statusHtml = canEditQuality
-                ? `<span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>`
+            const defectId = Number(defect.id);
+            const validId = Number.isSafeInteger(defectId);
+            const safeType = this.escapeHtml(defect.type || 'عيب غير محدد');
+            const safeNotes = this.escapeHtml(defect.notes || 'لا توجد ملاحظات');
+            const safeDate = this.escapeHtml(defect.date || '');
+            const safeTime = this.escapeHtml(defect.time || '');
+            const dateText = defect.date === globalDate ? safeTime : `<span class="text-red">${safeDate}</span>`;
+            const imageUrl = defect.image ? this.getSafeHttpUrl(defect.image) : '';
+            const safeImageUrl = this.escapeHtml(imageUrl);
+            const imgHtml = safeImageUrl
+                ? `<img src="${safeImageUrl}" data-defect-image="${safeImageUrl}" alt="صورة العيب" loading="lazy" style="cursor: zoom-in;">`
+                : '';
+            const statusHtml = canEditQuality && validId
+                ? `<button type="button" class="defect-badge ${statusClass}" data-defect-action="toggle" data-defect-id="${defectId}" data-current-status="${isPending ? 'pending' : 'fixed'}">${statusText}</button>`
                 : `<span class="defect-badge ${statusClass}">${statusText}</span>`;
-            const deleteHtml = canEditQuality ? `<i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>` : '';
+            const deleteHtml = canEditQuality && validId
+                ? `<button type="button" data-defect-action="delete" data-defect-id="${defectId}" aria-label="حذف العيب" style="border:0;background:transparent;padding:4px;cursor:pointer;color:var(--danger-color);font-size:1.1rem;"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+                : '';
 
-            container.innerHTML += `
+            return `
                 <div class="card defect-card" style="border-right-color: ${isPending ? 'var(--danger-color)' : 'var(--success-color)'};">
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${safeType}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${dateText}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${safeNotes}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             ${statusHtml}
                             ${deleteHtml}
@@ -1645,6 +1680,7 @@ const App = {
                 </div>
             `;
         });
+        container.innerHTML = cards.join('');
     },
 
     toggleScratchStatus(id, currentStatus) { if (!this.requireEdit('quality')) return; const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending'; API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus }); },
@@ -1667,6 +1703,16 @@ const App = {
         if (value.includes('cloudinary.com')) return value; // Cloudinary links are direct
         if (value.includes('drive.google.com') || value.includes('googleusercontent.com')) return this.getDriveImageUrl(value);
         return value;
+    },
+    getSafeHttpUrl(url) {
+        const value = this.getImageUrl(url);
+        if (!value) return '';
+        try {
+            const parsed = new URL(value, window.location.href);
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
+        } catch (error) {
+            return '';
+        }
     },
     async uploadToCloudinary(base64, folder = "ProductionSystem") {
         try {
