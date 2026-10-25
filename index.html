@@ -2,16 +2,16 @@
 <html lang="ar" dir="rtl">
 <head>
     <link rel="manifest" href="manifest.json?v=20260823-mobile-harmony-v1">
-    <meta name="theme-color" content="#0ab39c">
+    <meta name="theme-color" content="#1A0F12">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="brand-mark.svg">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>نظام الإنتاج الموحد</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>MES CORE | Eng. Mohamed Fayez</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css?v=20260823-mobile-harmony-v1">
     
@@ -33,41 +33,13 @@
         </div>
     </div>
 
-    <section id="auth-gate" class="auth-gate" style="display:flex;" aria-label="تسجيل الدخول">
-        <div class="auth-card">
-            <div class="auth-brand"><div class="auth-brand-icon"><i class="fa-solid fa-industry"></i></div><div><strong>مجموعة العربي</strong><span>نظام الإنتاج الموحد</span></div></div>
-            <h1>تسجيل الدخول</h1>
-            <p class="auth-subtitle">أدخل بيانات حسابك للوصول إلى النظام حسب الصلاحيات الممنوحة لك.</p>
-            <form id="login-form" autocomplete="on">
-                <div class="input-group"><label for="login-username">اسم المستخدم</label><input id="login-username" name="username" class="modern-input" autocomplete="username" autocapitalize="none" required placeholder="مثال: mfayez"></div>
-                <div class="input-group"><label for="login-password">كلمة المرور</label><input id="login-password" name="password" type="password" class="modern-input" autocomplete="current-password" required placeholder="••••••••"></div>
-                <div id="login-error" class="auth-error" role="alert" style="display:none;"></div>
-                <button type="submit" class="primary-btn gradient-bg auth-submit"><i class="fa-solid fa-right-to-bracket"></i> دخول آمن</button>
-                <div style="display:flex; justify-content:space-between; gap:10px;">
-                    <button type="button" id="forgot-password-btn" class="auth-link-btn">نسيت كلمة المرور؟</button>
-                    <button type="button" id="toggle-signup-btn" class="auth-link-btn">إنشاء حساب جديد</button>
-                </div>
-            </form>
-
-            <form id="signup-form" style="display:none;" autocomplete="off">
-                <div class="input-group"><label for="signup-username">اسم المستخدم (بالإنجليزي)</label><input id="signup-username" name="username" class="modern-input" autocomplete="off" autocapitalize="none" required placeholder="مثال: ahmad_ali"></div>
-                <div class="input-group"><label for="signup-password">كلمة المرور (6 أرقام على الأقل)</label><input id="signup-password" name="password" type="password" class="modern-input" autocomplete="new-password" required placeholder="••••••••"></div>
-                <div class="input-group"><label for="signup-job">المسمى الوظيفي</label><input id="signup-job" name="jobTitle" class="modern-input" placeholder="مثال: فني إنتاج"></div>
-                <div id="signup-error" class="auth-error" role="alert" style="display:none;"></div>
-                <button type="submit" class="primary-btn gradient-bg auth-submit"><i class="fa-solid fa-user-plus"></i> تسجيل الحساب</button>
-                <button type="button" id="toggle-login-btn" class="auth-link-btn">العودة لتسجيل الدخول</button>
-            </form>
-            <small class="auth-security-note"><i class="fa-solid fa-shield-halved"></i> الوصول محمي بحسابات Firebase وصلاحيات فردية.</small>
-        </div>
-    </section>
-
-    <div id="app-shell" aria-hidden="true">
+    <div id="app-shell" aria-hidden="false">
     <header class="app-header">
             <div class="header-top">
                 <div class="header-leading">
                     <div class="brand-lockup" aria-label="نظام الإنتاج الموحد">
-                        <div class="brand-mark"><i class="fa-solid fa-industry"></i></div>
-                        <div class="brand-copy"><strong>MES CORE</strong><span>نظام الإنتاج الموحد</span></div>
+                        <img class="brand-mark-image" src="brand-mark.svg" alt="" width="52" height="52">
+                        <div class="brand-copy"><strong>MES CORE <span class="brand-owner">BY M. FAYEZ</span></strong><span>نظام الإنتاج الموحد</span></div>
                     </div>
                     <div class="dept-title">
                 <div class="icon-wrapper"><i class="fa-solid fa-industry"></i></div>
