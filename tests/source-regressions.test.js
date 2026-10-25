@@ -32,6 +32,7 @@ test('client source does not contain the previous master bypass markers', async 
         assert.ok(!app.includes(marker), `app.js should not contain ${marker}`);
         assert.ok(!api.includes(marker), `api.js should not contain ${marker}`);
     }
+    assert.ok(api.includes('profile.active !== true'));
     assert.ok(html.includes('id="app-shell" aria-hidden="true"'));
     assert.ok(html.includes('id="auth-gate" class="auth-gate" style="display:flex;"'));
     assert.ok(!css.includes('#auth-gate { display:none !important; }'));
