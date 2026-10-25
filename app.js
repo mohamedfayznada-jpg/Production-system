@@ -121,7 +121,7 @@ const App = {
 
             try {
                 const profile = await API.auth.getProfile(firebaseUser.uid);
-                if (!profile || profile.active === false) {
+                if (!profile || profile.active !== true) {
                     await API.auth.logout();
                     this.currentUser = null;
                     this.showLoginGate('الحساب غير مفعل أو لم يمنحه المدير صلاحيات بعد');
