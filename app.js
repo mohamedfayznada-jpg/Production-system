@@ -62,7 +62,6 @@ const App = {
     },
 
     async init() {
-        // Install lifecycle
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             this.deferredPrompt = event;
@@ -76,7 +75,7 @@ const App = {
         window.addEventListener('appinstalled', () => {
             this.deferredPrompt = null;
             this.hideInstallPrompt();
-            this.showToast('تم تثبيت نظام الإنتاج على جهازك بنجاح');
+            this.showToast('تم تثبيت نظام الإنتاج بنجاح');
         });
         window.setTimeout(() => this.showInstallPrompt(), 2200);
         window.setTimeout(() => {
@@ -84,64 +83,25 @@ const App = {
             if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
 
-        // Bind authentication UI once. The login screen is the default state.
-        const loginForm = document.getElementById('login-form');
-        const signupForm = document.getElementById('signup-form');
-        if (loginForm && loginForm.dataset.bound !== 'true') {
-            loginForm.addEventListener('submit', (event) => this.submitLogin(event));
-            loginForm.dataset.bound = 'true';
-        }
-        if (signupForm && signupForm.dataset.bound !== 'true') {
-            signupForm.addEventListener('submit', (event) => this.submitSignup(event));
-            signupForm.dataset.bound = 'true';
-        }
-        const bindClick = (id, callback) => {
-            const element = document.getElementById(id);
-            if (element && element.dataset.bound !== 'true') {
-                element.addEventListener('click', callback);
-                element.dataset.bound = 'true';
+        // Temporary owner-requested open mode: no login screen.
+        // This mode grants broad UI access and must not be used for sensitive production data
+        // on a publicly reachable deployment. Re-enable Firebase Auth before production use.
+        this.currentUser = {
+            uid: 'temporary_open_mode',
+            username: 'مشغل النظام',
+            usernameLower: 'open_operator',
+            role: 'admin',
+            jobTitle: 'تشغيل مؤقت',
+            active: true,
+            isMaster: true,
+            isBypass: true,
+            allowedDepartments: ['*'],
+            permissions: {
+                production: true, quality: true, inventory: true,
+                fiveS: true, analytics: true, settings: true, users: true
             }
         };
-        bindClick('forgot-password-btn', () => this.requestPasswordReset());
-        bindClick('toggle-signup-btn', () => this.toggleAuthForms(true));
-        bindClick('toggle-login-btn', () => this.toggleAuthForms(false));
-
-        this.currentUser = null;
-        this.showLoginGate();
-
-        // Restore sessions only through Firebase Authentication and an active user profile.
-        this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
-            // Account creation deliberately signs out immediately; do not race its profile write.
-            if (this.isSigningUp) return;
-            if (!firebaseUser) {
-                this.currentUser = null;
-                this.sessionStartedForUid = null;
-                this.showLoginGate();
-                return;
-            }
-
-            try {
-                const profile = await API.auth.getProfile(firebaseUser.uid);
-                if (!profile || profile.active !== true) {
-                    await API.auth.logout();
-                    this.currentUser = null;
-                    this.showLoginGate('الحساب غير مفعل أو لم يمنحه المدير صلاحيات بعد');
-                    return;
-                }
-
-                this.currentUser = {
-                    ...profile,
-                    uid: firebaseUser.uid,
-                    isMaster: profile.role === 'admin' && profile.usernameLower === 'mfayez'
-                };
-                await this.ensureAuthenticatedSession(firebaseUser.uid);
-                this.showAuthenticatedShell();
-            } catch (error) {
-                console.error('Unable to restore authenticated session:', error);
-                this.currentUser = null;
-                this.showLoginGate('تعذر التحقق من الجلسة. سجّل الدخول مرة أخرى.');
-            }
-        });
+        this.showAuthenticatedShell();
     },
 
     async ensureAuthenticatedSession(uid) {
