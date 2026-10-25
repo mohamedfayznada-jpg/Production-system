@@ -13,7 +13,6 @@ import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/fireba
 
 const USER_EMAIL_DOMAIN = 'production-b0b2c.firebaseapp.com';
 const MASTER_USERNAME = 'mfayez';
-const MASTER_PASSWORD_HASH = '499d33473ec8816779234cfef55e684a1f3774debc551e6fee8c7ecb69eb29de';
 const defaultPermissions = () => ({
     view: { production: true, quality: true, balances: true, fiveS: true, analytics: true, settings: true },
     edit: { production: true, quality: true, balances: true, fiveS: true, settings: true }
@@ -28,63 +27,23 @@ export const API = {
             if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
             if (!password) throw new Error('missing_password');
 
-            const isMasterAttempt = normalized === MASTER_USERNAME && await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(buffer => Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('')) === MASTER_PASSWORD_HASH;
-
-            let credential;
-            try {
-                credential = await signInWithEmailAndPassword(auth, usernameEmail(normalized), password);
-            } catch (error) {
-                // If it's a master attempt and Firebase fails (e.g. Auth not enabled), use bypass
-                if (isMasterAttempt) {
-                    const bypassUid = 'master_admin_mfayez';
-                    const profileRef = doc(db, 'app_users', bypassUid);
-                    const profileSnap = await getDoc(profileRef);
-                    let masterProfile = profileSnap.exists() ? profileSnap.data() : null;
-                    
-                    if (!masterProfile) {
-                        masterProfile = {
-                            uid: bypassUid,
-                            username: MASTER_USERNAME,
-                            usernameLower: MASTER_USERNAME,
-                            role: 'admin',
-                            jobTitle: 'مدير النظام',
-                            active: true,
-                            allowedDepartments: ['*'],
-                            permissions: defaultPermissions(),
-                            createdAt: serverTimestamp(),
-                            updatedAt: serverTimestamp()
-                        };
-                        await setDoc(profileRef, masterProfile, { merge: true });
-                    }
-                    return { ...masterProfile, uid: bypassUid, isMaster: true, isBypass: true };
-                }
-                throw error;
-            }
-
+            const credential = await signInWithEmailAndPassword(auth, usernameEmail(normalized), password);
             const profileRef = doc(db, 'app_users', credential.user.uid);
             const profileSnap = await getDoc(profileRef);
             const profile = profileSnap.exists() ? profileSnap.data() : null;
-            if (!profile && normalized === MASTER_USERNAME) {
-                const masterProfile = {
-                    uid: credential.user.uid,
-                    username: MASTER_USERNAME,
-                    usernameLower: MASTER_USERNAME,
-                    role: 'admin',
-                    jobTitle: 'مدير النظام',
-                    active: true,
-                    allowedDepartments: ['*'],
-                    permissions: defaultPermissions(),
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
-                await setDoc(profileRef, masterProfile, { merge: true });
-                return { uid: credential.user.uid, ...masterProfile, isMaster: true };
-            }
-            if (!profile || profile.active === false) {
+
+            // Never grant administrator privileges automatically on the client.
+            // Every account, including the master administrator, must have a provisioned profile.
+            if (!profile || profile.active !== true) {
                 await signOut(auth);
                 throw new Error('account_not_configured');
             }
-            return { uid: credential.user.uid, ...profile, isMaster: profile.role === 'admin' && profile.usernameLower === MASTER_USERNAME };
+
+            return {
+                ...profile,
+                uid: credential.user.uid,
+                isMaster: profile.role === 'admin' && profile.usernameLower === MASTER_USERNAME
+            };
         },
         async requestPasswordReset(username) {
             const normalized = String(username || '').trim().toLowerCase();
@@ -94,6 +53,7 @@ export const API = {
         async signup(username, password, jobTitle) {
             const normalized = String(username || '').trim().toLowerCase();
             if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) throw new Error('invalid_username');
+            if (normalized === MASTER_USERNAME) throw new Error('reserved_username');
             if (!password || password.length < 6) throw new Error('weak_password');
             
             const credential = await createUserWithEmailAndPassword(auth, usernameEmail(normalized), password);
@@ -119,7 +79,7 @@ export const API = {
         async logout() { await signOut(auth); },
         async getProfile(uid) {
             const snap = await getDoc(doc(db, 'app_users', uid));
-            return snap.exists() ? { uid, ...snap.data() } : null;
+            return snap.exists() ? { ...snap.data(), uid } : null;
         },
         listenToUsers(callback) {
             return onSnapshot(collection(db, 'app_users'), (snapshot) => {

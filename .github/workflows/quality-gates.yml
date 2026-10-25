@@ -1,0 +1,50 @@
+name: Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+      - audit/**
+      - feature/**
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    name: Static checks and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in app.js api.js firebase.js main.js; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
+          node --check functions/index.js
+          node --check time-utils.js
+          node --check production-utils.js
+      - name: Run unit tests
+        run: npm test
+      - name: Guard temporary open mode and brand configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "TEMPORARY OPEN MODE" app.js
+          grep -q "uid: 'temporary_open_mode'" app.js
+          if grep -q 'id="auth-gate"' index.html; then
+            echo "Login gate markup should remain absent in temporary open mode."
+            exit 1
+          fi
+          grep -q 'id="app-shell" aria-hidden="false"' index.html
+          grep -q 'src="brand-mark.svg"' index.html
+          grep -q 'icons/icon-192.svg' manifest.json

@@ -1,4 +1,6 @@
 import { API } from './api.js?v=20260817-dept-management-1';
+import { generateProductionIntervals } from './time-utils.js';
+import { createProductionRecord } from './production-utils.js';
 
 const DEPARTMENT_MANAGEMENT_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
 
@@ -34,6 +36,7 @@ const App = {
     fiveSKnownNoteIds: new Set(),
     fiveSNotesSnapshotReady: false,
     currentUser: null,
+    isSigningUp: false,
     authStateUnsubscribe: null,
     usersListener: null,
     sessionStartedForUid: null,
@@ -59,7 +62,6 @@ const App = {
     },
 
     async init() {
-        // التطبيق مفتوح بدون بوابة تسجيل دخول؛ يبدأ تحميل البيانات مباشرة كما كان قبل إضافة المصادقة.
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             this.deferredPrompt = event;
@@ -73,25 +75,32 @@ const App = {
         window.addEventListener('appinstalled', () => {
             this.deferredPrompt = null;
             this.hideInstallPrompt();
-            this.showToast('تم تثبيت نظام الإنتاج على جهازك بنجاح');
+            this.showToast('تم تثبيت نظام الإنتاج بنجاح');
         });
         window.setTimeout(() => this.showInstallPrompt(), 2200);
-        setTimeout(() => {
+        window.setTimeout(() => {
             const splash = document.getElementById('cinematic-splash');
             if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
 
-        const authGate = document.getElementById('auth-gate');
-        if (authGate) authGate.remove();
+        // TEMPORARY OPEN MODE — owner-requested: no login screen.
+        // This mode grants broad UI access and must not be used for sensitive production data
+        // on a publicly reachable deployment. Re-enable Firebase Auth before production use.
         this.currentUser = {
-            uid: 'public_guest_session',
-            username: 'مستخدم التطبيق',
-            role: 'guest',
-            usernameLower: 'public',
+            uid: 'temporary_open_mode',
+            username: 'مشغل النظام',
+            usernameLower: 'open_operator',
+            role: 'admin',
+            jobTitle: 'تشغيل مؤقت',
+            active: true,
             isMaster: true,
-            isBypass: true
+            isBypass: true,
+            allowedDepartments: ['*'],
+            permissions: {
+                production: true, quality: true, inventory: true,
+                fiveS: true, analytics: true, settings: true, users: true
+            }
         };
-        await this.ensureAuthenticatedSession(this.currentUser.uid);
         this.showAuthenticatedShell();
     },
 
@@ -427,6 +436,7 @@ const App = {
         if (button) button.disabled = true;
         this.setSignupMessage('');
         
+        this.isSigningUp = true;
         try {
             await API.auth.signup(username, password, jobTitle);
             this.setSignupMessage('تم إنشاء الحساب بنجاح! يرجى التواصل مع المدير لتفعيل حسابك.', false);
@@ -435,10 +445,12 @@ const App = {
             const messages = {
                 invalid_username: 'اسم المستخدم يجب أن يكون بالإنجليزية وبدون مسافات',
                 weak_password: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+                reserved_username: 'اسم المستخدم هذا محجوز لحساب المدير الرئيسي',
                 'auth/email-already-in-use': 'اسم المستخدم هذا مسجل بالفعل'
             };
             this.setSignupMessage(messages[error.message] || messages[error.code] || 'تعذر إنشاء الحساب. حاول لاحقاً.', true);
         } finally {
+            this.isSigningUp = false;
             if (button) button.disabled = false;
         }
     },
@@ -458,14 +470,13 @@ const App = {
         this.setLoginMessage('');
         try {
             const profile = await API.auth.login(username, password);
-            this.clearLoginSecurityState();
-            
-            // If it's a bypass login (Firebase Auth failed but master password correct)
-            if (profile && profile.isBypass) {
-                this.currentUser = profile;
-                await this.ensureAuthenticatedSession(profile.uid);
-                this.showAuthenticatedShell();
+            if (!profile || !profile.uid || profile.active === false) {
+                throw new Error('account_not_configured');
             }
+            this.clearLoginSecurityState();
+            this.currentUser = profile;
+            await this.ensureAuthenticatedSession(profile.uid);
+            this.showAuthenticatedShell();
         } catch (loginError) {
             const lockRemaining = this.registerLoginFailure();
             const messages = {
@@ -852,24 +863,7 @@ const App = {
     timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
 
     generateIntervals() {
-        const { start, end, bStart, bEnd } = this.data.settings;
-        let current = start; let intervals = []; let endMins = this.timeToMins(end);
-        if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
-        
-        while (this.timeToMins(current) < endMins) {
-            if (current === bStart) { 
-                intervals.push({ isBreak: true, label: "فترة راحة" }); 
-                current = bEnd; 
-                continue; 
-            }
-            let nextHour = this.addMinutes(current, 60);
-            if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
-            if (this.timeToMins(nextHour) > endMins) nextHour = end;
-            
-            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
-            current = nextHour;
-        }
-        this.data.generatedHours = intervals;
+        this.data.generatedHours = generateProductionIntervals(this.data.settings);
         this.buildProductionUI();
     },
 
@@ -887,7 +881,7 @@ const App = {
                     <div class="hour-row" id="row-${timeSlot.rawTime.replace(':','-')}" data-hour="${timeSlot.rawTime}">
                         <div class="hour-header">
                             <span class="time-label">${timeSlot.label}</span>
-                            <input type="number" class="actual-input" placeholder="0" ${editAttribute}
+                            <input type="number" class="actual-input" min="0" step="1" inputmode="numeric" placeholder="0" ${editAttribute}
                                 oninput="App.handleProdInput('${timeSlot.rawTime}')">
                         </div>
                         <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." ${editAttribute}
@@ -1023,47 +1017,98 @@ const App = {
 
     saveTarget() {
         if (!this.requireEdit('production')) return;
-        if (!this.isOnline) return;
-        const date = document.getElementById('global-date').value;
-        const shift = document.getElementById('global-shift').value;
-        const targetVal = document.getElementById('prod-target').value;
-        
-        if(this.saveTimers['target']) clearTimeout(this.saveTimers['target']);
-        this.saveTimers['target'] = setTimeout(() => {
-            API.production.saveTarget(this.data.currentDepartment, date, shift, targetVal);
+
+        const department = this.data.currentDepartment;
+        const date = document.getElementById('global-date')?.value || '';
+        const shift = document.getElementById('global-shift')?.value || '';
+        const targetInput = document.getElementById('prod-target');
+        const targetRaw = targetInput?.value ?? '';
+        const targetValue = targetRaw.trim() === '' ? 0 : Number(targetRaw);
+
+        if (!Number.isSafeInteger(targetValue) || targetValue < 0) {
+            targetInput?.setCustomValidity('أدخل مستهدفًا صحيحًا غير سالب');
+            targetInput?.reportValidity();
+            return;
+        }
+        targetInput?.setCustomValidity('');
+
+        const timerKey = `target_${department}_${date}_${shift}`;
+        if (this.saveTimers[timerKey]) clearTimeout(this.saveTimers[timerKey]);
+        const timer = setTimeout(async () => {
+            try {
+                if (!this.isOnline) {
+                    this.showToast('المستهدف غير محفوظ: لا يوجد اتصال بالسحابة', true);
+                    return;
+                }
+                await API.production.saveTarget(department, date, shift, targetValue);
+            } catch (error) {
+                this.showToast('تعذر حفظ المستهدف. أعد المحاولة عند استقرار الاتصال.', true);
+            } finally {
+                if (this.saveTimers[timerKey] === timer) delete this.saveTimers[timerKey];
+            }
         }, 1000);
+        this.saveTimers[timerKey] = timer;
     },
 
     handleProdInput(hourStr) {
         if (!this.requireEdit('production')) return;
         this.calculateLocalTotal();
-        const safeId = hourStr.replace(':','-');
-        if (this.saveTimers[safeId]) clearTimeout(this.saveTimers[safeId]);
 
-        this.saveTimers[safeId] = setTimeout(async () => {
-            if (!this.isOnline) return;
-            const date = document.getElementById('global-date').value;
-            const shift = document.getElementById('global-shift').value;
-            const row = document.getElementById(`row-${safeId}`);
-            if(!row) return;
+        // Capture the record's context and values before the debounce. A user may
+        // change date, shift, or department before the timer fires.
+        const department = this.data.currentDepartment;
+        const date = document.getElementById('global-date')?.value || '';
+        const shift = document.getElementById('global-shift')?.value || '';
+        const safeId = hourStr.replace(':', '-');
+        const row = document.getElementById(`row-${safeId}`);
+        if (!row) return;
 
-            const payload = {
-                recordId: `${this.data.currentDepartment}_${date}_${shift}_${safeId}`,
-                date: date, shift: shift, hour: hourStr,
-                actual: Number(row.querySelector('.actual-input').value) || 0,
-                shortfallReason: row.querySelector('.reason-input').value
-            };
+        const actualInput = row.querySelector('.actual-input');
+        const reasonInput = row.querySelector('.reason-input');
+        const actualRaw = actualInput?.value ?? '';
+        const actualValue = actualRaw.trim() === '' ? 0 : Number(actualRaw);
+        if (!Number.isSafeInteger(actualValue) || actualValue < 0) {
+            actualInput?.setCustomValidity('أدخل كمية إنتاج صحيحة غير سالبة');
+            actualInput?.reportValidity();
+            return;
+        }
+        actualInput?.setCustomValidity('');
 
+        let payload;
+        try {
+            payload = createProductionRecord({
+                department,
+                date,
+                shift,
+                hour: hourStr,
+                actual: actualValue,
+                shortfallReason: reasonInput?.value || ''
+            });
+        } catch (error) {
+            this.showToast('راجع تاريخ الوردية وكمية الإنتاج قبل الحفظ', true);
+            return;
+        }
+
+        const timerKey = `prod_${department}_${date}_${shift}_${safeId}`;
+        if (this.saveTimers[timerKey]) clearTimeout(this.saveTimers[timerKey]);
+        const timer = setTimeout(async () => {
             try {
+                if (!this.isOnline) {
+                    this.showToast('الإنتاج غير محفوظ: لا يوجد اتصال بالسحابة', true);
+                    return;
+                }
                 row.classList.add('saving');
-                await API.production.saveHour(this.data.currentDepartment, payload);
-                row.classList.remove('saving');
+                await API.production.saveHour(department, payload);
                 this.updateConnectionStatus(true);
-            } catch (e) { 
-                row.classList.remove('saving'); 
+            } catch (error) {
                 this.updateConnectionStatus(false);
+                this.showToast('تعذر حفظ الإنتاج. أعد المحاولة عند استقرار الاتصال.', true);
+            } finally {
+                row.classList.remove('saving');
+                if (this.saveTimers[timerKey] === timer) delete this.saveTimers[timerKey];
             }
         }, 700);
+        this.saveTimers[timerKey] = timer;
     },
 
     // ---------------- Master Dashboard ----------------
@@ -1562,8 +1607,31 @@ const App = {
     },
 
     renderScratchesList() {
-        const container = document.getElementById('scratches-list'); 
-        if(!container) return; container.innerHTML = '';
+        const container = document.getElementById('scratches-list');
+        if (!container) return;
+
+        if (container.dataset.actionsBound !== 'true') {
+            container.addEventListener('click', (event) => {
+                const imageTarget = event.target.closest('[data-defect-image]');
+                if (imageTarget && container.contains(imageTarget)) {
+                    this.openImage(imageTarget.dataset.defectImage);
+                    return;
+                }
+
+                const actionTarget = event.target.closest('[data-defect-action]');
+                if (!actionTarget || !container.contains(actionTarget)) return;
+                const defectId = Number(actionTarget.dataset.defectId);
+                if (!Number.isSafeInteger(defectId)) return;
+                if (actionTarget.dataset.defectAction === 'toggle') {
+                    this.toggleScratchStatus(defectId, actionTarget.dataset.currentStatus);
+                } else if (actionTarget.dataset.defectAction === 'delete') {
+                    this.deleteScratch(defectId);
+                }
+            });
+            container.dataset.actionsBound = 'true';
+        }
+
+        container.innerHTML = '';
         
         let countToday = 0; let countFixed = 0; let countPending = 0;
         const canEditQuality = this.canEdit('quality');
@@ -1584,26 +1652,38 @@ const App = {
 
         if(this.data.scratches.length === 0) { container.innerHTML = `<div class="text-center text-muted mt-4">الخط خالي من العيوب 🚀</div>`; return; }
         
-        this.data.scratches.forEach(defect => {
+        const cards = this.data.scratches.map((defect) => {
             const isPending = defect.status === 'pending';
             const statusClass = isPending ? 'pending' : 'fixed';
             const statusText = isPending ? '⏳ قيد الإصلاح' : '✅ تم الإصلاح';
-            const dateText = defect.date === globalDate ? defect.time : `<span class="text-red">${defect.date}</span>`;
-            const imgHtml = defect.image ? `<img src="${this.getImageUrl(defect.image)}" onclick="App.openImage('${this.getImageUrl(defect.image)}')" style="cursor: zoom-in;">` : '';
-            const statusHtml = canEditQuality
-                ? `<span class="defect-badge ${statusClass}" onclick="App.toggleScratchStatus(${defect.id}, '${defect.status}')">${statusText}</span>`
+            const defectId = Number(defect.id);
+            const validId = Number.isSafeInteger(defectId);
+            const safeType = this.escapeHtml(defect.type || 'عيب غير محدد');
+            const safeNotes = this.escapeHtml(defect.notes || 'لا توجد ملاحظات');
+            const safeDate = this.escapeHtml(defect.date || '');
+            const safeTime = this.escapeHtml(defect.time || '');
+            const dateText = defect.date === globalDate ? safeTime : `<span class="text-red">${safeDate}</span>`;
+            const imageUrl = defect.image ? this.getSafeHttpUrl(defect.image) : '';
+            const safeImageUrl = this.escapeHtml(imageUrl);
+            const imgHtml = safeImageUrl
+                ? `<img src="${safeImageUrl}" data-defect-image="${safeImageUrl}" alt="صورة العيب" loading="lazy" style="cursor: zoom-in;">`
+                : '';
+            const statusHtml = canEditQuality && validId
+                ? `<button type="button" class="defect-badge ${statusClass}" data-defect-action="toggle" data-defect-id="${defectId}" data-current-status="${isPending ? 'pending' : 'fixed'}">${statusText}</button>`
                 : `<span class="defect-badge ${statusClass}">${statusText}</span>`;
-            const deleteHtml = canEditQuality ? `<i class="fa-solid fa-trash-can text-red" style="cursor:pointer; font-size: 1.2rem;" onclick="App.deleteScratch(${defect.id})"></i>` : '';
+            const deleteHtml = canEditQuality && validId
+                ? `<button type="button" data-defect-action="delete" data-defect-id="${defectId}" aria-label="حذف العيب" style="border:0;background:transparent;padding:4px;cursor:pointer;color:var(--danger-color);font-size:1.1rem;"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+                : '';
 
-            container.innerHTML += `
+            return `
                 <div class="card defect-card" style="border-right-color: ${isPending ? 'var(--danger-color)' : 'var(--success-color)'};">
                     ${imgHtml}
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${defect.type}</h4>
+                            <h4 style="color:var(--text-main); font-size: 1rem; font-weight: 800;">${safeType}</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">${dateText}</span>
                         </div>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${defect.notes || 'لا توجد ملاحظات'}</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">${safeNotes}</p>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             ${statusHtml}
                             ${deleteHtml}
@@ -1612,6 +1692,7 @@ const App = {
                 </div>
             `;
         });
+        container.innerHTML = cards.join('');
     },
 
     toggleScratchStatus(id, currentStatus) { if (!this.requireEdit('quality')) return; const newStatus = currentStatus === 'pending' ? 'fixed' : 'pending'; API.quality.saveDefect(this.data.currentDepartment, { id: id, status: newStatus }); },
@@ -1634,6 +1715,16 @@ const App = {
         if (value.includes('cloudinary.com')) return value; // Cloudinary links are direct
         if (value.includes('drive.google.com') || value.includes('googleusercontent.com')) return this.getDriveImageUrl(value);
         return value;
+    },
+    getSafeHttpUrl(url) {
+        const value = this.getImageUrl(url);
+        if (!value) return '';
+        try {
+            const parsed = new URL(value, window.location.href);
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
+        } catch (error) {
+            return '';
+        }
     },
     async uploadToCloudinary(base64, folder = "ProductionSystem") {
         try {
