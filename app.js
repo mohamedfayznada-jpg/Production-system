@@ -1,5 +1,6 @@
 import { API } from './api.js?v=20260817-dept-management-1';
 import { generateProductionIntervals } from './time-utils.js';
+import { createProductionRecord } from './production-utils.js';
 
 const DEPARTMENT_MANAGEMENT_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
 
@@ -920,7 +921,7 @@ const App = {
                     <div class="hour-row" id="row-${timeSlot.rawTime.replace(':','-')}" data-hour="${timeSlot.rawTime}">
                         <div class="hour-header">
                             <span class="time-label">${timeSlot.label}</span>
-                            <input type="number" class="actual-input" placeholder="0" ${editAttribute}
+                            <input type="number" class="actual-input" min="0" step="1" inputmode="numeric" placeholder="0" ${editAttribute}
                                 oninput="App.handleProdInput('${timeSlot.rawTime}')">
                         </div>
                         <input type="text" class="reason-input" placeholder="سبب العجز (إن وجد)..." ${editAttribute}
@@ -1070,33 +1071,62 @@ const App = {
     handleProdInput(hourStr) {
         if (!this.requireEdit('production')) return;
         this.calculateLocalTotal();
-        const safeId = hourStr.replace(':','-');
-        if (this.saveTimers[safeId]) clearTimeout(this.saveTimers[safeId]);
 
-        this.saveTimers[safeId] = setTimeout(async () => {
-            if (!this.isOnline) return;
-            const date = document.getElementById('global-date').value;
-            const shift = document.getElementById('global-shift').value;
-            const row = document.getElementById(`row-${safeId}`);
-            if(!row) return;
+        // Capture the record's context and values before the debounce. A user may
+        // change date, shift, or department before the timer fires.
+        const department = this.data.currentDepartment;
+        const date = document.getElementById('global-date')?.value || '';
+        const shift = document.getElementById('global-shift')?.value || '';
+        const safeId = hourStr.replace(':', '-');
+        const row = document.getElementById(`row-${safeId}`);
+        if (!row) return;
 
-            const payload = {
-                recordId: `${this.data.currentDepartment}_${date}_${shift}_${safeId}`,
-                date: date, shift: shift, hour: hourStr,
-                actual: Number(row.querySelector('.actual-input').value) || 0,
-                shortfallReason: row.querySelector('.reason-input').value
-            };
+        const actualInput = row.querySelector('.actual-input');
+        const reasonInput = row.querySelector('.reason-input');
+        const actualRaw = actualInput?.value ?? '';
+        const actualValue = actualRaw.trim() === '' ? 0 : Number(actualRaw);
+        if (!Number.isSafeInteger(actualValue) || actualValue < 0) {
+            actualInput?.setCustomValidity('أدخل كمية إنتاج صحيحة غير سالبة');
+            actualInput?.reportValidity();
+            return;
+        }
+        actualInput?.setCustomValidity('');
 
+        let payload;
+        try {
+            payload = createProductionRecord({
+                department,
+                date,
+                shift,
+                hour: hourStr,
+                actual: actualValue,
+                shortfallReason: reasonInput?.value || ''
+            });
+        } catch (error) {
+            this.showToast('راجع تاريخ الوردية وكمية الإنتاج قبل الحفظ', true);
+            return;
+        }
+
+        const timerKey = `prod_${department}_${date}_${shift}_${safeId}`;
+        if (this.saveTimers[timerKey]) clearTimeout(this.saveTimers[timerKey]);
+        const timer = setTimeout(async () => {
             try {
+                if (!this.isOnline) {
+                    this.showToast('الإنتاج غير محفوظ: لا يوجد اتصال بالسحابة', true);
+                    return;
+                }
                 row.classList.add('saving');
-                await API.production.saveHour(this.data.currentDepartment, payload);
-                row.classList.remove('saving');
+                await API.production.saveHour(department, payload);
                 this.updateConnectionStatus(true);
-            } catch (e) { 
-                row.classList.remove('saving'); 
+            } catch (error) {
                 this.updateConnectionStatus(false);
+                this.showToast('تعذر حفظ الإنتاج. أعد المحاولة عند استقرار الاتصال.', true);
+            } finally {
+                row.classList.remove('saving');
+                if (this.saveTimers[timerKey] === timer) delete this.saveTimers[timerKey];
             }
         }, 700);
+        this.saveTimers[timerKey] = timer;
     },
 
     // ---------------- Master Dashboard ----------------
