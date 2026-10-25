@@ -59,7 +59,7 @@ const App = {
     },
 
     async init() {
-        // التطبيق مفتوح بدون بوابة تسجيل دخول؛ يبدأ تحميل البيانات مباشرة كما كان قبل إضافة المصادقة.
+        // Install lifecycle
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             this.deferredPrompt = event;
@@ -76,23 +76,67 @@ const App = {
             this.showToast('تم تثبيت نظام الإنتاج على جهازك بنجاح');
         });
         window.setTimeout(() => this.showInstallPrompt(), 2200);
-        setTimeout(() => {
+        window.setTimeout(() => {
             const splash = document.getElementById('cinematic-splash');
             if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
 
-        const authGate = document.getElementById('auth-gate');
-        if (authGate) authGate.remove();
-        this.currentUser = {
-            uid: 'public_guest_session',
-            username: 'مستخدم التطبيق',
-            role: 'guest',
-            usernameLower: 'public',
-            isMaster: true,
-            isBypass: true
+        // Bind authentication UI once. The login screen is the default state.
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        if (loginForm && loginForm.dataset.bound !== 'true') {
+            loginForm.addEventListener('submit', (event) => this.submitLogin(event));
+            loginForm.dataset.bound = 'true';
+        }
+        if (signupForm && signupForm.dataset.bound !== 'true') {
+            signupForm.addEventListener('submit', (event) => this.submitSignup(event));
+            signupForm.dataset.bound = 'true';
+        }
+        const bindClick = (id, callback) => {
+            const element = document.getElementById(id);
+            if (element && element.dataset.bound !== 'true') {
+                element.addEventListener('click', callback);
+                element.dataset.bound = 'true';
+            }
         };
-        await this.ensureAuthenticatedSession(this.currentUser.uid);
-        this.showAuthenticatedShell();
+        bindClick('forgot-password-btn', () => this.requestPasswordReset());
+        bindClick('toggle-signup-btn', () => this.toggleAuthForms(true));
+        bindClick('toggle-login-btn', () => this.toggleAuthForms(false));
+
+        this.currentUser = null;
+        this.showLoginGate();
+
+        // Restore sessions only through Firebase Authentication and an active user profile.
+        this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
+            if (!firebaseUser) {
+                this.currentUser = null;
+                this.sessionStartedForUid = null;
+                this.showLoginGate();
+                return;
+            }
+
+            try {
+                const profile = await API.auth.getProfile(firebaseUser.uid);
+                if (!profile || profile.active === false) {
+                    await API.auth.logout();
+                    this.currentUser = null;
+                    this.showLoginGate('الحساب غير مفعل أو لم يمنحه المدير صلاحيات بعد');
+                    return;
+                }
+
+                this.currentUser = {
+                    ...profile,
+                    uid: firebaseUser.uid,
+                    isMaster: profile.role === 'admin' && profile.usernameLower === 'mfayez'
+                };
+                await this.ensureAuthenticatedSession(firebaseUser.uid);
+                this.showAuthenticatedShell();
+            } catch (error) {
+                console.error('Unable to restore authenticated session:', error);
+                this.currentUser = null;
+                this.showLoginGate('تعذر التحقق من الجلسة. سجّل الدخول مرة أخرى.');
+            }
+        });
     },
 
     async ensureAuthenticatedSession(uid) {
@@ -435,6 +479,7 @@ const App = {
             const messages = {
                 invalid_username: 'اسم المستخدم يجب أن يكون بالإنجليزية وبدون مسافات',
                 weak_password: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+                reserved_username: 'اسم المستخدم هذا محجوز لحساب المدير الرئيسي',
                 'auth/email-already-in-use': 'اسم المستخدم هذا مسجل بالفعل'
             };
             this.setSignupMessage(messages[error.message] || messages[error.code] || 'تعذر إنشاء الحساب. حاول لاحقاً.', true);
@@ -458,14 +503,13 @@ const App = {
         this.setLoginMessage('');
         try {
             const profile = await API.auth.login(username, password);
-            this.clearLoginSecurityState();
-            
-            // If it's a bypass login (Firebase Auth failed but master password correct)
-            if (profile && profile.isBypass) {
-                this.currentUser = profile;
-                await this.ensureAuthenticatedSession(profile.uid);
-                this.showAuthenticatedShell();
+            if (!profile || !profile.uid || profile.active === false) {
+                throw new Error('account_not_configured');
             }
+            this.clearLoginSecurityState();
+            this.currentUser = profile;
+            await this.ensureAuthenticatedSession(profile.uid);
+            this.showAuthenticatedShell();
         } catch (loginError) {
             const lockRemaining = this.registerLoginFailure();
             const messages = {
