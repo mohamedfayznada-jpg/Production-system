@@ -1,4 +1,5 @@
 import { API } from './api.js?v=20260817-dept-management-1';
+import { generateProductionIntervals } from './time-utils.js';
 
 const DEPARTMENT_MANAGEMENT_PASSWORD_HASH = 'd20fdf0c14354aad8439e23de3b404b66c5327cd60065e5db896caf55673630e';
 
@@ -901,24 +902,7 @@ const App = {
     timeToMins(t) { let [h, m] = t.split(':').map(Number); return h * 60 + m; },
 
     generateIntervals() {
-        const { start, end, bStart, bEnd } = this.data.settings;
-        let current = start; let intervals = []; let endMins = this.timeToMins(end);
-        if (endMins <= this.timeToMins(start)) endMins += 24 * 60;
-        
-        while (this.timeToMins(current) < endMins) {
-            if (current === bStart) { 
-                intervals.push({ isBreak: true, label: "فترة راحة" }); 
-                current = bEnd; 
-                continue; 
-            }
-            let nextHour = this.addMinutes(current, 60);
-            if (this.timeToMins(nextHour) > this.timeToMins(bStart) && this.timeToMins(current) < this.timeToMins(bStart)) nextHour = bStart;
-            if (this.timeToMins(nextHour) > endMins) nextHour = end;
-            
-            intervals.push({ isBreak: false, label: this.formatAMPM(nextHour), rawTime: nextHour });
-            current = nextHour;
-        }
-        this.data.generatedHours = intervals;
+        this.data.generatedHours = generateProductionIntervals(this.data.settings);
         this.buildProductionUI();
     },
 
