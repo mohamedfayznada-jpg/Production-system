@@ -39,14 +39,16 @@ The application already contains useful production workflows (hourly production 
 
 **Remediation:** extract modules incrementally around existing behavior: `auth/session`, `permissions`, `production`, `quality`, `inventory`, `fiveS`, `analytics/reports`, and `pwa`. Avoid a full rewrite before characterization tests exist.
 
-### P1 — Heavy static image assets
-Repository metadata shows several large PNGs:
+### P1 — Large unreferenced PNG assets
+Repository metadata shows several large PNG files:
 - `analytics_banner.png`: ~9.9 MB
 - `production_banner.png`: ~8.8 MB
 - `quality_banner.png`: ~7.3 MB
 - `scratches_banner.png`: ~7.6 MB
 
-**Remediation:** establish whether these images are required at full resolution; convert decorative banners to optimized WebP/AVIF with responsive dimensions, use lazy loading, and verify visual parity on mobile. Keep originals until the optimized assets are approved.
+A source scan found no references to these four files in the current `index.html`, `styles.css`, or `app.js`. They therefore appear to be orphaned assets rather than images currently loaded by the interface.
+
+**Remediation:** confirm they are not intended for future or externally generated content, then remove them from the active deployment or replace them with optimized derivatives if they are still needed. No image files have been deleted on this branch.
 
 ### P1 — Automated test coverage remains narrow
 A root Node test runner and GitHub Actions quality gate now exist on this branch. The automated unit suite currently covers the extracted shift-interval logic; production data flows, UI behavior, and Firebase integration still need additional tests.
