@@ -83,7 +83,7 @@ const App = {
             if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 800); }
         }, 1500);
 
-        // Temporary owner-requested open mode: no login screen.
+        // TEMPORARY OPEN MODE — owner-requested: no login screen.
         // This mode grants broad UI access and must not be used for sensitive production data
         // on a publicly reachable deployment. Re-enable Firebase Auth before production use.
         this.currentUser = {
