@@ -1057,15 +1057,37 @@ const App = {
 
     saveTarget() {
         if (!this.requireEdit('production')) return;
-        if (!this.isOnline) return;
-        const date = document.getElementById('global-date').value;
-        const shift = document.getElementById('global-shift').value;
-        const targetVal = document.getElementById('prod-target').value;
-        
-        if(this.saveTimers['target']) clearTimeout(this.saveTimers['target']);
-        this.saveTimers['target'] = setTimeout(() => {
-            API.production.saveTarget(this.data.currentDepartment, date, shift, targetVal);
+
+        const department = this.data.currentDepartment;
+        const date = document.getElementById('global-date')?.value || '';
+        const shift = document.getElementById('global-shift')?.value || '';
+        const targetInput = document.getElementById('prod-target');
+        const targetRaw = targetInput?.value ?? '';
+        const targetValue = targetRaw.trim() === '' ? 0 : Number(targetRaw);
+
+        if (!Number.isSafeInteger(targetValue) || targetValue < 0) {
+            targetInput?.setCustomValidity('أدخل مستهدفًا صحيحًا غير سالب');
+            targetInput?.reportValidity();
+            return;
+        }
+        targetInput?.setCustomValidity('');
+
+        const timerKey = `target_${department}_${date}_${shift}`;
+        if (this.saveTimers[timerKey]) clearTimeout(this.saveTimers[timerKey]);
+        const timer = setTimeout(async () => {
+            try {
+                if (!this.isOnline) {
+                    this.showToast('المستهدف غير محفوظ: لا يوجد اتصال بالسحابة', true);
+                    return;
+                }
+                await API.production.saveTarget(department, date, shift, targetValue);
+            } catch (error) {
+                this.showToast('تعذر حفظ المستهدف. أعد المحاولة عند استقرار الاتصال.', true);
+            } finally {
+                if (this.saveTimers[timerKey] === timer) delete this.saveTimers[timerKey];
+            }
         }, 1000);
+        this.saveTimers[timerKey] = timer;
     },
 
     handleProdInput(hourStr) {
