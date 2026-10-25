@@ -20,7 +20,13 @@ The application already contains useful production workflows (hourly production 
 
 **Remediation:** restore a single Firebase Auth state lifecycle; require a valid, active user profile; remove client-side master fallback and client-side automatic privilege assignment; ensure logout returns to the login gate; then test administrator, active user, inactive user, invalid login, reload, and expired session.
 
-### P1 — Monolithic client module
+#### P0 — Overnight shift interval generation can fail to terminate
+- The previous `generateIntervals()` loop compared clock minutes that reset to zero after midnight against an end time shifted past 1,440 minutes.
+- For a configured shift such as 16:05–00:00, the loop could continue cycling after midnight instead of finishing.
+
+**Remediation implemented on this branch:** extracted a pure interval generator that advances on absolute elapsed minutes and added unit tests for day shifts, midnight-ending shifts, overnight breaks, and invalid times.
+
+## P1 — Monolithic client module
 - `app.js` is approximately 2,570 lines and coordinates session lifecycle, permissions, navigation, production, inventory, quality, 5S, reporting, and PWA UI.
 - This increases regression risk and makes focused testing difficult.
 
