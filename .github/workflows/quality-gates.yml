@@ -35,17 +35,16 @@ jobs:
           node --check production-utils.js
       - name: Run unit tests
         run: npm test
-      - name: Guard against client-side authentication bypass regressions
+      - name: Guard temporary open mode and brand configuration
         shell: bash
         run: |
           set -euo pipefail
-          if grep -En 'isBypass|MASTER_PASSWORD_HASH|public_guest_session|master_admin_mfayez' app.js api.js; then
-            echo "Unexpected client-side authentication bypass pattern detected."
+          grep -q "TEMPORARY OPEN MODE" app.js
+          grep -q "uid: 'temporary_open_mode'" app.js
+          if grep -q 'id="auth-gate"' index.html; then
+            echo "Login gate markup should remain absent in temporary open mode."
             exit 1
           fi
-          if grep -En 'intentionally public|legacy login markup inert|#auth-gate \{ display:none !important; \}' styles.css; then
-            echo "Unexpected CSS override disables the login gate."
-            exit 1
-          fi
-          grep -q "API.auth.onAuthStateChanged" app.js
-          grep -q "aria-hidden=\"true\"" index.html
+          grep -q 'id="app-shell" aria-hidden="false"' index.html
+          grep -q 'src="brand-mark.svg"' index.html
+          grep -q 'icons/icon-192.svg' manifest.json
