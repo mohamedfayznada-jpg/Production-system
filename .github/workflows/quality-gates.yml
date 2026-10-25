@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   static-checks:
-    name: Static checks
+    name: Static checks and unit tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,6 +31,9 @@ jobs:
             node --input-type=module --check < "$file"
           done
           node --check functions/index.js
+          node --check time-utils.js
+      - name: Run unit tests
+        run: npm test
       - name: Guard against client-side authentication bypass regressions
         shell: bash
         run: |
