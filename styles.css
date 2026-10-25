@@ -914,3 +914,55 @@ button i, .icon-btn i, .nav-item i, .action-icon-wrapper i, .s5-header-btn i, .d
 @media (min-width: 781px) {
     button, .icon-btn, .nav-item, .action-card, .tab-btn { min-height: 42px; }
 }
+
+
+/* ENG. MOHAMED FAYEZ — brand system */
+:root {
+    --brand-ink: #1A0F12;
+    --brand-burgundy: #8B1E3F;
+    --brand-coral: #FF5A7A;
+    --brand-gold: #F5C451;
+    --brand-cream: #F9E6D1;
+    --bg-color: #F9F5F0;
+    --card-bg: #FFFCF8;
+    --primary-color: #8B1E3F;
+    --primary-hover: #701632;
+    --gradient-start: #8B1E3F;
+    --gradient-end: #1A0F12;
+    --text-main: #1A0F12;
+    --text-muted: #79686A;
+    --border-color: #EADDD5;
+    --success-color: #3C7A57;
+    --danger-color: #C73956;
+    --warning-color: #C28B1C;
+    --purple-color: #8B1E3F;
+    --blue-color: #4E657C;
+    --shadow-soft: 0 12px 34px rgba(26,15,18,.08);
+    --shadow-glow: 0 8px 24px rgba(139,30,63,.18);
+}
+body { background: var(--bg-color); color: var(--text-main); }
+.app-header { background: rgba(249,245,240,.94); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(139,30,63,.12); }
+.card, .stat-card, .action-card, .panel, .report-card, .kpi-card { border: 1px solid rgba(139,30,63,.10); box-shadow: var(--shadow-soft); }
+.primary-btn, .tab-btn.active, .nav-item.active { background: linear-gradient(135deg,var(--brand-burgundy),var(--brand-ink)) !important; color: var(--brand-cream) !important; }
+.brand-mark-image { display:block; flex:0 0 auto; width:52px; height:52px; border-radius:14px; box-shadow:0 6px 18px rgba(26,15,18,.2); }
+.brand-copy strong { font-family:'Orbitron','Cairo',sans-serif; letter-spacing:.04em; color:var(--brand-ink); }
+.brand-copy .brand-owner { color:var(--brand-burgundy); font-size:.62em; }
+.splash-brand-logo { width:clamp(112px,18vw,172px); height:auto; filter:drop-shadow(0 12px 26px rgba(245,196,81,.15)); }
+#cinematic-splash { background:var(--brand-ink); color:var(--brand-cream); }
+#cinematic-splash h1 { color:var(--brand-cream); font-family:'Orbitron','Cairo',sans-serif; font-size:clamp(1rem,3vw,1.6rem); letter-spacing:.12em; text-align:center; margin-top:20px; }
+#cinematic-splash p { color:var(--brand-gold); font-size:.76rem; letter-spacing:.2em; text-align:center; }
+.splash-seal, .seal-name { color:var(--brand-cream); }
+@media (min-width: 900px) {
+    .app-header { padding:18px clamp(24px,3vw,52px) 16px; }
+    .content-area { max-width:1600px; margin-inline:auto; padding-inline:clamp(22px,3vw,52px); }
+    #app-shell { max-width:1800px; margin-inline:auto; }
+}
+@media (max-width: 600px) {
+    .header-top { gap:10px; align-items:flex-start; }
+    .brand-mark-image { width:42px; height:42px; border-radius:12px; }
+    .brand-copy strong { font-size:.82rem; }
+    .brand-copy > span { font-size:.7rem; }
+    .global-filters { flex-wrap:wrap; }
+    .filter-box { min-width:0; flex:1 1 135px; }
+    .content-area { padding-inline:12px; }
+}
