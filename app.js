@@ -34,6 +34,7 @@ const App = {
     fiveSKnownNoteIds: new Set(),
     fiveSNotesSnapshotReady: false,
     currentUser: null,
+    isSigningUp: false,
     authStateUnsubscribe: null,
     usersListener: null,
     sessionStartedForUid: null,
@@ -108,6 +109,8 @@ const App = {
 
         // Restore sessions only through Firebase Authentication and an active user profile.
         this.authStateUnsubscribe = API.auth.onAuthStateChanged(async (firebaseUser) => {
+            // Account creation deliberately signs out immediately; do not race its profile write.
+            if (this.isSigningUp) return;
             if (!firebaseUser) {
                 this.currentUser = null;
                 this.sessionStartedForUid = null;
@@ -471,6 +474,7 @@ const App = {
         if (button) button.disabled = true;
         this.setSignupMessage('');
         
+        this.isSigningUp = true;
         try {
             await API.auth.signup(username, password, jobTitle);
             this.setSignupMessage('تم إنشاء الحساب بنجاح! يرجى التواصل مع المدير لتفعيل حسابك.', false);
@@ -484,6 +488,7 @@ const App = {
             };
             this.setSignupMessage(messages[error.message] || messages[error.code] || 'تعذر إنشاء الحساب. حاول لاحقاً.', true);
         } finally {
+            this.isSigningUp = false;
             if (button) button.disabled = false;
         }
     },
