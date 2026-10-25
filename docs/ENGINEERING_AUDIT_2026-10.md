@@ -20,7 +20,14 @@ The application already contains useful production workflows (hourly production 
 
 **Remediation:** restore a single Firebase Auth state lifecycle; require a valid, active user profile; remove client-side master fallback and client-side automatic privilege assignment; ensure logout returns to the login gate; then test administrator, active user, inactive user, invalid login, reload, and expired session.
 
-#### P0 — Overnight shift interval generation can fail to terminate
+#### P1 — Debounced production saves can write to the wrong date/shift
+- The old debounce callback read the selected department, date, shift, and row values only when the timer fired. Changing the selected date/shift/department before the delay elapsed could associate an earlier edit with the new selection.
+- The previous timer key used only the hour, so edits from different contexts could cancel each other.
+- Production quantities and targets were not constrained to non-negative whole numbers in the generated inputs.
+
+**Remediation implemented on this branch:** capture the department/date/shift/hour/quantity/reason at input time, use context-specific timer keys, validate non-negative integer quantities and targets, and show a visible message when cloud saving fails.
+
+### P0 — Overnight shift interval generation can fail to terminate
 - The previous `generateIntervals()` loop compared clock minutes that reset to zero after midnight against an end time shifted past 1,440 minutes.
 - For a configured shift such as 16:05–00:00, the loop could continue cycling after midnight instead of finishing.
 
