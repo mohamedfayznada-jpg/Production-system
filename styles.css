@@ -660,11 +660,6 @@ body {
     .qc-lbl { font-size:.66rem; }
 }
 
-/* Keep the legacy login markup inert because the app is intentionally public. */
-#auth-gate { display:none !important; }
-#app-shell[aria-hidden="true"] { display:block !important; }
-.auth-card, .auth-gate { pointer-events:none; }
-
 /* Disabled state stays legible for future permission-aware deployments. */
 button:disabled, input:disabled, select:disabled, textarea:disabled { opacity:.58; cursor:not-allowed; }
 input[readonly] { background:#f1f5f7; }
