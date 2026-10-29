@@ -140,10 +140,14 @@
                     <input type="text" id="inv-model-color" class="modern-input" placeholder="اللون...">
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label class="check-container">
-                        <input type="checkbox" id="inv-is-3door">
-                        <span class="checkmark"></span> موديل 3 باب
-                    </label>
+                    <div class="input-group mb-0" style="min-width:150px; margin:0; flex:1;">
+                        <label for="inv-door-count" style="display:block; margin-bottom:6px;">عدد أبواب الموديل</label>
+                        <select id="inv-door-count" class="modern-input">
+                            <option value="1">باب واحد (R)</option>
+                            <option value="2" selected>بابان (R + F)</option>
+                            <option value="3">3 أبواب (R + F + V)</option>
+                        </select>
+                    </div>
                     <button class="primary-btn gradient-bg" style="width: auto; padding: 12px 25px;" onclick="App.addInventoryModel()">إضافة للمخزون</button>
                 </div>
             </div>
