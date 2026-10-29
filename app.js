@@ -1205,11 +1205,12 @@ const App = {
         if (!this.requireEdit('balances')) return;
         const nameInput = document.getElementById('inv-model-name');
         const colorInput = document.getElementById('inv-model-color');
-        const is3DoorInput = document.getElementById('inv-is-3door');
+        const doorCountInput = document.getElementById('inv-door-count');
         
         const name = nameInput.value.trim();
         const color = colorInput.value.trim();
-        const is3Door = is3DoorInput.checked;
+        const doorCount = Math.max(1, Math.min(3, Number(doorCountInput?.value) || 2));
+        const is3Door = doorCount === 3;
 
         if(name === '') { this.showToast('أدخل اسم الموديل', true); return; }
 
@@ -1218,13 +1219,13 @@ const App = {
         this.data.inventory.cabinet = this.data.inventory.cabinet || {};
         this.data.inventory.door = this.data.inventory.door || {};
 
-        this.data.inventory.models.push({ id: newId, name: name, color: color, is3Door: is3Door });
+        this.data.inventory.models.push({ id: newId, name: name, color: color, doorCount, is3Door: is3Door });
         this.data.inventory.cabinet[newId] = { boq: '', out: '' };
         this.data.inventory.door[newId] = { r: '', f: '', v: '' };
 
         API.balances.saveInventory(this.data.inventory);
         
-        nameInput.value = ''; colorInput.value = ''; is3DoorInput.checked = false;
+        nameInput.value = ''; colorInput.value = ''; if (doorCountInput) doorCountInput.value = '2';
         this.showToast('تمت الإضافة للمخزون ✅');
     },
 
@@ -1261,7 +1262,10 @@ const App = {
             const cabData = this.data.inventory.cabinet?.[model.id] || { boq: 0, out: 0 };
             const doorData = this.data.inventory.door?.[model.id] || { r: 0, f: 0, v: 0 };
             const cabinets = (Number(cabData.boq) || 0) + (Number(cabData.out) || 0);
-            const doorBalances = model.is3Door ? [['باب R', Number(doorData.r) || 0], ['باب F', Number(doorData.f) || 0], ['باب V', Number(doorData.v) || 0]] : [['باب R', Number(doorData.r) || 0], ['باب F', Number(doorData.f) || 0]];
+            const doorCount = Math.max(1, Math.min(3, Number(model.doorCount) || (model.is3Door ? 3 : 2)));
+            const doorBalances = [['باب R', Number(doorData.r) || 0]];
+            if (doorCount >= 2) doorBalances.push(['باب F', Number(doorData.f) || 0]);
+            if (doorCount >= 3) doorBalances.push(['باب V', Number(doorData.v) || 0]);
             const availableSets = cabinets ? Math.min(cabinets, ...doorBalances.map(([, quantity]) => quantity)) : 0;
             const missingDoors = doorBalances.filter(([, quantity]) => cabinets > quantity).map(([label, quantity]) => ({ label, quantity: cabinets - quantity }));
             return { model, cabinets, availableSets, waitingCabinets: Math.max(0, cabinets - availableSets), missingDoors, ready: cabinets > 0 && availableSets >= cabinets };
@@ -1298,7 +1302,7 @@ const App = {
         const totalWaiting = rows.reduce((sum, row) => sum + row.waitingCabinets, 0);
         const totalReady = rows.reduce((sum, row) => sum + row.availableSets, 0);
         const totalMissing = shortages.reduce((sum, row) => sum + row.missingDoors.reduce((inner, item) => inner + item.quantity, 0), 0);
-        const reportRows = rows.map((row) => `<tr><td><strong>${esc(row.model.name)}</strong><small>${row.model.is3Door ? '3 أبواب' : '2 باب'}</small></td><td>${fmt(row.cabinets)}</td><td>${fmt(row.availableSets)}</td><td>${row.missingDoors.length ? row.missingDoors.map(({ label, quantity }) => `<span class="inv-shortage-chip"><strong>${fmt(quantity)}</strong> ${esc(label)}</span>`).join(' ') : '<span class="inv-report-ok">لا يوجد نقص</span>'}</td><td>${row.waitingCabinets ? `<span class="inv-report-warning">${fmt(row.waitingCabinets)} متوقف</span>` : '<span class="inv-report-ok">جاهز</span>'}</td></tr>`).join('');
+        const reportRows = rows.map((row) => `<tr><td><strong>${esc(row.model.name)}</strong><small>${(Number(row.model.doorCount) || (row.model.is3Door ? 3 : 2))} أبواب</small></td><td>${fmt(row.cabinets)}</td><td>${fmt(row.availableSets)}</td><td>${row.missingDoors.length ? row.missingDoors.map(({ label, quantity }) => `<span class="inv-shortage-chip"><strong>${fmt(quantity)}</strong> ${esc(label)}</span>`).join(' ') : '<span class="inv-report-ok">لا يوجد نقص</span>'}</td><td>${row.waitingCabinets ? `<span class="inv-report-warning">${fmt(row.waitingCabinets)} متوقف</span>` : '<span class="inv-report-ok">جاهز</span>'}</td></tr>`).join('');
         container.innerHTML = `<section class="inv-report-card"><div class="inv-report-header"><div><span class="analytics-chart-kicker">FINAL ASSEMBLY / DOOR SHORTAGE REPORT</span><h4>تقرير الأبواب الناقصة لكل الموديلات</h4><p>ملخص جاهزية الكبائن للتجميع النهائي حسب الأرصدة الحالية.</p></div><div class="inv-report-actions"><button class="secondary-btn" onclick="App.shareMissingDoorsReport()"><i class="fa-solid fa-share-nodes"></i> مشاركة</button><button class="primary-btn" onclick="App.exportMissingDoorsReportPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button></div></div><div class="inv-report-summary"><div><span>الموديلات</span><strong>${fmt(rows.length)}</strong></div><div><span>كبائن جاهزة</span><strong>${fmt(totalReady)}</strong></div><div class="warning"><span>كبائن متوقفة</span><strong>${fmt(totalWaiting)}</strong></div><div class="warning"><span>إجمالي الأبواب المطلوبة</span><strong>${fmt(totalMissing)}</strong></div></div><div class="inv-report-table-wrap"><table class="inv-report-table"><thead><tr><th>الموديل</th><th>الكبائن</th><th>متاح للتجميع</th><th>الأبواب الناقصة للاستعواض</th><th>الحالة</th></tr></thead><tbody>${reportRows || '<tr><td colspan="5" class="empty-cell">لا توجد موديلات مسجلة</td></tr>'}</tbody></table></div></section>`;
     },
 
@@ -1356,7 +1360,8 @@ const App = {
 
         models.forEach(model => {
             let contentHtml = '';
-            let badgeHtml = model.is3Door ? `<span class="inv-badge">3 باب</span>` : `<span class="inv-badge" style="background:#e0f2fe; color:var(--primary-color);">2 باب</span>`;
+            const doorCount = Math.max(1, Math.min(3, Number(model.doorCount) || (model.is3Door ? 3 : 2)));
+            let badgeHtml = `<span class="inv-badge">${doorCount} ${doorCount === 1 ? 'باب' : 'أبواب'}</span>`;
             
             if (this.currentBalanceTab === 'cabinet') {
                 const cabData = this.data.inventory.cabinet[model.id] || { boq:'', out:'' };
@@ -1375,11 +1380,16 @@ const App = {
             } 
             else if (this.currentBalanceTab === 'door') {
                 const doorData = this.data.inventory.door[model.id] || { r:'', f:'', v:'' };
-                const gridCols = model.is3Door ? '1fr 1fr 1fr' : '1fr 1fr';
-                const vInput = model.is3Door ? `
+                const gridCols = doorCount === 3 ? '1fr 1fr 1fr' : doorCount === 2 ? '1fr 1fr' : '1fr';
+                const fInput = doorCount >= 2 ? `
+                    <div class="inv-input-group">
+                        <label>باب F</label>
+                        <input type="number" min="0" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
+                    </div>` : '';
+                const vInput = doorCount >= 3 ? `
                     <div class="inv-input-group">
                         <label>باب V</label>
-                        <input type="number" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
+                        <input type="number" min="0" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
                     </div>` : '';
 
                 contentHtml = `
@@ -1388,10 +1398,7 @@ const App = {
                             <label>باب R</label>
                             <input type="number" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
                         </div>
-                        <div class="inv-input-group">
-                            <label>باب F</label>
-                            <input type="number" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
-                        </div>
+                        ${fInput}
                         ${vInput}
                     </div>
                 `;
@@ -1405,12 +1412,12 @@ const App = {
                 const f = Number(doorData.f) || 0;
                 const v = Number(doorData.v) || 0;
 
-                let availableSets = 0;
-                if(model.is3Door) { availableSets = Math.min(cabTotal, r, f, v); } 
-                else { availableSets = Math.min(cabTotal, r, f); }
-
-                const vBox = model.is3Door ? `<div class="inv-stat-box"><span class="inv-stat-lbl">باب V</span><span class="inv-stat-val">${v}</span></div>` : '';
-                const doorBalances = model.is3Door ? [['باب R', r], ['باب F', f], ['باب V', v]] : [['باب R', r], ['باب F', f]];
+                const doorBalances = [['باب R', r]];
+                if (doorCount >= 2) doorBalances.push(['باب F', f]);
+                if (doorCount >= 3) doorBalances.push(['باب V', v]);
+                const availableSets = Math.min(cabTotal, ...doorBalances.map(([, quantity]) => quantity));
+                const doorBoxes = doorCount >= 2 ? `<div class="inv-stat-box"><span class="inv-stat-lbl">باب F</span><span class="inv-stat-val">${f}</span></div>` : '';
+                const vBox = doorCount >= 3 ? `<div class="inv-stat-box"><span class="inv-stat-lbl">باب V</span><span class="inv-stat-val">${v}</span></div>` : '';
                 const missingDoors = doorBalances.filter(([, quantity]) => cabTotal > quantity).map(([label, quantity]) => ({ label, quantity: cabTotal - quantity }));
                 const coveredCabinets = Math.min(cabTotal, ...doorBalances.map(([, quantity]) => quantity));
                 const waitingCabinets = Math.max(0, cabTotal - coveredCabinets);
@@ -1422,10 +1429,10 @@ const App = {
                         : `<div class="inv-readiness ready"><div class="inv-readiness-title"><i class="fa-solid fa-circle-check"></i><span>كل الكبائن متاحة للتجميع النهائي</span></div><div class="inv-readiness-summary">تمت تغطية ${coveredCabinets} كابينة بالأبواب المطلوبة.</div></div>`;
                 
                 contentHtml = `
-                    <div class="inv-final-grid" style="${model.is3Door ? 'grid-template-columns: repeat(4, 1fr);' : 'grid-template-columns: repeat(3, 1fr);'}">
+                    <div class="inv-final-grid" style="grid-template-columns: repeat(${doorCount + 1}, minmax(0, 1fr));">
                         <div class="inv-stat-box"><span class="inv-stat-lbl">كابينة</span><span class="inv-stat-val text-primary">${cabTotal}</span></div>
                         <div class="inv-stat-box"><span class="inv-stat-lbl">باب R</span><span class="inv-stat-val">${r}</span></div>
-                        <div class="inv-stat-box"><span class="inv-stat-lbl">باب F</span><span class="inv-stat-val">${f}</span></div>
+                        ${doorBoxes}
                         ${vBox}
                     </div>
                     <div class="inv-result">
