@@ -1382,7 +1382,23 @@ const App = {
         this.renderMissingDoorsReport();
         this.renderDoorShortageAlert();
 
-        const models = this.data.inventory.models || [];
+        const models = [...(this.data.inventory.models || [])];
+        const inventoryCabinet = this.data.inventory.cabinet || {};
+        const inventoryDoor = this.data.inventory.door || {};
+        const balanceForModel = (model) => {
+            const cabData = inventoryCabinet[model.id] || {};
+            const doorData = inventoryDoor[model.id] || {};
+            const doorCount = Math.max(1, Math.min(3, Number(model.doorCount) || (model.is3Door ? 3 : 2)));
+            const cabinetTotal = (Number(cabData.boq) || 0) + (Number(cabData.out) || 0);
+            const doors = [Number(doorData.r) || 0];
+            if (doorCount >= 2) doors.push(Number(doorData.f) || 0);
+            if (doorCount >= 3) doors.push(Number(doorData.v) || 0);
+            if (this.currentBalanceTab === 'cabinet') return cabinetTotal;
+            if (this.currentBalanceTab === 'door') return doors.reduce((sum, value) => sum + value, 0);
+            return Math.min(cabinetTotal, ...doors);
+        };
+        models.sort((a, b) => balanceForModel(b) - balanceForModel(a));
+        const maxBalance = Math.max(1, ...models.map(balanceForModel));
         const balanceEditable = this.canEdit('balances');
         const inventoryEditAttribute = balanceEditable ? '' : 'readonly aria-readonly="true"';
         if(models.length === 0) {
@@ -1391,6 +1407,10 @@ const App = {
         }
 
         models.forEach(model => {
+            const balanceScore = balanceForModel(model);
+            const balanceRatio = Math.max(0, Math.min(1, balanceScore / maxBalance));
+            const accentLightness = Math.round(74 - (balanceRatio * 43));
+            const accentColor = `hsl(343 64% ${accentLightness}%)`;
             let contentHtml = '';
             const doorCount = Math.max(1, Math.min(3, Number(model.doorCount) || (model.is3Door ? 3 : 2)));
             let badgeHtml = `<span class="inv-badge">${doorCount} ${doorCount === 1 ? 'باب' : 'أبواب'}</span>`;
@@ -1476,9 +1496,9 @@ const App = {
             }
 
             container.innerHTML += `
-                <div class="card inv-card mb-4" style="margin-bottom: 15px;">
+                <div class="card inv-card mb-4" style="--inv-accent:${accentColor}; --inv-balance-ratio:${balanceRatio}; margin-bottom: 15px;">
                     <div class="inv-header">
-                        <div class="inv-title">${model.name} <span style="color:var(--text-muted); font-size:0.9rem;">${model.color ? ' - '+model.color : ''}</span></div>
+                        <div class="inv-title">${model.name} <span class="inv-model-color">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>
                             ${badgeHtml}
                             ${balanceEditable ? `<i class="fa-solid fa-trash-can text-red ml-2" style="cursor:pointer; margin-right:10px;" onclick="App.deleteInventoryModel('${model.id}')"></i>` : ''}

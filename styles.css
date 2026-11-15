@@ -926,10 +926,17 @@ button i, .icon-btn i, .nav-item i, .action-icon-wrapper i, .s5-header-btn i, .d
 }
 .inv-input::-webkit-inner-spin-button,
 .inv-input::-webkit-outer-spin-button { margin: 0; }
+.inv-card {
+    border-right-color: var(--inv-accent, var(--primary-color));
+    box-shadow: 0 8px 24px rgba(26,15,18,.06), inset 0 0 0 1px color-mix(in srgb, var(--inv-accent, var(--primary-color)) calc(16% + (var(--inv-balance-ratio, 0) * 18%)), transparent);
+}
+.inv-card .inv-title { color: var(--inv-accent, var(--text-main)); }
+.inv-card .inv-model-color { color: var(--text-muted); font-size: .9rem; }
+.inv-card .inv-badge { background: color-mix(in srgb, var(--inv-accent, var(--primary-color)) 12%, white); color: var(--inv-accent, var(--primary-color)); }
 @media (max-width: 780px) {
     #screen-balances .inv-inputs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px; }
     #screen-balances .inv-inputs-grid[style*="1fr 1fr 1fr"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    #screen-balances .inv-input { min-height: 50px; padding-inline: 8px; font-size: 1rem; }
+    #screen-balances .inv-input { min-height: 54px; padding-inline: 12px; font-size: 1.08rem; letter-spacing: .02em; }
     #screen-balances .inv-input-group label { font-size: .72rem; white-space: nowrap; }
     #screen-balances .inv-card { padding: 13px; }
     #screen-balances .inv-header { gap: 8px; align-items: flex-start; }
