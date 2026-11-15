@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <link rel="manifest" href="manifest.json?v=20261115-inventory-input-v3">
+    <link rel="manifest" href="manifest.json?v=20261115-mobile-balances-v4">
     <meta name="theme-color" content="#1A0F12">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -9,11 +9,11 @@
     <link rel="icon" type="image/svg+xml" href="brand-mark.svg">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.svg">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MES CORE — Production Intelligence | Eng. Mohamed Fayez</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20261115-inventory-input-v3">
+    <link rel="stylesheet" href="styles.css?v=20261115-mobile-balances-v4">
     
     <!-- مكتبات الرسم البياني وتصدير الملفات (جديد) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -51,7 +51,7 @@
                 </div>
                 <span id="connection-status" class="status-dot offline" title="جاري الاتصال..."></span></div>
                 </div>
-                <div class="header-account"><div class="header-account-text"><strong id="auth-user-name"></strong><small id="auth-user-role"></small></div><button class="icon-btn" type="button" onclick="App.logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button><button class="icon-btn" type="button" onclick="App.openSettings()" title="الإعدادات"><i class="fa-solid fa-sliders"></i></button></div>
+                <div class="header-account"><button class="icon-btn" type="button" onclick="App.openSettings()" title="الإعدادات" aria-label="الإعدادات"><i class="fa-solid fa-sliders"></i></button></div>
         </div>
         <div class="global-filters">
             <div class="filter-box">

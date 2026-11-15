@@ -1265,8 +1265,7 @@ const App = {
         const normalizedDigits = rawValue
             .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
             .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-            .replace(/[^0-9]/g, '')
-            .slice(0, 3);
+            .replace(/[^0-9]/g, '');
 
         // Do not rewrite the input's value on every keystroke.
         // Android keyboards/IME can lose composition or caret position when
@@ -1402,11 +1401,11 @@ const App = {
                     <div class="inv-inputs-grid">
                         <div class="inv-input-group">
                             <label>رصيد المقايسة</label>
-                            <input type="text" inputmode="numeric" maxlength="3" pattern="[0-9]{0,3}" id="inv_cabinet_${model.id}_boq" class="inv-input" placeholder="0" value="${cabData.boq}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'boq')">
+                            <input type="number" inputmode="numeric" min="0" step="1" id="inv_cabinet_${model.id}_boq" class="inv-input" placeholder="0" value="${cabData.boq}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'boq')">
                         </div>
                         <div class="inv-input-group">
                             <label>خارج المقايسة</label>
-                            <input type="text" inputmode="numeric" maxlength="3" pattern="[0-9]{0,3}" id="inv_cabinet_${model.id}_out" class="inv-input" placeholder="0" value="${cabData.out}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'out')">
+                            <input type="number" inputmode="numeric" min="0" step="1" id="inv_cabinet_${model.id}_out" class="inv-input" placeholder="0" value="${cabData.out}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'cabinet', 'out')">
                         </div>
                     </div>
                 `;
@@ -1417,19 +1416,19 @@ const App = {
                 const fInput = doorCount >= 2 ? `
                     <div class="inv-input-group">
                         <label>باب F</label>
-                        <input type="text" inputmode="numeric" maxlength="3" pattern="[0-9]{0,3}" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
+                        <input type="number" inputmode="numeric" min="0" step="1" id="inv_door_${model.id}_f" class="inv-input" placeholder="0" value="${doorData.f}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'f')">
                     </div>` : '';
                 const vInput = doorCount >= 3 ? `
                     <div class="inv-input-group">
                         <label>باب V</label>
-                        <input type="text" inputmode="numeric" maxlength="3" pattern="[0-9]{0,3}" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
+                        <input type="number" inputmode="numeric" min="0" step="1" id="inv_door_${model.id}_v" class="inv-input" placeholder="0" value="${doorData.v}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'v')">
                     </div>` : '';
 
                 contentHtml = `
                     <div class="inv-inputs-grid" style="grid-template-columns: ${gridCols};">
                         <div class="inv-input-group">
                             <label>باب R</label>
-                            <input type="text" inputmode="numeric" maxlength="3" pattern="[0-9]{0,3}" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
+                            <input type="number" inputmode="numeric" min="0" step="1" id="inv_door_${model.id}_r" class="inv-input" placeholder="0" value="${doorData.r}" ${inventoryEditAttribute} oninput="App.handleInventoryInput('${model.id}', 'door', 'r')">
                         </div>
                         ${fInput}
                         ${vInput}

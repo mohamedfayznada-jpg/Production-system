@@ -916,6 +916,30 @@ button i, .icon-btn i, .nav-item i, .action-icon-wrapper i, .s5-header-btn i, .d
     #screen-5s .s5-header-btn { flex-basis: 100%; }
 }
 
+/* Inventory inputs: keep multi-digit entry reliable on Android/iOS keyboards. */
+.inv-input {
+    width: 100%;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+}
+.inv-input::-webkit-inner-spin-button,
+.inv-input::-webkit-outer-spin-button { margin: 0; }
+@media (max-width: 780px) {
+    #screen-balances .inv-inputs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px; }
+    #screen-balances .inv-inputs-grid[style*="1fr 1fr 1fr"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    #screen-balances .inv-input { min-height: 50px; padding-inline: 8px; font-size: 1rem; }
+    #screen-balances .inv-input-group label { font-size: .72rem; white-space: nowrap; }
+    #screen-balances .inv-card { padding: 13px; }
+    #screen-balances .inv-header { gap: 8px; align-items: flex-start; }
+    #screen-balances .inv-title { min-width: 0; overflow-wrap: anywhere; font-size: .95rem; }
+}
+@media (max-width: 360px) {
+    #screen-balances .inv-inputs-grid[style*="1fr 1fr 1fr"] { gap: 5px; }
+    #screen-balances .inv-input { padding-inline: 5px; }
+}
+
 @media (min-width: 781px) {
     button, .icon-btn, .nav-item, .action-card, .tab-btn { min-height: 42px; }
 }
