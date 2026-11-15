@@ -1,5 +1,5 @@
 // Change this release marker whenever the PWA is published.
-const SW_RELEASE = '20261115-inventory-input-v3';
+const SW_RELEASE = '20261115-mobile-balances-v4';
 
 self.addEventListener('install', (event) => {
     // Activate the new worker without waiting for all old tabs to close.
