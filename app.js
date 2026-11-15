@@ -985,8 +985,14 @@ const App = {
             const activeElement = document.activeElement;
             const isEditingInventory = activeElement instanceof HTMLInputElement
                 && activeElement.classList.contains('inv-input');
+            const balancesScreen = document.getElementById('screen-balances');
+            const isBalancesScreenVisible = balancesScreen?.classList.contains('active') === true;
 
-            if (!isEditingInventory) {
+            // While the balances screen is open, never rebuild its input DOM
+            // in response to realtime snapshots. Mobile browsers may report
+            // a transiently blurred activeElement while the keyboard is open.
+            // The latest data is retained in memory and shown on next entry.
+            if (!isEditingInventory && !isBalancesScreenVisible) {
                 this.renderInventory();
             }
             this.populateDefectModelsList(); // تحديث قائمة الموديلات في شاشة الجودة
