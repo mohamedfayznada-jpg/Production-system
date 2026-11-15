@@ -1,6 +1,6 @@
 import { db, storage, auth, adminProvisioningAuth } from "./firebase.js";
 import {
-    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, limit
+    collection, doc, setDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, limit, runTransaction
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import {
     signInWithEmailAndPassword,
@@ -348,9 +348,42 @@ export const API = {
         },
         listenToInventory(callback) {
             const docRef = doc(db, "inventory_records", `factory_global_inventory`);
-            return onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) callback(docSnap.data());
-                else callback({ models: [], cabinet: {}, door: {} });
+            const getLocalDateKey = () => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            };
+            return onSnapshot(docRef, async (docSnap) => {
+                if (!docSnap.exists()) {
+                    callback({ models: [], cabinet: {}, door: {}, inventoryDate: getLocalDateKey() });
+                    return;
+                }
+                const today = getLocalDateKey();
+                const snapshotData = docSnap.data();
+                if (snapshotData.inventoryDate === today) {
+                    callback(snapshotData);
+                    return;
+                }
+                try {
+                    const refreshed = await runTransaction(db, async (transaction) => {
+                        const latestSnap = await transaction.get(docRef);
+                        const latest = latestSnap.exists() ? latestSnap.data() : { models: [], cabinet: {}, door: {} };
+                        if (latest.inventoryDate === today) return latest;
+                        const models = Array.isArray(latest.models) ? latest.models : [];
+                        const cabinet = latest.inventoryDate
+                            ? Object.fromEntries(models.map((model) => [model.id, { boq: 0, out: 0 }]))
+                            : (latest.cabinet || {});
+                        const door = latest.inventoryDate
+                            ? Object.fromEntries(models.map((model) => [model.id, { r: 0, f: 0, v: 0 }]))
+                            : (latest.door || {});
+                        const next = { ...latest, models, cabinet, door, inventoryDate: today, updatedAt: serverTimestamp() };
+                        transaction.set(docRef, next, { merge: true });
+                        return next;
+                    });
+                    callback(refreshed);
+                } catch (error) {
+                    console.error('Daily inventory reset failed:', error);
+                    callback(snapshotData);
+                }
             });
         }
     },
