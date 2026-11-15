@@ -1255,12 +1255,24 @@ const App = {
         const inputEl = document.getElementById(`inv_${part}_${modelId}_${field}`);
         if(!inputEl) return;
         
-        const normalizedDigits = String(inputEl.value || '')
+        const rawValue = String(inputEl.value || '');
+        const normalizedDigits = rawValue
             .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
             .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
             .replace(/[^0-9]/g, '')
             .slice(0, 3);
-        inputEl.value = normalizedDigits;
+
+        // Do not rewrite the input's value on every keystroke.
+        // Android keyboards/IME can lose composition or caret position when
+        // the value is assigned during the input event, even if unchanged.
+        if (inputEl.value !== normalizedDigits) {
+            const cursor = inputEl.selectionStart;
+            inputEl.value = normalizedDigits;
+            if (cursor !== null && document.activeElement === inputEl) {
+                const nextCursor = Math.min(cursor, normalizedDigits.length);
+                inputEl.setSelectionRange(nextCursor, nextCursor);
+            }
+        }
         const val = normalizedDigits;
         this.data.inventory[part][modelId][field] = val;
 
