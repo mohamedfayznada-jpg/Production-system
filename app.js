@@ -1495,8 +1495,9 @@ const App = {
                 `;
             }
 
+            const modelCardClass = doorCount === 3 ? ' inv-three-door' : '';
             container.innerHTML += `
-                <div class="card inv-card mb-4" style="--inv-accent:${accentColor}; --inv-balance-ratio:${balanceRatio}; margin-bottom: 15px;">
+                <div class="card inv-card${modelCardClass} mb-4" style="--inv-accent:${accentColor}; --inv-balance-ratio:${balanceRatio}; margin-bottom: 15px;">
                     <div class="inv-header">
                         <div class="inv-title">${model.name} <span class="inv-model-color">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>
