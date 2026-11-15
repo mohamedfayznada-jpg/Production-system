@@ -979,7 +979,16 @@ const App = {
 
         this.currentInventoryListener = API.balances.listenToInventory((invData) => {
             this.data.inventory = invData;
-            this.renderInventory();
+
+            // لا تعِد بناء خانات الأرصدة أثناء الكتابة؛ إعادة الرسم تفقد الحقل تركيزه
+            // وقد تمنع إدخال أكثر من رقم، خصوصاً على لوحات مفاتيح الهواتف.
+            const activeElement = document.activeElement;
+            const isEditingInventory = activeElement instanceof HTMLInputElement
+                && activeElement.classList.contains('inv-input');
+
+            if (!isEditingInventory) {
+                this.renderInventory();
+            }
             this.populateDefectModelsList(); // تحديث قائمة الموديلات في شاشة الجودة
         });
 
