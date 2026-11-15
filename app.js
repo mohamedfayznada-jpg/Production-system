@@ -1411,6 +1411,7 @@ const App = {
             const balanceRatio = Math.max(0, Math.min(1, balanceScore / maxBalance));
             const accentLightness = Math.round(74 - (balanceRatio * 43));
             const accentColor = `hsl(343 64% ${accentLightness}%)`;
+            const accentBackground = `hsla(343, 64%, ${accentLightness}%, 0.10)`;
             let contentHtml = '';
             const doorCount = Math.max(1, Math.min(3, Number(model.doorCount) || (model.is3Door ? 3 : 2)));
             let badgeHtml = `<span class="inv-badge">${doorCount} ${doorCount === 1 ? 'باب' : 'أبواب'}</span>`;
@@ -1497,7 +1498,7 @@ const App = {
 
             const modelCardClass = doorCount === 3 ? ' inv-three-door' : '';
             container.innerHTML += `
-                <div class="card inv-card${modelCardClass} mb-4" style="--inv-accent:${accentColor}; --inv-balance-ratio:${balanceRatio}; margin-bottom: 15px;">
+                <div class="card inv-card${modelCardClass} mb-4" style="--inv-accent:${accentColor}; --inv-bg:${accentBackground}; --inv-balance-ratio:${balanceRatio}; margin-bottom: 15px;">
                     <div class="inv-header">
                         <div class="inv-title">${model.name} <span class="inv-model-color">${model.color ? ' - '+model.color : ''}</span></div>
                         <div>

@@ -552,7 +552,7 @@ body {
 .inv-header { padding-bottom:14px; }
 .inv-title { font-size:1rem; }
 .inv-inputs-grid { gap:14px; }
-.inv-input { min-height:44px; }
+.inv-input { min-height:54px; }
 
 #screen-quality .grid-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
 #screen-scratches .qc-counters, #screen-5s .qc-counters { margin-bottom:20px; }
@@ -928,18 +928,18 @@ button i, .icon-btn i, .nav-item i, .action-icon-wrapper i, .s5-header-btn i, .d
 .inv-input::-webkit-inner-spin-button,
 .inv-input::-webkit-outer-spin-button { margin: 0; }
 .inv-card {
-    border: 2px solid color-mix(in srgb, var(--inv-accent, var(--primary-color)) 42%, #dce8ee);
+    border: 2px solid var(--inv-accent, var(--primary-color));
     border-right: 10px solid var(--inv-accent, var(--primary-color));
-    background: linear-gradient(115deg, color-mix(in srgb, var(--inv-accent, var(--primary-color)) calc(7% + (var(--inv-balance-ratio, 0) * 16%)), #fff), #fff 58%);
+    background: var(--inv-bg, #fff);
     box-shadow: 0 8px 24px rgba(26,15,18,.08);
 }
 .inv-card .inv-title { color: var(--inv-accent, var(--text-main)); }
 .inv-card .inv-model-color { color: var(--text-muted); font-size: .9rem; }
-.inv-card .inv-badge { background: color-mix(in srgb, var(--inv-accent, var(--primary-color)) 12%, white); color: var(--inv-accent, var(--primary-color)); }
+.inv-card .inv-badge { background: #fff1f3; color: var(--inv-accent, var(--primary-color)); border: 1px solid var(--inv-accent, var(--primary-color)); }
 @media (max-width: 780px) {
     #screen-balances .inv-inputs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px; }
     #screen-balances .inv-inputs-grid[style*="1fr 1fr 1fr"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    #screen-balances .inv-input { min-height: 54px; padding-inline: 12px; font-size: 1.08rem; letter-spacing: .02em; }
+    #screen-balances .inv-input { min-height: 58px; min-width: 0; padding: 10px 6px; font-family: Arial, sans-serif; font-size: 1.28rem; font-weight: 900; direction: ltr; text-align: center; letter-spacing: 0; }
     #screen-balances .inv-input-group label { font-size: .72rem; white-space: nowrap; }
     #screen-balances .inv-card { padding: 13px; }
     #inventory-list .inv-three-door { grid-column: 1; }
@@ -949,6 +949,21 @@ button i, .icon-btn i, .nav-item i, .action-icon-wrapper i, .s5-header-btn i, .d
 @media (max-width: 360px) {
     #screen-balances .inv-inputs-grid[style*="1fr 1fr 1fr"] { gap: 5px; }
     #screen-balances .inv-input { padding-inline: 5px; }
+}
+
+#screen-balances .inv-input-group {
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid #ead9d2;
+    border-radius: 12px;
+    background: rgba(255,255,255,.72);
+}
+#screen-balances .inv-input-group label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--text-main);
+    font-weight: 900;
+    text-align: center;
 }
 
 @media (min-width: 781px) {
